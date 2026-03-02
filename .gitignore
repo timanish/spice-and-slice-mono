@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 .claude/mcp.json
+# Bun lockfiles (use npm/package-lock.json for Cloudflare Pages)
+bun.lock
+bun.lockb
