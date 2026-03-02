@@ -5,7 +5,7 @@ import { authenticateRequest } from "../_shared/clerk-auth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-require-admin",
 };
 
 const ALLOWED_MIME_TYPES = [
