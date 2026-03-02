@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@clerk/clerk-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useUser as useClerkUser, useAuth } from "@clerk/clerk-react";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 /**
- * Hook to check if the current user has admin role
- *
- * @returns {boolean} isAdmin - true if user has admin role
- * @returns {boolean} isLoading - true while checking role
- * @returns {Error|null} error - error if role check failed
+ * Hook to check if the current user has admin role.
+ * Uses the get-user-role edge function (service-role access)
+ * instead of querying the RLS-locked user_roles table directly.
  */
 export const useAdminRole = () => {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useClerkUser();
+  const { getToken } = useAuth();
 
   const {
     data: isAdmin = false,
@@ -21,21 +21,24 @@ export const useAdminRole = () => {
     queryFn: async () => {
       if (!user?.id) return false;
 
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
+      const token = await getToken();
+      if (!token) return false;
 
-      if (error) {
-        if (error.code === "PGRST116") return false;
-        throw error;
-      }
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/get-user-role`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      return data?.role === "admin";
+      if (!response.ok) return false;
+
+      const data = await response.json();
+      return data?.role === 'admin';
     },
     enabled: isLoaded && !!user?.id,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   return {

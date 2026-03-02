@@ -38,11 +38,16 @@ export default defineConfig(({ mode }) => ({
       interval: 1000,
     },
   },
-  plugins: [react()],
+  plugins: [react()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  // Strip console.log/debug/info in production; keep console.error and console.warn
+  esbuild: {
+    drop: mode === "production" ? ["debugger"] : [],
+    pure: mode === "production" ? ["console.log", "console.debug", "console.info"] : [],
   },
   // Optimize build options
   build: {
