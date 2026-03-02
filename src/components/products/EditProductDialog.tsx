@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/integrations/supabase/client';
 import { uploadImage } from '@/lib/upload-image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminCrud } from '@/hooks/useAdminCrud';
 import { EditProductForm } from './EditProductForm';
 import type { ProductFormValues } from '@/lib/validations/product';
 
@@ -41,32 +41,24 @@ export const EditProductDialog = ({
   onProductUpdated 
 }: EditProductDialogProps) => {
   const { toast } = useToast();
+  const { update } = useAdminCrud();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleSubmit = async (data: ProductFormValues, selectedImage: File | null) => {
     try {
       setIsSubmitting(true);
-      
+
       let imageUrl = product.image_url;
       if (selectedImage) {
-        if (product.image_url) {
-          const oldImageName = product.image_url.split('/').pop();
-          if (oldImageName) {
-            await supabase.storage
-              .from('menu-items')
-              .remove([oldImageName]);
-          }
-        }
-        
         const fileExt = selectedImage.name.split('.').pop();
         const fileName = `${uuidv4()}.${fileExt}`;
-        
+
         imageUrl = await uploadImage(selectedImage, fileName, { requireAdmin: true });
       }
-      
-      const { error } = await supabase
-        .from('products')
-        .update({
+
+      await update(
+        'products',
+        {
           name: data.name,
           description: data.description,
           price_per_unit: data.price_per_unit,
@@ -84,11 +76,10 @@ export const EditProductDialog = ({
           min_order_unit: data.min_order_unit,
           tax_rate: data.tax_rate,
           priority: data.priority ?? 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', product.id);
-      
-      if (error) throw error;
+          updated_at: new Date().toISOString(),
+        },
+        [{ column: 'id', operator: 'eq', value: product.id }],
+      );
       
       toast({
         title: "Success",
