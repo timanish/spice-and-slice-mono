@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env index.ts"
+  },
+  "cron": [
+    {
+      "schedule": "*/30 * * * *",
+      "path": "/check-pickup-reminders"
+    }
+  ]
+}

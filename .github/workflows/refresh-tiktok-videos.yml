@@ -1,0 +1,75 @@
+name: Refresh TikTok Video URLs
+
+on:
+  schedule:
+    # Run every 90 minutes (closest to 1.5 hours with cron)
+    # This pattern runs at: 00:00, 01:30, 03:00, 04:30, 06:00, 07:30, etc.
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+    - cron: '30 1,4,7,10,13,16,19,22 * * *'
+  
+  # Allow manual triggering from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  refresh-videos:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Refresh TikTok Videos
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "🔄 Calling TikTok Video Refresh Edge Function..."
+          
+          # Validate secrets are set
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "❌ Error: SUPABASE_URL secret is not set"
+            echo "Please add SUPABASE_URL to repository secrets (Settings → Secrets → Actions)"
+            exit 1
+          fi
+          
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "❌ Error: SUPABASE_ANON_KEY secret is not set"
+            echo "Please add SUPABASE_ANON_KEY to repository secrets (Settings → Secrets → Actions)"
+            exit 1
+          fi
+          
+          # Build the full URL
+          FUNCTION_URL="${SUPABASE_URL}/functions/v1/refresh-tiktok-video"
+          echo "🌐 Calling: ${FUNCTION_URL}"
+          
+          # Make the request with detailed output
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "${FUNCTION_URL}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json")
+          
+          echo "📊 HTTP Status Code: $HTTP_CODE"
+          
+          # Check if response file exists and has content
+          if [ -f response.json ]; then
+            echo "📄 Response Body:"
+            cat response.json
+            echo ""
+          else
+            echo "⚠️ No response body received"
+          fi
+          
+          # Check HTTP status
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Successfully refreshed TikTok videos"
+            exit 0
+          else
+            echo "❌ Request failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+      
+      - name: Report Status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ TikTok video refresh completed successfully"
+          else
+            echo "❌ TikTok video refresh failed - check logs above for details"
+          fi

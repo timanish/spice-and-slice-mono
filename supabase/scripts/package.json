@@ -1,0 +1,21 @@
+{
+  "name": "supabase-scripts",
+  "version": "1.0.0",
+  "description": "Import scripts for Supabase database",
+  "type": "module",
+  "scripts": {
+    "import": "tsx import-products.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.7.7",
+    "cheerio": "^1.1.0",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
