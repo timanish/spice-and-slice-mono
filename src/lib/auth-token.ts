@@ -10,6 +10,11 @@ type TokenGetter = () => Promise<string | null>;
 
 let _getToken: TokenGetter | null = null;
 
+// Token cache — Clerk JWTs are valid for 60s, so 30s cache is safe
+let _cachedToken: string | null = null;
+let _cachedTokenExpiry = 0;
+const TOKEN_CACHE_TTL = 30_000; // 30 seconds
+
 /**
  * Register Clerk's getToken function. Call once from a top-level
  * React component (e.g. App or AuthProvider).
@@ -19,8 +24,8 @@ export function registerTokenGetter(getter: TokenGetter) {
 }
 
 /**
- * Get the current Clerk JWT. Throws if registerTokenGetter hasn't
- * been called yet.
+ * Get the current Clerk JWT. Uses a 30-second in-memory cache to
+ * avoid redundant async calls within the same operation flow.
  */
 export async function getClerkToken(): Promise<string> {
   if (!_getToken) {
@@ -28,10 +33,19 @@ export async function getClerkToken(): Promise<string> {
       "Token getter not registered. Call registerTokenGetter() from a React component first.",
     );
   }
+
+  // Return cached token if still valid
+  if (_cachedToken && Date.now() < _cachedTokenExpiry) {
+    return _cachedToken;
+  }
+
   const token = await _getToken();
   if (!token) {
     throw new Error("No auth token available — user may not be signed in.");
   }
+
+  _cachedToken = token;
+  _cachedTokenExpiry = Date.now() + TOKEN_CACHE_TTL;
   return token;
 }
 

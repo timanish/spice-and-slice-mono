@@ -1,5 +1,5 @@
 const memoizedResults = new Map<string, { data: unknown; timestamp: number }>();
-const MEMO_TTL = 5000; // 5 seconds cache TTL
+const MEMO_TTL = 30_000; // 30 seconds cache TTL
 
 let clerkUserId: string | null = null;
 
