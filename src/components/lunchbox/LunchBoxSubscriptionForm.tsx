@@ -13,7 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { MapPin, Calendar, Check, ArrowRight, ArrowLeft, CheckCircle2, Clock, Minus, Plus, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@clerk/clerk-react';
 import { fetchWithAuth } from '@/lib/auth-token';
 import { format, addDays, isWeekend, startOfDay, differenceInHours, isBefore, isSameDay } from 'date-fns';
@@ -28,7 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useNavigate } from 'react-router-dom';
 
 const subscriptionSchema = z.object({
   subscriptionType: z.enum(['weekly', 'monthly', 'custom']),
@@ -85,8 +83,6 @@ const LunchBoxSubscriptionForm = ({ isOpen, onClose }: LunchBoxSubscriptionFormP
   const [showMonthlyDialog, setShowMonthlyDialog] = useState(false);
   const { toast } = useToast();
   const { user } = useUser();
-  const navigate = useNavigate();
-
   const form = useForm<SubscriptionFormData>({
     resolver: zodResolver(subscriptionSchema),
     defaultValues: {
@@ -117,82 +113,52 @@ const LunchBoxSubscriptionForm = ({ isOpen, onClose }: LunchBoxSubscriptionFormP
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      const startDate = new Date(data.startDate);
       const isCustomPlan = data.subscriptionType === 'custom';
       const deliverySchedule = isCustomPlan && data.deliverySchedule
         ? data.deliverySchedule.map(date => format(date, 'yyyy-MM-dd'))
         : [];
-      
-      const nextDelivery = isCustomPlan && deliverySchedule.length > 0
-        ? deliverySchedule[0]
-        : startDate.toISOString().split('T')[0];
-      
-      const pricePerDay = 12.99;
-      const totalPrice = isCustomPlan && data.totalDeliveryDays
-        ? data.totalDeliveryDays * pricePerDay
-        : null;
-      
-      const { data: subscription, error } = await supabase
-        .from('lunch_box_subscriptions')
-        .insert({
-          user_id: user.id,
-          subscription_type: data.subscriptionType,
-          start_date: data.startDate,
-          next_delivery_date: nextDelivery,
+
+      const origin = window.location.origin;
+
+      const res = await fetchWithAuth('create-lunchbox-checkout', {
+        subscriptionType: data.subscriptionType,
+        startDate: data.startDate,
+        deliverySchedule,
+        totalDeliveryDays: data.totalDeliveryDays || 0,
+        deliveryAddress: {
           company: data.deliveryAddress.company,
-          address_line1: data.deliveryAddress.addressLine1,
-          address_line2: data.deliveryAddress.addressLine2 || null,
+          addressLine1: data.deliveryAddress.addressLine1,
+          addressLine2: data.deliveryAddress.addressLine2 || '',
           city: data.deliveryAddress.city,
           state: data.deliveryAddress.state,
-          postal_code: data.deliveryAddress.postalCode,
-          delivery_instructions: data.deliveryAddress.deliveryInstructions || null,
-          status: 'active',
-          delivery_schedule: deliverySchedule,
-          total_delivery_days: data.totalDeliveryDays || null,
-          price_per_day: isCustomPlan ? pricePerDay : null,
-          total_price: totalPrice,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Subscription error:', error);
-        throw error;
-      }
-      try {
-        const emailRes = await fetchWithAuth(
-          'send-lunchbox-subscription-email',
-          { subscriptionId: subscription.id }
-        );
-
-        if (!emailRes.ok) {
-          const errData = await emailRes.json().catch(() => ({}));
-          console.error('Error sending subscription emails:', errData);
-        }
-      } catch (emailErr) {
-        console.error('Failed to send subscription emails:', emailErr);
-      }
-      
-      toast({
-        title: "Subscription successful!",
-        description: "Your lunch box delivery subscription has been set up. You'll receive a confirmation email shortly.",
+          postalCode: data.deliveryAddress.postalCode,
+          deliveryInstructions: data.deliveryAddress.deliveryInstructions || '',
+        },
+        successUrl: `${origin}/lunch-box-success`,
+        cancelUrl: `${origin}/lunch-box`,
       });
-      
-      onClose();
-      form.reset();
-      setStep(1);
-      
-      navigate('/lunch-box');
+
+      const checkoutData = await res.json();
+
+      if (!res.ok) {
+        throw new Error(checkoutData.error || 'Failed to create checkout session');
+      }
+
+      if (!checkoutData.url) {
+        throw new Error('No checkout URL returned');
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = checkoutData.url;
     } catch (error) {
-      console.error('Error creating subscription:', error);
+      console.error('Error creating checkout session:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to set up subscription. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to start payment. Please try again.",
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -993,7 +959,7 @@ const LunchBoxSubscriptionForm = ({ isOpen, onClose }: LunchBoxSubscriptionFormP
                     disabled={isSubmitting}
                     className="flex-1 h-12 px-8 rounded-full bg-[#8B1A1A] hover:bg-[#8B1A1A]/90 text-white font-semibold disabled:opacity-50"
                   >
-                    {isSubmitting ? 'Processing...' : 'Confirm Subscription'}
+                    {isSubmitting ? 'Redirecting to Payment...' : 'Proceed to Payment'}
                     <CheckCircle2 className="ml-2 h-5 w-5" />
                   </Button>
                 </div>

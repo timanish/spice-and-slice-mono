@@ -34,6 +34,7 @@ export interface LunchBoxSubscription {
   updated_at: string;
   cancelled_at: string | null;
   paused_at: string | null;
+  stripe_session_id?: string | null;
 }
 
 export interface LunchBoxDelivery {

@@ -37,6 +37,7 @@ import OrderSuccessPage from "./pages/OrderSuccessPage";
 import OrderCanceledPage from "./pages/OrderCanceledPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import LunchBoxPage from "./pages/LunchBoxPage";
+import LunchBoxSuccessPage from "./pages/LunchBoxSuccessPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
@@ -195,6 +196,7 @@ function App() {
                     </AdminGuard>
                   } />
                   <Route path="/order-success" element={<OrderSuccessPage />} />
+                  <Route path="/lunch-box-success" element={<LunchBoxSuccessPage />} />
                   <Route path="/order-canceled" element={<OrderCanceledPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
