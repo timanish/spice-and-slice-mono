@@ -124,12 +124,19 @@ const ProductFilters = ({
     const newCategories = checked
       ? [...filters.categories, category]
       : filters.categories.filter(c => c !== category);
-    
+
+    // When user changes categories while already having categories selected,
+    // clear the search term (signals a "fresh browse" intent).
+    // First category selection after a search keeps both filters.
+    const shouldClearSearch =
+      filters.categories.length > 0 && filters.searchTerm.length > 0;
+
     const newFilters = {
       ...filters,
-      categories: newCategories
+      categories: newCategories,
+      searchTerm: shouldClearSearch ? '' : filters.searchTerm,
     };
-    
+
     setFilters(newFilters);
     onFilterChange(newFilters);
   };
