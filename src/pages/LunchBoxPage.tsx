@@ -10,6 +10,7 @@ import { Clock, Calendar, CheckCircle, Utensils, ArrowRight, Loader2 } from 'luc
 import LunchBoxSubscriptionForm from '@/components/lunchbox/LunchBoxSubscriptionForm';
 import SubscriptionDashboard from '@/components/lunchbox/SubscriptionDashboard';
 import { useLunchBoxSubscription } from '@/hooks/useLunchBoxSubscription';
+import { useStoreDisplaySettings } from '@/hooks/useStoreDisplaySettings';
 import { supabase } from '@/integrations/supabase/client';
 
 const LunchBoxPage = () => {
@@ -20,6 +21,7 @@ const LunchBoxPage = () => {
 
   // Fetch user's active subscription
   const { data: subscription, isLoading: isLoadingSubscription } = useLunchBoxSubscription(user?.id);
+  const { data: storeSettings } = useStoreDisplaySettings();
 
   const handleSubscribeClick = () => {
     if (!isSignedIn || !user) {
@@ -61,13 +63,53 @@ const LunchBoxPage = () => {
     );
   }
 
-  // If user has active or paused subscription, show dashboard
+  // If user has active or paused subscription, always show dashboard (they already paid)
   if (subscription && (subscription.status === 'active' || subscription.status === 'paused')) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
         <Navigation />
         <main className="flex-1">
           <SubscriptionDashboard subscription={subscription} />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // If lunch box is disabled in admin settings, show Coming Soon
+  if (storeSettings && !storeSettings.lunchBoxEnabled) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#FFF0E8] to-[#FFFAF5]">
+        <Navigation />
+        <main className="flex-1 flex items-center justify-center px-4 py-16 md:py-24">
+          <div className="text-center max-w-3xl mx-auto space-y-10 md:space-y-12 w-full">
+            <div className="space-y-6">
+              <Utensils className="h-28 w-28 md:h-32 md:w-32 text-[#8B1A1A] mx-auto" />
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-[#3E1F1F]">
+                Lunch Box Program
+              </h1>
+              <p className="text-2xl md:text-3xl text-gray-600">
+                Coming Soon
+              </p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 md:p-10 shadow-lg">
+              <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
+                We're preparing something special for you! Our Lunch Box Delivery Program will bring fresh,
+                delicious lunches to your office Monday through Friday.
+              </p>
+              <p className="text-base md:text-lg text-gray-600 mt-4 md:mt-6">
+                Stay tuned for updates on our launch date.
+              </p>
+            </div>
+            <Button
+              onClick={() => window.location.href = '/'}
+              size="lg"
+              className="bg-[#8B1A1A] hover:bg-[#8B1A1A]/90 text-white rounded-full h-14 md:h-16 px-10 md:px-12 text-lg md:text-xl font-semibold shadow-lg"
+            >
+              Back to Home
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </main>
         <Footer />
       </div>

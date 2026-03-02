@@ -14,7 +14,7 @@ interface SettingRow {
   description: string | null;
 }
 
-const STORE_SETTING_KEYS = ["show_tax_on_product_cards"];
+const STORE_SETTING_KEYS = ["show_tax_on_product_cards", "lunch_box_enabled"];
 
 const AdminStoreSettingsPage = () => {
   const { toast } = useToast();
@@ -53,6 +53,7 @@ const AdminStoreSettingsPage = () => {
   });
 
   const showTax = settings?.show_tax_on_product_cards?.value !== "false";
+  const lunchBoxEnabled = settings?.lunch_box_enabled?.value !== "false";
 
   return (
     <AdminLayout title="Store Settings">
@@ -88,6 +89,28 @@ const AdminStoreSettingsPage = () => {
                   onCheckedChange={(checked) => {
                     updateSetting.mutate({
                       key: "show_tax_on_product_cards",
+                      value: checked ? "true" : "false",
+                    });
+                  }}
+                  disabled={updateSetting.isPending}
+                />
+              </div>
+
+              <div className="border-t pt-6 flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="lunch-box-enabled" className="text-sm font-medium">
+                    Lunch Box Program
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Enable the Lunch Box subscription page. When off, customers see a "Coming Soon" page.
+                  </p>
+                </div>
+                <Switch
+                  id="lunch-box-enabled"
+                  checked={lunchBoxEnabled}
+                  onCheckedChange={(checked) => {
+                    updateSetting.mutate({
+                      key: "lunch_box_enabled",
                       value: checked ? "true" : "false",
                     });
                   }}
