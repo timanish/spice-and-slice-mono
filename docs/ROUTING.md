@@ -1,6 +1,6 @@
 # Routing
 
-All routes defined in `src/App.tsx`. Uses react-router-dom v6.
+All routes defined in `src/App.tsx`. Uses react-router-dom v6. 35 total routes (12 public, 4 protected, 19 admin, 1 catch-all).
 
 ## Public Routes (No auth required)
 
@@ -15,6 +15,7 @@ All routes defined in `src/App.tsx`. Uses react-router-dom v6.
 | `/privacy` | PrivacyPage | Static privacy policy |
 | `/terms` | TermsPage | Static terms & conditions |
 | `/order-success` | OrderSuccessPage | Post-payment confirmation (handles Stripe session completion) |
+| `/lunch-box-success` | LunchBoxSuccessPage | Post-subscription payment confirmation (completes lunch box subscription via edge function) |
 | `/order-canceled` | OrderCanceledPage | Payment canceled (redirects to /checkout) |
 | `*` | NotFound | 404 page |
 
@@ -51,6 +52,7 @@ All admin pages use `AdminLayout` wrapper (sidebar + content area).
 | `/admin/pickup-settings` | AdminPickupSettingsPage | Pickup hours, prep time, address, slots |
 | `/admin/categories` | AdminCategoriesPage | Category CRUD with tax rates |
 | `/admin/orders` | AdminOrdersManagementPage | Order fulfillment, status updates, email notifications |
+| `/admin/store-settings` | AdminStoreSettingsPage | Global store settings (tax display, lunch box toggle) |
 | `/admin/tiktok` | AdminTikTokPage | TikTok video management, product linking |
 
 ## Guards

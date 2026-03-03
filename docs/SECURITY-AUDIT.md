@@ -9,14 +9,21 @@
 
 ## Executive Summary
 
-The application has **6 CRITICAL**, **7 HIGH**, **5 MEDIUM**, and **3 LOW** severity findings. The most severe issues stem from:
+The application has **6 CRITICAL**, **7 HIGH**, **5 MEDIUM**, and **3 LOW** severity findings. Several P0 issues have been **partially remediated** since the initial audit:
 
-1. Row Level Security (RLS) being **disabled on all 33 tables**
-2. JWT signature verification being **completely absent** in edge functions
-3. Clerk webhook signature verification being **commented out**
-4. Cash order pricing being **trusted from the client**
+### Remediation Progress (as of 2026-03-02)
 
-These issues collectively mean that **any anonymous user** with the publicly-exposed anon API key can read all user PII, escalate to admin, manipulate orders, and modify all store data.
+| Finding | Status | Action Taken |
+|---------|--------|-------------|
+| #1 RLS disabled | **REMEDIATED** | RLS re-enabled on all tables (migration `20260301000002`). Two-tier model: public-read for content tables, service-role-only for sensitive tables |
+| #2 Privilege escalation | **REMEDIATED** | `user_roles` now service-role-only. All writes go through `admin-crud` edge function |
+| #9 Admin writes via anon | **REMEDIATED** | Admin writes now proxied through `admin-crud` edge function with JWT + admin role verification |
+| #10 `has_role` callable by anon | **REMEDIATED** | Function dropped entirely (migration `20260301000003`) |
+| #3 JWT not verified | NOT MITIGATED | JWT signature still not verified against JWKS |
+| #4 Webhook unverified | NOT MITIGATED | Svix verification still commented out |
+| #5 Price manipulation | NOT MITIGATED | Cash orders still trust client prices |
+
+The remaining critical issues (#3, #4, #5) should be addressed as highest priority.
 
 ---
 
@@ -34,7 +41,7 @@ These issues collectively mean that **any anonymous user** with the publicly-exp
 ## Finding #1 — RLS Disabled on All 33 Public Tables
 
 **Severity: CRITICAL**
-**Status: NOT MITIGATED**
+**Status: REMEDIATED** (migration `20260301000002_enable_rls_security.sql`)
 
 ### Description
 
@@ -86,7 +93,7 @@ Anyone with the public anon API key (embedded in the frontend JS bundle) can:
 ## Finding #2 — Privilege Escalation via `user_roles` Table
 
 **Severity: CRITICAL**
-**Status: NOT MITIGATED**
+**Status: REMEDIATED** (RLS re-enabled, service-role-only access)
 
 ### Description
 
@@ -321,7 +328,7 @@ This function accepts `userId` and `addressId` from the request body without aut
 ## Finding #9 — Admin Write Operations Use Anon Client
 
 **Severity: HIGH**
-**Status: NOT MITIGATED**
+**Status: REMEDIATED** (admin writes now go through `admin-crud` edge function with JWT + admin role check)
 
 ### Description
 
@@ -352,7 +359,7 @@ Any user can perform all admin operations directly from the browser console usin
 ## Finding #10 — `has_role` RPC Callable by Anonymous Users
 
 **Severity: HIGH**
-**Status: NOT MITIGATED**
+**Status: REMEDIATED** (function dropped entirely via migration `20260301000003_drop_dangerous_rpcs.sql`)
 
 ### Description
 
@@ -555,24 +562,24 @@ These reference a different Supabase project than the current one (`isexlpmxnhue
 
 ### P0 — Fix Immediately (Data Breach Risk)
 
-| # | Finding | Action |
-|---|---------|--------|
-| 1 | RLS disabled | Re-enable RLS on all sensitive tables with Clerk-compatible policies |
-| 2 | Privilege escalation | Lock down `user_roles` table |
-| 3 | JWT not verified | Implement JWKS-based signature verification in `clerk-auth.ts` |
-| 4 | Webhook unverified | Enable Svix signature verification in `clerk-webhook` |
-| 5 | Price manipulation | Server-side price lookup in `create-cash-order` and `create-checkout` |
-| 6 | Service role in frontend | Delete `admin-client.ts` and all references |
+| # | Finding | Status | Action |
+|---|---------|--------|--------|
+| 1 | RLS disabled | **DONE** | RLS re-enabled with two-tier model |
+| 2 | Privilege escalation | **DONE** | `user_roles` is service-role-only |
+| 3 | JWT not verified | OPEN | Implement JWKS-based signature verification in `clerk-auth.ts` |
+| 4 | Webhook unverified | OPEN | Enable Svix signature verification in `clerk-webhook` |
+| 5 | Price manipulation | OPEN | Server-side price lookup in `create-cash-order` and `create-checkout` |
+| 6 | Service role in frontend | OPEN | Delete `admin-client.ts` and all references |
 
 ### P1 — Fix This Sprint (Significant Risk)
 
-| # | Finding | Action |
-|---|---------|--------|
-| 7 | `get-user-role` no auth | Add JWT auth or remove function |
-| 8 | `calculate-delivery-distance` no auth | Add JWT auth + ownership check |
-| 9 | Admin writes via anon client | Move to authenticated edge functions |
-| 10 | `has_role` callable by anon | Revoke anon access |
-| 11 | Stripe prices from client | Server-side price lookup |
+| # | Finding | Status | Action |
+|---|---------|--------|--------|
+| 7 | `get-user-role` no auth | OPEN | Add JWT auth or remove function |
+| 8 | `calculate-delivery-distance` no auth | OPEN | Add JWT auth + ownership check |
+| 9 | Admin writes via anon client | **DONE** | Now uses `admin-crud` edge function |
+| 10 | `has_role` callable by anon | **DONE** | Function dropped entirely |
+| 11 | Stripe prices from client | OPEN | Server-side price lookup |
 
 ### P2 — Fix This Month (Moderate Risk)
 

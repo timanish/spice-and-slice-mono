@@ -1,8 +1,8 @@
 # Components
 
-All components in `src/components/`. 17 subdirectories.
+All components in `src/components/`. 16 subdirectories.
 
-## ui/ - shadcn/ui Primitives (50 components)
+## ui/ - shadcn/ui Primitives (51 components)
 
 Pre-built, customizable components from shadcn/ui:
 
@@ -104,12 +104,26 @@ Auto-rotating image carousel on the homepage (8-second interval).
 | Component | Purpose |
 |-----------|---------|
 | ShoppingCart | Sheet drawer with cart badge showing item count |
-| CartContent | Cart items list + summary |
+| CartContent | Cart items list + summary (legacy) |
 | CartItem | Item display with price, quantity/weight, discount (strikethrough), controls |
 | CartSummary | Subtotal, discount, total. Checkout button + payment method selector (card/cash) |
 | PromoCodeInput | Promo code entry + validation |
 | CartError | Error state display |
 | useCartLogic | Hook for cart operations and checkout flow |
+
+### cart-content/ - Refactored Cart Content
+
+| Component | Purpose |
+|-----------|---------|
+| CartContent | Main cart drawer orchestrator: composes item list, delivery, payment, promo, summary |
+| CartItemList | Renders list of CartItem components |
+| CartDeliverySection | Delivery time selection section within cart |
+| CartPromoSection | Promo code input section within cart |
+| PaymentMethodSelector | Radio button selector for card vs cash payment |
+| EmptyCart | Empty cart state display |
+| ProfileWarning | Warning when profile is incomplete |
+| useCheckout | Hook for checkout flow logic |
+| usePromoCode | Hook for promo code application logic |
 
 ## checkout/ - Checkout Flow
 
@@ -133,11 +147,14 @@ Multi-step form flow:
 | Component | Purpose |
 |-----------|---------|
 | CateringFormFields | Full form: name, email, phone, eventType, eventDate, eventTime, guestCount, venue, spiceLevel, dietary, notes |
+| MenuSelectionDialog | Dialog for selecting menu items |
 | MenuItemCard | Individual menu item with quantity +/- controls |
 | SelectedMenuItems | Summary of selected items |
 | EventSummarySidebar | Desktop sticky sidebar with event summary |
 | EventSummaryBottomSheet | Mobile bottom sheet variant |
 | CategoryTabs | Category navigation with smooth scroll |
+| animations.ts | Framer Motion animation variants for catering wizard |
+| types.ts | TypeScript types for catering components |
 | cateringService.ts | API service for catering requests |
 
 ## lunchbox/ - Subscription System

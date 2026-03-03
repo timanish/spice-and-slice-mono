@@ -1,6 +1,6 @@
 # Database Schema
 
-Supabase PostgreSQL. 73 migrations. Types generated in `src/integrations/supabase/types.ts`.
+Supabase PostgreSQL. 80 migrations. Types generated in `src/integrations/supabase/types.ts`.
 
 ## Users & Auth
 
@@ -62,6 +62,7 @@ Synced from Clerk via `clerk-webhook` edge function.
 | priority, display_order | number | Sorting |
 | auto_deactivated, deactivated_by_category | boolean | Auto-deactivation tracking |
 | has_default_image | boolean | |
+| nutrition | JSONB | Flexible nutrition facts (serving_size, calories, total_fat, protein, etc.) |
 
 ### categories
 | Column | Type | Notes |
@@ -268,6 +269,7 @@ Links recipes to purchasable products.
 | delivery_schedule | JSON | Custom schedule config |
 | price_per_day, total_price | number | |
 | total_delivery_days | number | |
+| stripe_session_id | text | Stripe checkout session ID (unique index) |
 
 ### lunch_box_deliveries
 | Column | Type | Notes |
@@ -409,13 +411,25 @@ Key-value configuration store.
 | retry_count | number | |
 | error_message | text | |
 
+## Row Level Security (RLS)
+
+RLS has been re-enabled on all tables (migration `20260301000002`). Two tiers:
+
+### Public-Read Tables (anon + authenticated can SELECT)
+Products, categories, collections, menu_items, hero_slides, testimonials, festivals, festival_products, recipes, recipe_products, flash_deals, featured_products, delivery_zones, delivery_time_slots, delivery_settings, pickup_settings, pickup_slots, promo_codes, tiktok_videos, tiktok_video_products.
+
+INSERT/UPDATE/DELETE revoked from anon and authenticated roles. All writes go through edge functions with service_role key.
+
+### Service-Role-Only Tables (no anon/authenticated access)
+Profiles, user_roles, user_addresses, carts, cart_items, orders, order_items, catering_requests, lunch_box_subscriptions, lunch_box_deliveries, lunch_box_notifications, print_jobs.
+
+All access goes through authenticated edge functions (`admin-crud`, `user-data`) using service_role key.
+
 ## Database Functions (RPC)
 
 | Function | Returns | Purpose |
 |----------|---------|---------|
-| `has_role(user_id, role)` | boolean | Check user role |
 | `validate_promo_code(code, user_id, order_amount)` | {valid, discount, promo_id, message} | Validate promo codes |
-| `validate_profile_access(profile_id, requesting_user_id)` | boolean | Access control |
 | `check_product_inventory(product_id, quantity)` | boolean | Stock check |
 | `deduct_product_inventory(product_id, quantity)` | boolean | Reduce stock |
 | `restore_product_inventory(product_id, quantity)` | boolean | Restore stock (cancellation) |
@@ -425,9 +439,14 @@ Key-value configuration store.
 | `generate_deliveries_for_subscription(id, dates[])` | void | Custom delivery dates |
 | `get_category_product_stats(category_id)` | {total, active, inactive, ...} | Category stats |
 
+**Dropped RPCs** (migration `20260301000003`):
+- `has_role(user_id, role)` — Removed: bypassed RLS via SECURITY DEFINER
+- `validate_profile_access(profile_id, requesting_user_id)` — Removed: same security concern
+
 ## Security Notes
 
-- Most tables have RLS **disabled** - security handled at application layer (Clerk auth)
+- RLS enabled on all tables with tiered access (public-read vs service-role-only)
+- All write operations proxied through authenticated edge functions
 - Service role key used in edge functions for admin operations
 - API key authentication for printer endpoints
 - Rate limiting on public endpoints

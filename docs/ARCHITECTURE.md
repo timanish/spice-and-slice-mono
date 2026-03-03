@@ -63,16 +63,17 @@ grubhub-wizard-catering-app/
 │   ├── contexts/                  # ClerkAuthContext
 │   ├── types/                     # analytics.ts, promoCode.ts, global.d.ts
 │   ├── utils/                     # cartValidation, pickupUtils, locationUtils, profileUtils
-│   ├── lib/                       # cn() utility, product validation schema
+│   ├── lib/                       # cn() utility, auth-token, upload-image, product validation
 │   └── integrations/supabase/     # Supabase client + generated types
 │
 ├── supabase/
-│   ├── functions/                 # 22 Deno edge functions
-│   ├── migrations/                # 73 SQL migrations
+│   ├── functions/                 # 27 Deno edge functions (+ _shared)
+│   ├── migrations/                # 80 SQL migrations
 │   └── config.toml                # Project config (spice-and-slice-bazaar)
 │
 ├── public/                        # Static assets, favicon, robots.txt
 ├── .github/workflows/             # TikTok URL refresh (every 90 min)
+├── wrangler.toml                  # Cloudflare Pages deployment config
 └── [config files]                 # vite, tailwind, tsconfig, eslint, etc.
 ```
 
@@ -138,3 +139,23 @@ VITE_CLERK_PUBLISHABLE_KEY  # Clerk auth key
 ```
 
 Server-side (edge functions use Supabase secrets for Stripe, Resend, Mapbox, etc.)
+
+## Deployment
+
+### Cloudflare Pages (wrangler.toml)
+- **Project name**: `spice-and-slice-mono`
+- **Assets directory**: `./dist` (Vite build output)
+- **SPA routing**: `not_found_handling = "single-page-application"` (all unmatched routes return index.html)
+- **Build command**: `npm run build` (produces dist/ directory)
+- Uses npm (not bun) for Cloudflare Pages compatibility
+
+### Key Utilities
+
+**`src/lib/auth-token.ts`** - Token management for non-React contexts:
+- `registerTokenGetter(getter)` - Register Clerk's getToken from top-level component
+- `getClerkToken()` - Get cached Clerk JWT (30s cache TTL)
+- `fetchWithAuth(functionPath, body)` - Call edge functions with auth header
+
+**`src/lib/upload-image.ts`** - Image upload via edge function:
+- `uploadImage(file, filePath, options?)` - Upload to Supabase storage via `upload-image` edge function
+- Supports optional `requireAdmin` flag for admin-only uploads

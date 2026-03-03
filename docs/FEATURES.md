@@ -84,11 +84,20 @@ Or: `cancelled`
 ## Lunch Box Subscriptions
 
 ### Subscription Types
-- **Weekly**: Recurring weekly deliveries
-- **Monthly**: Monthly delivery plan
+- **Weekly**: Recurring weekly deliveries ($59.99)
+- **Monthly**: Monthly delivery plan ($199.99)
+- **Custom**: Select specific weekday dates ($12.99/day, 5-29 days)
+
+### Payment Flow
+1. User selects plan and delivery address
+2. `create-lunchbox-checkout` edge function validates and creates Stripe checkout session
+3. Server-side pricing (never trusts client-sent prices)
+4. After Stripe payment, redirects to `/lunch-box-success`
+5. `complete-lunchbox-subscription` edge function creates subscription, generates deliveries, sends confirmation emails
+6. Idempotent: `stripe_session_id` prevents duplicate subscriptions
 
 ### Subscription Lifecycle
-- Create: Choose plan, set delivery address, auto-generate delivery dates
+- Create: Choose plan, set delivery address, pay via Stripe, auto-generate delivery dates
 - Active: View calendar, see upcoming deliveries, modify schedule
 - Pause: Temporarily suspend deliveries
 - Resume: Reactivate paused subscription
@@ -181,6 +190,20 @@ Or: `cancelled`
 3. **Lunch Box**: Subscription dashboard or signup
 4. **Catering Requests**: Request history
 
+## Store Display Settings
+
+### Admin Store Settings (`/admin/store-settings`)
+- **Show Tax on Product Cards**: Toggle whether tax amounts appear on product cards in the grid
+- **Lunch Box Program**: Feature flag to enable/disable lunch box functionality site-wide
+- Settings stored as key-value pairs in `delivery_settings` table
+- Fetched via `useStoreDisplaySettings` hook (5-min cache)
+
+## Product Nutrition Data
+
+Products can optionally store nutrition facts as JSONB:
+- Fields: serving_size, calories, total_fat, saturated_fat, cholesterol, sodium, total_carbs, dietary_fiber, sugars, protein
+- Flexible schema allows partial data entry
+
 ## Admin Panel
 
 ### Layout
@@ -206,6 +229,7 @@ Or: `cancelled`
 | Menu Items | /admin/menu-items | Menu item CRUD |
 | Lunch Box Menu | /admin/lunch-box-menu | Eligibility toggle |
 | Subscriptions | /admin/subscriptions | Subscription + delivery management |
+| Store Settings | /admin/store-settings | Tax display, lunch box toggle |
 | Delivery Settings | /admin/delivery-settings | Zones, slots, system settings |
 | Pickup Settings | /admin/pickup-settings | Hours, prep time, address, slots |
 | TikTok | /admin/tiktok | Video management + product linking |
@@ -241,3 +265,22 @@ Or: `cancelled`
 - Proxy through Vite (`/ingest` -> PostHog) to avoid adblockers
 - PageViewTracker component for automatic page tracking
 - PostHogUserTracker for user identification
+
+## Data Access Architecture
+
+### Edge Function Proxy Pattern
+All data mutations go through authenticated edge functions rather than direct Supabase client calls:
+
+- **Admin writes**: `admin-crud` edge function (JWT + admin role verification, whitelisted tables)
+- **User data**: `user-data` edge function (JWT verification, user-scoped operations)
+- **Orders**: `create-cash-order`, `create-checkout`, `complete-stripe-order` edge functions
+- **Subscriptions**: `create-lunchbox-checkout`, `complete-lunchbox-subscription` edge functions
+- **Images**: `upload-image` edge function (JWT + optional admin check)
+
+Frontend hooks (`useAdminCrud`, `useUserData`) provide typed wrappers around these edge functions.
+
+### Auth Token Flow
+1. Clerk provides JWTs via `useAuth().getToken()`
+2. `auth-token.ts` utility caches tokens (30s TTL) for non-React contexts
+3. Edge functions verify JWT and extract user ID
+4. Service role key used for database operations (bypasses RLS)

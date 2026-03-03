@@ -1,6 +1,6 @@
 # State Management
 
-Three layers: Zustand (client state), React Query (server state), React Context (auth).
+Three layers: Zustand (client state), React Query (server state), React Context (auth). Plus utility modules for non-React contexts.
 
 ## Zustand - Cart Store
 
@@ -144,6 +144,14 @@ Three layers: Zustand (client state), React Query (server state), React Context 
 |------|---------|
 | useTaxCalculation() | Category tax rates. Exports: calculateItemTax(), calculateCartTax(), formatTaxRate() |
 
+### Admin CRUD & User Data Hooks
+
+| Hook | File | Purpose |
+|------|------|---------|
+| useAdminCrud() | useAdminCrud.ts | Wrapper around `admin-crud` edge function. Methods: execute, select, insert, update, remove, upsert. Auth via Clerk JWT |
+| useUserData() | useUserData.ts | Wrapper around `user-data` edge function. Methods for profile, addresses, cart, orders, reviews, catering. Auth via Clerk JWT |
+| useStoreDisplaySettings() | useStoreDisplaySettings.ts | Fetch global store settings (showTaxOnCards, lunchBoxEnabled). 5-min cache |
+
 ### Admin Hooks (`src/hooks/admin/`)
 
 | Hook | Purpose |
@@ -169,6 +177,16 @@ Three layers: Zustand (client state), React Query (server state), React Context 
 | useMapboxAddressAutofill() | Mapbox address autocomplete with parsed address |
 | useResetPasswordLogic() | Password reset flow with token verification |
 | useClerkAuth() | Access ClerkAuthContext |
+
+## Auth Token Utility (`src/lib/auth-token.ts`)
+
+Non-React token management for use in Zustand stores and other non-component contexts:
+
+| Export | Purpose |
+|--------|---------|
+| `registerTokenGetter(getter)` | Register Clerk's `getToken` from top-level React component (called once) |
+| `getClerkToken()` | Get cached Clerk JWT (30s in-memory cache, Clerk JWTs valid 60s) |
+| `fetchWithAuth(functionPath, body)` | Call Supabase edge functions with Authorization header |
 
 ## Caching Strategy Summary
 

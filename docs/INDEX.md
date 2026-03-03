@@ -8,55 +8,57 @@
 | Aspect | Details |
 |--------|---------|
 | Framework | React 18 + TypeScript + Vite 5 |
-| Styling | Tailwind CSS + shadcn/ui (50 components) |
+| Styling | Tailwind CSS + shadcn/ui (51 components) |
 | Backend | Supabase (PostgreSQL + Edge Functions + Storage) |
 | Auth | Clerk (synced to Supabase via webhook) |
-| Payments | Stripe (card) + Cash on delivery/pickup |
+| Payments | Stripe (card + lunch box subscriptions) + Cash on delivery/pickup |
 | State | Zustand (cart), React Query (server), Context (auth) |
 | Analytics | PostHog (50+ tracked events) |
 | Icons | Lucide React |
 | Animations | Framer Motion + Embla Carousel |
 | Maps | Mapbox GL |
-| Package Manager | bun (preferred) or npm |
+| Deployment | Cloudflare Pages (wrangler.toml, SPA routing) |
+| Package Manager | npm (Cloudflare Pages compatible) |
 
 ## Documentation Files
 
 | File | Contents |
 |------|----------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Project structure, tech stack, design system, build config |
-| [ROUTING.md](./ROUTING.md) | All routes, pages, guards, and navigation flow |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Project structure, tech stack, design system, build config, deployment |
+| [ROUTING.md](./ROUTING.md) | All 35 routes, pages, guards, and navigation flow |
 | [COMPONENTS.md](./COMPONENTS.md) | Every component directory, composition patterns, key props |
 | [DATABASE.md](./DATABASE.md) | Complete schema, all tables/columns, relationships, RPC functions |
-| [EDGE-FUNCTIONS.md](./EDGE-FUNCTIONS.md) | All 22 Supabase edge functions with purposes and APIs |
+| [EDGE-FUNCTIONS.md](./EDGE-FUNCTIONS.md) | All 27 Supabase edge functions with purposes and APIs |
 | [STATE-MANAGEMENT.md](./STATE-MANAGEMENT.md) | Hooks, stores, contexts, caching strategies |
 | [FEATURES.md](./FEATURES.md) | Business features: cart, checkout, catering, subscriptions, admin |
+| [SECURITY-AUDIT.md](./SECURITY-AUDIT.md) | Security findings, remediation status, priority matrix |
 
 ## Dev Commands
 
 ```bash
-bun dev          # Start dev server (port 5173)
-bun run build    # Production build
-bun run lint     # ESLint
-bun run preview  # Preview production build
+npm run dev      # Start dev server (port 5173)
+npm run build    # Production build
+npm run lint     # ESLint
+npm run preview  # Preview production build
 ```
 
 ## Key Directories
 
 ```
 src/
-  components/    # UI components (17 subdirectories)
-  pages/         # Route page components
+  components/    # UI components (16 subdirectories)
+  pages/         # Route page components (47 files)
   hooks/         # Custom hooks (products/, admin/)
   stores/cart/   # Zustand cart store + operations
   contexts/      # Auth context (Clerk)
   types/         # TypeScript types (analytics, promo, global)
   utils/         # Utilities (cart validation, pickup, location, profile)
-  lib/           # Helpers (cn utility, product validation schema)
+  lib/           # Helpers (cn utility, auth-token, upload-image, product validation)
   integrations/  # Supabase client + generated types
   index.css      # Global styles, CSS variables, fonts
 
 supabase/
-  functions/     # 22 edge functions
-  migrations/    # 73 database migrations
+  functions/     # 27 edge functions (+ _shared utilities)
+  migrations/    # 80 database migrations
   config.toml    # Supabase project config
 ```
