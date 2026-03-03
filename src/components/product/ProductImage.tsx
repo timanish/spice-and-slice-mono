@@ -32,7 +32,7 @@ const ProductImage = ({ imageUrl, alt }: ProductImageProps) => {
         <img
           src={imageUrl}
           alt={alt}
-          className="rounded-t-lg object-contain w-full h-full p-2"
+          className="rounded-t-lg object-contain w-full h-full p-2 transition-transform duration-300 group-hover:scale-105"
           onLoad={handleImageLoad}
           onError={handleImageError}
           loading="lazy"

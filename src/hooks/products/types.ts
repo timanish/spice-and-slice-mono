@@ -27,6 +27,8 @@ export interface Product {
   has_default_image?: boolean;
   created_at?: string;
   updated_at?: string;
+  discount_percentage?: number | null;
+  flash_deal_id?: string | null;
 }
 
 export interface MenuItem {

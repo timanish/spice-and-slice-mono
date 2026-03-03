@@ -2,7 +2,45 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Product, MenuItem } from "./types";
 
+const fetchActiveFlashDeals = async (): Promise<Map<string, { id: string; discount_percentage: number }>> => {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("flash_deals")
+    .select("id, product_id, discount_percentage")
+    .eq("is_active", true)
+    .lte("start_date", now)
+    .gte("end_date", now);
+
+  if (error) {
+    console.error("Error fetching flash deals:", error);
+    return new Map();
+  }
+
+  const dealMap = new Map<string, { id: string; discount_percentage: number }>();
+  for (const deal of data || []) {
+    dealMap.set(deal.product_id, { id: deal.id, discount_percentage: deal.discount_percentage });
+  }
+  return dealMap;
+};
+
 export const fetchAllProducts = async (): Promise<Product[]> => {
+  // Fetch products and active flash deals in parallel
+  const [productsResult, flashDeals] = await Promise.all([
+    fetchProductsFromDB(),
+    fetchActiveFlashDeals(),
+  ]);
+
+  // Merge flash deal data into products
+  return productsResult.map((product) => {
+    const deal = flashDeals.get(product.id);
+    if (deal) {
+      return { ...product, discount_percentage: deal.discount_percentage, flash_deal_id: deal.id };
+    }
+    return product;
+  });
+};
+
+const fetchProductsFromDB = async (): Promise<Product[]> => {
   let allProducts: any[] = [];
   let from = 0;
   const pageSize = 1000;

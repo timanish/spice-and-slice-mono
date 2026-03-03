@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart";
 import { useToast } from "@/hooks/use-toast";
 import { useUser as useClerkUser, useClerk } from "@clerk/clerk-react";
-import { Package, Tag, Trash2 } from "lucide-react";
+import { Flame, Package, Tag, Trash2 } from "lucide-react";
 import { memoizationUtils } from "@/stores/cart/operations/memoization";
 import { useTaxCalculation } from "@/hooks/useTaxCalculation";
 import ProductImage from "./ProductImage";
@@ -34,6 +34,8 @@ interface Product {
   min_order_value?: number | null;
   min_order_unit?: 'pieces' | 'kg' | 'lbs' | null;
   tax_rate?: number | null;
+  discount_percentage?: number | null;
+  flash_deal_id?: string | null;
 }
 
 interface ProductCardProps {
@@ -142,7 +144,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
       await addToCart(
         product.id,
         product.is_weighted ? weight : undefined,
-        product.is_weighted ? undefined : localQuantity
+        hasDiscount ? product.discount_percentage! : undefined,
+        hasDiscount ? product.flash_deal_id! : undefined
       );
       
       trackProductAddedToCart(product, {
@@ -178,12 +181,18 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
   // Calculate minimum order price if applicable
   const hasMinimumOrder = product.min_order_value && product.min_order_unit;
-  const minimumOrderPrice = hasMinimumOrder 
-    ? product.min_order_value * product.price_per_unit 
+  const minimumOrderPrice = hasMinimumOrder
+    ? product.min_order_value * product.price_per_unit
     : null;
 
+  // Flash deal discount
+  const hasDiscount = product.discount_percentage && product.discount_percentage > 0;
+  const discountedPrice = hasDiscount
+    ? product.price_per_unit * (1 - product.discount_percentage! / 100)
+    : product.price_per_unit;
+
   return (
-    <Card className="group relative flex flex-col h-full min-h-[420px] overflow-hidden bg-white border-2 hover:border-food-red/50 hover:shadow-lg transition-all duration-300">
+    <Card className="group relative flex flex-col h-full min-h-[420px] overflow-hidden bg-white border border-gray-100 shadow-[0_2px_12px_rgba(139,69,19,0.08)] hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(139,0,0,0.12)] transition-all duration-300">
       {/* Minimum Order Badge */}
       {hasMinimumOrder && (
         <div className="absolute top-2 left-2 z-10">
@@ -192,7 +201,17 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           </Badge>
         </div>
       )}
-      
+
+      {/* Discount Ribbon */}
+      {hasDiscount && (
+        <div className="absolute top-0 right-0 z-10 overflow-hidden w-24 h-24 pointer-events-none">
+          <div className="absolute top-[10px] right-[-30px] w-[140px] bg-gradient-to-r from-food-red to-red-600 text-white text-xs font-bold text-center py-1 rotate-45 shadow-sm flex items-center justify-center gap-0.5">
+            <Flame className="h-3 w-3 flex-shrink-0" />
+            {product.discount_percentage}% OFF
+          </div>
+        </div>
+      )}
+
       {/* Product Image */}
       <div className="relative overflow-hidden flex-shrink-0">
         <ProductImage 
@@ -219,10 +238,15 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           <div className="mb-1 flex-shrink-0">
             {product.is_weighted ? (
               <div className="space-y-0.5">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="text-xl md:text-2xl font-bold text-food-red">
-                    ${product.price_per_unit.toFixed(2)}
+                    ${discountedPrice.toFixed(2)}
                   </span>
+                  {hasDiscount && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      ${product.price_per_unit.toFixed(2)}
+                    </span>
+                  )}
                   <span className="text-sm text-muted-foreground">
                     / {product.unit_of_measure || 'lb'}
                   </span>
@@ -239,9 +263,16 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
               </div>
             ) : (
               <div className="space-y-0.5">
-                <span className="text-xl md:text-2xl font-bold text-food-red">
-                  ${product.price_per_unit.toFixed(2)}
-                </span>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-xl md:text-2xl font-bold text-food-red">
+                    ${discountedPrice.toFixed(2)}
+                  </span>
+                  {hasDiscount && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      ${product.price_per_unit.toFixed(2)}
+                    </span>
+                  )}
+                </div>
                 {showTaxOnCards && hasValidTaxRate && itemTaxAmount > 0 && (
                   <p className="text-xs text-amber-600">
                     + Tax: ${itemTaxAmount.toFixed(2)}
