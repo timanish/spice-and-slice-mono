@@ -194,7 +194,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
       )}
       
       {/* Product Image */}
-      <div className="relative overflow-hidden h-40 flex-shrink-0">
+      <div className="relative overflow-hidden flex-shrink-0">
         <ProductImage 
           imageUrl={product.image_url} 
           alt={product.name} 

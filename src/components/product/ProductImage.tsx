@@ -27,12 +27,12 @@ const ProductImage = ({ imageUrl, alt }: ProductImageProps) => {
   };
 
   return (
-    <AspectRatio ratio={4/3} className="bg-muted">
+    <AspectRatio ratio={4/3} className="bg-white">
       {imageUrl && !imageError ? (
         <img
           src={imageUrl}
           alt={alt}
-          className="rounded-t-lg object-cover w-full h-full"
+          className="rounded-t-lg object-contain w-full h-full p-2"
           onLoad={handleImageLoad}
           onError={handleImageError}
           loading="lazy"
