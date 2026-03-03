@@ -36,10 +36,19 @@ const OrderSuccessPage = () => {
       // Call edge function to complete the order (using Clerk JWT auth)
       fetchWithAuth('complete-stripe-order', { sessionId })
         .then(async (response) => {
-          const data = await response.json();
+          // Handle non-JSON responses (e.g. gateway errors)
+          const text = await response.text();
+          let data: any;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            console.error('Non-JSON response:', response.status, text);
+            setOrderError(`Server error (${response.status}): ${text.substring(0, 200)}`);
+            return;
+          }
 
           if (!response.ok) {
-            console.error('Error completing order:', data.error);
+            console.error('Error completing order:', response.status, data.error);
 
             // Check if it's a payment not completed error
             if (data.error?.includes('Payment not completed') ||
@@ -48,7 +57,7 @@ const OrderSuccessPage = () => {
               navigate('/checkout', { replace: true });
             } else {
               // Show error state on the page instead of a toast
-              setOrderError(data.error || 'There was an issue saving your order.');
+              setOrderError(data.error || `Server error (${response.status})`);
             }
           } else {
             console.log('Order created successfully:', data);
@@ -80,7 +89,7 @@ const OrderSuccessPage = () => {
         })
         .catch((err) => {
           console.error('Error completing order:', err);
-          setOrderError('There was an issue processing your order. Please try again or contact support.');
+          setOrderError(err.message || 'Network error — please check your connection and try again.');
         })
         .finally(() => {
           setIsCreatingOrder(false);
@@ -138,6 +147,11 @@ const OrderSuccessPage = () => {
             <p className="text-gray-600">
               Please contact us so we can resolve this for you.
             </p>
+            {orderError && (
+              <p className="text-xs text-gray-400 bg-gray-50 rounded p-3 font-mono break-all">
+                Error: {orderError}
+              </p>
+            )}
             <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild>
                 <Link to="/">Go to Homepage</Link>
