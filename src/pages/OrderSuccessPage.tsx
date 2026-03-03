@@ -4,10 +4,9 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useCartStore } from '@/stores/cart';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useUser as useClerkUser } from '@clerk/clerk-react';
 import { fetchWithAuth } from '@/lib/auth-token';
-import { useToast } from '@/hooks/use-toast';
 import { usePostHogTracking } from '@/hooks/usePostHogTracking';
 
 const OrderSuccessPage = () => {
@@ -15,10 +14,10 @@ const OrderSuccessPage = () => {
   const { user } = useClerkUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { trackEvent } = usePostHogTracking();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderCreated, setOrderCreated] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const orderAttempted = useRef(false);
 
   // Determine if this is a cash order (no session_id means cash payment)
@@ -46,20 +45,10 @@ const OrderSuccessPage = () => {
             if (data.error?.includes('Payment not completed') ||
                 data.error?.includes('Session not complete')) {
               console.log('Payment was not completed, redirecting to checkout');
-              toast({
-                title: 'Payment Incomplete',
-                description: 'Your payment was not completed. Please try again.',
-                variant: 'destructive',
-                duration: 5000,
-              });
               navigate('/checkout', { replace: true });
             } else {
-              toast({
-                title: 'Warning',
-                description: 'Your payment was successful, but there was an issue saving your order. Please contact support.',
-                variant: 'destructive',
-                duration: 5000,
-              });
+              // Show error state on the page instead of a toast
+              setOrderError(data.error || 'There was an issue saving your order.');
             }
           } else {
             console.log('Order created successfully:', data);
@@ -91,13 +80,7 @@ const OrderSuccessPage = () => {
         })
         .catch((err) => {
           console.error('Error completing order:', err);
-          toast({
-            title: 'Error',
-            description: 'There was an issue processing your order. Please contact support.',
-            variant: 'destructive',
-            duration: 5000,
-          });
-          navigate('/checkout', { replace: true });
+          setOrderError('There was an issue processing your order. Please try again or contact support.');
         })
         .finally(() => {
           setIsCreatingOrder(false);
@@ -131,6 +114,38 @@ const OrderSuccessPage = () => {
             <p className="text-lg text-gray-700">
               Please wait while we complete your order.
             </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (orderError) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navigation />
+        <div className="flex-grow container mx-auto py-12 px-4">
+          <div className="max-w-2xl mx-auto text-center space-y-6">
+            <div className="flex justify-center">
+              <AlertTriangle className="w-24 h-24 text-amber-500" />
+            </div>
+            <h1 className="text-3xl font-serif font-bold">Order Could Not Be Completed</h1>
+            <p className="text-lg text-gray-700">
+              Your payment was successful, but we had trouble saving your order.
+              Don't worry — you have not been charged twice.
+            </p>
+            <p className="text-gray-600">
+              Please contact us so we can resolve this for you.
+            </p>
+            <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild>
+                <Link to="/">Go to Homepage</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/profile?tab=orders">View Your Orders</Link>
+              </Button>
+            </div>
           </div>
         </div>
         <Footer />
