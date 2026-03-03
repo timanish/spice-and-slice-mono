@@ -6,7 +6,7 @@ import { useCartStore } from '@/stores/cart';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { useUser as useClerkUser } from '@clerk/clerk-react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchWithAuth } from '@/lib/auth-token';
 import { useToast } from '@/hooks/use-toast';
 import { usePostHogTracking } from '@/hooks/usePostHogTracking';
 
@@ -31,18 +31,17 @@ const OrderSuccessPage = () => {
     if (sessionId && user && !orderCreated && !isCreatingOrder) {
       setIsCreatingOrder(true);
       
-      // Call edge function to complete the order
-      supabase.functions
-        .invoke('complete-stripe-order', {
-          body: { sessionId, userId: user.id },
-        })
-        .then(({ data, error }) => {
-          if (error) {
-            console.error('Error completing order:', error);
-            
+      // Call edge function to complete the order (using Clerk JWT auth)
+      fetchWithAuth('complete-stripe-order', { sessionId })
+        .then(async (response) => {
+          const data = await response.json();
+
+          if (!response.ok) {
+            console.error('Error completing order:', data.error);
+
             // Check if it's a payment not completed error
-            if (error.message?.includes('Payment not completed') || 
-                error.message?.includes('Session not complete')) {
+            if (data.error?.includes('Payment not completed') ||
+                data.error?.includes('Session not complete')) {
               console.log('Payment was not completed, redirecting to checkout');
               toast({
                 title: 'Payment Incomplete',
@@ -60,12 +59,12 @@ const OrderSuccessPage = () => {
           } else {
             console.log('Order created successfully:', data);
             setOrderCreated(true);
-            
+
             if (data?.orderId) {
               trackEvent('order_success_viewed', {
                 order_id: data.orderId,
               });
-              
+
               if (data.orderDetails) {
                 const details = data.orderDetails;
                 trackEvent('checkout_completed', {
@@ -81,7 +80,7 @@ const OrderSuccessPage = () => {
                 });
               }
             }
-            
+
             forceRefreshCart();
           }
         })
