@@ -2,6 +2,51 @@
   "functions": {
     "clerk-webhook": {
       "verify_jwt": false
+    },
+    "complete-stripe-order": {
+      "verify_jwt": false
+    },
+    "get-user-role": {
+      "verify_jwt": false
+    },
+    "admin-get-orders": {
+      "verify_jwt": false
+    },
+    "printer-create-job": {
+      "verify_jwt": false
+    },
+    "admin-update-order": {
+      "verify_jwt": false
+    },
+    "user-data": {
+      "verify_jwt": false
+    },
+    "admin-crud": {
+      "verify_jwt": false
+    },
+    "create-cash-order": {
+      "verify_jwt": false
+    },
+    "calculate-delivery-distance": {
+      "verify_jwt": false
+    },
+    "create-lunchbox-checkout": {
+      "verify_jwt": false
+    },
+    "upload-image": {
+      "verify_jwt": false
+    },
+    "admin-get-subscriptions": {
+      "verify_jwt": false
+    },
+    "create-checkout": {
+      "verify_jwt": false
+    },
+    "complete-lunchbox-subscription": {
+      "verify_jwt": false
+    },
+    "send-lunchbox-subscription-email": {
+      "verify_jwt": false
     }
   }
 }
