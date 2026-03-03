@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -19,16 +19,19 @@ const OrderSuccessPage = () => {
   const { trackEvent } = usePostHogTracking();
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderCreated, setOrderCreated] = useState(false);
-  
+  const orderAttempted = useRef(false);
+
   // Determine if this is a cash order (no session_id means cash payment)
   const sessionId = searchParams.get('session_id');
   const isCashOrder = !sessionId;
-  
+
   useEffect(() => {
-    
+
     // If we have a session_id, it means this is a Stripe payment success
     // We need to create the order in the database
-    if (sessionId && user && !orderCreated && !isCreatingOrder) {
+    // useRef guard prevents React StrictMode double-invocation
+    if (sessionId && user && !orderAttempted.current) {
+      orderAttempted.current = true;
       setIsCreatingOrder(true);
       
       // Call edge function to complete the order (using Clerk JWT auth)
@@ -47,6 +50,7 @@ const OrderSuccessPage = () => {
                 title: 'Payment Incomplete',
                 description: 'Your payment was not completed. Please try again.',
                 variant: 'destructive',
+                duration: 5000,
               });
               navigate('/checkout', { replace: true });
             } else {
@@ -54,6 +58,7 @@ const OrderSuccessPage = () => {
                 title: 'Warning',
                 description: 'Your payment was successful, but there was an issue saving your order. Please contact support.',
                 variant: 'destructive',
+                duration: 5000,
               });
             }
           } else {
@@ -90,6 +95,7 @@ const OrderSuccessPage = () => {
             title: 'Error',
             description: 'There was an issue processing your order. Please contact support.',
             variant: 'destructive',
+            duration: 5000,
           });
           navigate('/checkout', { replace: true });
         })
@@ -110,7 +116,7 @@ const OrderSuccessPage = () => {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [searchParams, user, orderCreated, isCreatingOrder, forceRefreshCart, toast, navigate]);
+  }, [sessionId, user]);
 
   if (isCreatingOrder) {
     return (
