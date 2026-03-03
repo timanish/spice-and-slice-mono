@@ -165,6 +165,18 @@ serve(async (req) => {
       });
     }
 
+    // Look up the user's cart first (cart_items uses cart_id, not user_id)
+    const { data: userCart, error: cartError } = await serviceClient
+      .from("carts")
+      .select("id")
+      .eq("user_id", userId)
+      .single();
+
+    if (cartError || !userCart) {
+      console.error("Error finding user cart:", cartError);
+      throw new Error("No cart found for user");
+    }
+
     const { data: cartItemsData, error: cartFetchError } = await serviceClient
       .from("cart_items")
       .select(
@@ -172,7 +184,6 @@ serve(async (req) => {
         product_id,
         quantity,
         weight,
-        tax_amount,
         product:products (
           id,
           name,
@@ -186,7 +197,7 @@ serve(async (req) => {
         )
       `,
       )
-      .eq("user_id", userId);
+      .eq("cart_id", userCart.id);
 
     if (cartFetchError) {
       console.error("Error fetching cart items:", cartFetchError);
@@ -352,7 +363,6 @@ serve(async (req) => {
           item.product.is_weighted && item.weight ? item.weight : item.quantity,
         price_per_unit: item.product.price_per_unit,
         tax_rate: item.product.tax_rate || null,
-        tax_amount: item.tax_amount || 0,
       }));
 
       const { error: orderItemsError } = await serviceClient
@@ -364,13 +374,13 @@ serve(async (req) => {
       }
     }
 
-    const { error: cartError } = await serviceClient
+    const { error: clearCartError } = await serviceClient
       .from("cart_items")
       .delete()
-      .eq("user_id", userId);
+      .eq("cart_id", userCart.id);
 
-    if (cartError) {
-      console.error("Error clearing cart:", cartError);
+    if (clearCartError) {
+      console.error("Error clearing cart:", clearCartError);
     }
 
     return new Response(JSON.stringify({ success: true, orderId: order.id }), {
