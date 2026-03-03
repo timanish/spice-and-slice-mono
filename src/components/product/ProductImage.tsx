@@ -27,7 +27,7 @@ const ProductImage = ({ imageUrl, alt }: ProductImageProps) => {
   };
 
   return (
-    <AspectRatio ratio={4/3} className="bg-white">
+    <AspectRatio ratio={4/3} className="bg-transparent">
       {imageUrl && !imageError ? (
         <img
           src={imageUrl}

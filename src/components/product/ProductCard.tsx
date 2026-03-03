@@ -192,7 +192,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
     : product.price_per_unit;
 
   return (
-    <Card className="group relative flex flex-col h-full min-h-[420px] overflow-hidden bg-white border border-gray-100 shadow-[0_2px_12px_rgba(139,69,19,0.08)] hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(139,0,0,0.12)] transition-all duration-300">
+    <Card className="group relative flex flex-col h-full min-h-[420px] overflow-hidden bg-gradient-to-b from-food-cream to-white border border-gray-100 shadow-[0_2px_12px_rgba(139,69,19,0.08)] hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(139,0,0,0.12)] transition-all duration-300">
       {/* Minimum Order Badge */}
       {hasMinimumOrder && (
         <div className="absolute top-2 left-2 z-10">
