@@ -1,5 +1,5 @@
 import { CartStoreState } from "../store";
-import { OPERATION_TIMEOUT, CartItem } from "../types";
+import { OPERATION_TIMEOUT, CartItem, CartComboItem } from "../types";
 import { createTimeout, fetchCartViaEdge } from "../utils";
 import { memoizationUtils } from "./memoization";
 
@@ -18,19 +18,35 @@ export const fetchCart = async (
     if (!forceRefresh) {
       const cached = memoizationUtils.getMemoizedResult(cacheKey);
       if (cached) {
-        set({ items: cached as CartItem[], isLoading: false });
+        const cachedData = cached as { items: CartItem[]; comboItems: CartComboItem[] };
+        set({
+          items: cachedData.items || (cached as CartItem[]),
+          comboItems: cachedData.comboItems || [],
+          isLoading: false,
+        });
         return;
       }
     }
 
     // Fetch from edge function with timeout
-    const items = (await Promise.race([
+    const result = (await Promise.race([
       fetchCartViaEdge(),
       createTimeout(OPERATION_TIMEOUT),
-    ])) as CartItem[];
+    ])) as any;
 
-    memoizationUtils.storeMemoizedResult(cacheKey, items);
-    set({ items, isLoading: false });
+    // Support both old format (CartItem[]) and new format ({ items, comboItems })
+    let items: CartItem[];
+    let comboItems: CartComboItem[] = [];
+
+    if (Array.isArray(result)) {
+      items = result;
+    } else {
+      items = result.items || [];
+      comboItems = result.comboItems || [];
+    }
+
+    memoizationUtils.storeMemoizedResult(cacheKey, { items, comboItems });
+    set({ items, comboItems, isLoading: false });
   } catch (error: any) {
     console.error("Error in fetchCart:", error);
     const errorMessage =
@@ -40,6 +56,7 @@ export const fetchCart = async (
       hasError: true,
       errorMessage,
       items: [],
+      comboItems: [],
     });
   }
 };

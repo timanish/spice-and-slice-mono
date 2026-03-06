@@ -22,8 +22,40 @@ export interface CartItem {
   price?: number;
 }
 
+export interface ComboItemDetail {
+  id: string;
+  product_id: string;
+  quantity: number;
+  weight?: number;
+  is_addon: boolean;
+  addon_price?: number;
+  position: number;
+  product: {
+    name: string;
+    price_per_unit: number;
+    image_url?: string;
+    is_weighted?: boolean;
+    unit_of_measure?: string;
+  };
+}
+
+export interface CartComboItem {
+  id: string;
+  combo_id: string;
+  quantity: number;
+  selected_addon_ids: string[];
+  combo: {
+    name: string;
+    description?: string;
+    image_url?: string;
+    combo_price: number;
+    items: ComboItemDetail[];
+  };
+}
+
 export interface CartStore {
   items: CartItem[];
+  comboItems: CartComboItem[];
   isLoading: boolean;
   hasError: boolean;
   errorMessage: string | null;
@@ -42,6 +74,10 @@ export interface CartStore {
   updateWeight: (productId: string, weight: number) => Promise<void>;
   retryFetchCart: () => Promise<void>;
   clearError: () => void;
+  addCombo: (comboId: string, selectedAddonIds?: string[]) => Promise<void>;
+  removeCombo: (cartComboItemId: string) => Promise<void>;
+  updateComboQuantity: (cartComboItemId: string, quantity: number) => Promise<void>;
+  toggleComboAddon: (cartComboItemId: string, addonId: string) => Promise<void>;
 }
 
 // Constants

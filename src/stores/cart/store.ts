@@ -6,6 +6,10 @@ import {
   removeFromCart,
   updateQuantity,
   updateWeight,
+  addCombo,
+  removeCombo,
+  updateComboQuantity,
+  toggleComboAddon,
 } from "./operations";
 
 // Extend the CartStore interface with implementation details
@@ -16,6 +20,7 @@ export interface CartStoreState extends CartStore {
 // Create the store using zustand
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
+  comboItems: [],
   isLoading: false,
   hasError: false,
   errorMessage: null,
@@ -117,5 +122,21 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   updateWeight: async (productId: string, weight: number) => {
     await updateWeight(productId, weight, set as any, get as any);
+  },
+
+  addCombo: async (comboId: string, selectedAddonIds?: string[]) => {
+    await addCombo(comboId, selectedAddonIds || [], set as any, get as any);
+  },
+
+  removeCombo: async (cartComboItemId: string) => {
+    await removeCombo(cartComboItemId, set as any, get as any);
+  },
+
+  updateComboQuantity: async (cartComboItemId: string, quantity: number) => {
+    await updateComboQuantity(cartComboItemId, quantity, set as any, get as any);
+  },
+
+  toggleComboAddon: async (cartComboItemId: string, addonId: string) => {
+    await toggleComboAddon(cartComboItemId, addonId, set as any, get as any);
   },
 }));

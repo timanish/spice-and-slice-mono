@@ -15,9 +15,9 @@ export const delay = (ms: number) =>
 
 /**
  * Fetch cart items via the user-data edge function.
- * Returns shaped CartItem[] directly from the server.
+ * Returns { items, comboItems } from the server response.
  */
-export const fetchCartViaEdge = async (retryCount = 0): Promise<any[]> => {
+export const fetchCartViaEdge = async (retryCount = 0): Promise<{ items: any[]; comboItems: any[] }> => {
   try {
     const res = await fetchWithAuth("user-data", { action: "cart.get" });
     const json = await res.json();
@@ -26,7 +26,10 @@ export const fetchCartViaEdge = async (retryCount = 0): Promise<any[]> => {
       throw new Error(json.error || "Failed to fetch cart");
     }
 
-    return json.data || [];
+    return {
+      items: json.data || [],
+      comboItems: json.comboData || [],
+    };
   } catch (error: any) {
     console.error(
       `Error fetching cart (attempt ${retryCount + 1}):`,
