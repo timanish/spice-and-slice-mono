@@ -215,7 +215,57 @@ async function handleCartGet(db: any, userId: string) {
     product: item.products,
   }));
 
-  return jsonResponse({ data: shaped, cartId });
+  // Fetch combo items in cart
+  const { data: comboCartItems, error: comboError } = await db
+    .from("cart_combo_items")
+    .select(`
+      id,
+      combo_id,
+      quantity,
+      selected_addon_ids,
+      product_combos:combo_id (
+        id, name, description, image_url, combo_price
+      )
+    `)
+    .eq("cart_id", cartId);
+
+  if (comboError) throw comboError;
+
+  // For each combo cart item, fetch its combo_items with product details
+  const shapedCombos = await Promise.all(
+    (comboCartItems || []).map(async (cci: any) => {
+      const { data: items } = await db
+        .from("combo_items")
+        .select(`
+          id, product_id, quantity, weight, is_addon, addon_price, position,
+          products:product_id (id, name, price_per_unit, image_url, is_weighted, unit_of_measure)
+        `)
+        .eq("combo_id", cci.combo_id)
+        .order("position");
+
+      return {
+        id: cci.id,
+        combo_id: cci.combo_id,
+        quantity: cci.quantity,
+        selected_addon_ids: cci.selected_addon_ids || [],
+        combo: {
+          ...cci.product_combos,
+          items: (items || []).map((i: any) => ({
+            id: i.id,
+            product_id: i.product_id,
+            quantity: i.quantity,
+            weight: i.weight,
+            is_addon: i.is_addon,
+            addon_price: i.addon_price,
+            position: i.position,
+            product: i.products,
+          })),
+        },
+      };
+    })
+  );
+
+  return jsonResponse({ data: shaped, comboData: shapedCombos, cartId });
 }
 
 async function handleCartAddItem(db: any, userId: string, payload: any) {
@@ -323,6 +373,78 @@ async function handleCartRemoveItem(db: any, userId: string, payload: any) {
   return jsonResponse({ success: true });
 }
 
+// --- Cart Combos ---
+
+async function handleCartAddCombo(db: any, userId: string, payload: any) {
+  const cartId = await getOrCreateCart(db, userId);
+
+  const { data, error } = await db
+    .from("cart_combo_items")
+    .insert({
+      cart_id: cartId,
+      combo_id: payload.combo_id,
+      quantity: 1,
+      selected_addon_ids: payload.selected_addon_ids || [],
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return jsonResponse({ data }, 201);
+}
+
+async function handleCartRemoveCombo(db: any, userId: string, payload: any) {
+  if (!payload.id) return errorResponse("Missing cart combo item id");
+  const cartId = await getOrCreateCart(db, userId);
+
+  const { error } = await db
+    .from("cart_combo_items")
+    .delete()
+    .eq("id", payload.id)
+    .eq("cart_id", cartId);
+  if (error) throw error;
+  return jsonResponse({ success: true });
+}
+
+async function handleCartUpdateComboQuantity(db: any, userId: string, payload: any) {
+  if (!payload.id) return errorResponse("Missing cart combo item id");
+  const cartId = await getOrCreateCart(db, userId);
+
+  if (payload.quantity <= 0) {
+    const { error } = await db
+      .from("cart_combo_items")
+      .delete()
+      .eq("id", payload.id)
+      .eq("cart_id", cartId);
+    if (error) throw error;
+    return jsonResponse({ success: true, removed: true });
+  }
+
+  const { data, error } = await db
+    .from("cart_combo_items")
+    .update({ quantity: payload.quantity })
+    .eq("id", payload.id)
+    .eq("cart_id", cartId)
+    .select()
+    .single();
+  if (error) throw error;
+  return jsonResponse({ data });
+}
+
+async function handleCartToggleComboAddon(db: any, userId: string, payload: any) {
+  if (!payload.id) return errorResponse("Missing cart combo item id");
+  const cartId = await getOrCreateCart(db, userId);
+
+  const { data, error } = await db
+    .from("cart_combo_items")
+    .update({ selected_addon_ids: payload.selected_addon_ids })
+    .eq("id", payload.id)
+    .eq("cart_id", cartId)
+    .select()
+    .single();
+  if (error) throw error;
+  return jsonResponse({ data });
+}
+
 // --- Orders ---
 
 async function handleOrdersList(db: any, userId: string) {
@@ -416,6 +538,10 @@ const actionHandlers: Record<string, (db: any, userId: string, payload: any) => 
   "cart.updateQuantity": handleCartUpdateQuantity,
   "cart.updateWeight": handleCartUpdateWeight,
   "cart.removeItem": handleCartRemoveItem,
+  "cart.addCombo": handleCartAddCombo,
+  "cart.removeCombo": handleCartRemoveCombo,
+  "cart.updateComboQuantity": handleCartUpdateComboQuantity,
+  "cart.toggleComboAddon": handleCartToggleComboAddon,
   "orders.list": handleOrdersList,
   "orders.get": handleOrdersGet,
   "review.submit": handleReviewSubmit,
