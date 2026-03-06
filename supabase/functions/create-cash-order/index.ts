@@ -578,7 +578,7 @@ serve(async (req) => {
         serviceClient,
         promoCode,
         userId,
-        subtotal,
+        subtotal + comboSubtotal,
       );
       console.log("Promo code validation result:", promoResult);
 

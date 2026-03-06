@@ -377,7 +377,7 @@ serve(async (req) => {
         serviceClient,
         promoCode,
         userId,
-        subtotal,
+        subtotal + comboSubtotal,
       );
 
       if (promoResult.valid) {
