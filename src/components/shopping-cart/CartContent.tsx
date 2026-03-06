@@ -15,7 +15,7 @@ interface CartContentProps {
 
 const CartContent: React.FC<CartContentProps> = ({ onClose }) => {
   const navigate = useNavigate();
-  const { items, comboItems, removeFromCart, updateQuantity, removeCombo, updateComboQuantity, isLoading, hasError, errorMessage, retryFetchCart } = useCartStore();
+  const { items, comboItems, removeFromCart, updateQuantity, removeCombo, updateComboQuantity, toggleComboAddon, isLoading, hasError, errorMessage, retryFetchCart } = useCartStore();
   const [isRateLimited, setIsRateLimited] = useState(false);
   
   // Calculate subtotal with discounts
@@ -100,6 +100,7 @@ const CartContent: React.FC<CartContentProps> = ({ onClose }) => {
           onUpdateQuantity={updateQuantity}
           onRemoveCombo={removeCombo}
           onUpdateComboQuantity={updateComboQuantity}
+          onToggleComboAddon={toggleComboAddon}
         />
       </div>
       

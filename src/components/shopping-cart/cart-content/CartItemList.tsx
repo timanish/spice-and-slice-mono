@@ -12,6 +12,7 @@ interface CartItemListProps {
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveCombo: (cartComboItemId: string) => void;
   onUpdateComboQuantity: (cartComboItemId: string, quantity: number) => void;
+  onToggleComboAddon: (cartComboItemId: string, comboItemId: string) => void;
 }
 
 const CartItemList: React.FC<CartItemListProps> = ({
@@ -21,6 +22,7 @@ const CartItemList: React.FC<CartItemListProps> = ({
   onUpdateQuantity,
   onRemoveCombo,
   onUpdateComboQuantity,
+  onToggleComboAddon,
 }) => {
   return (
     <>
@@ -45,6 +47,7 @@ const CartItemList: React.FC<CartItemListProps> = ({
             item={item}
             onRemove={() => onRemoveCombo(item.id)}
             onUpdateQuantity={(quantity) => onUpdateComboQuantity(item.id, quantity)}
+            onToggleAddon={(comboItemId) => onToggleComboAddon(item.id, comboItemId)}
           />
         ))}
       </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CartComboItem as CartComboItemType } from "@/stores/cart/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ChevronDown,
   ChevronUp,
@@ -16,15 +17,15 @@ interface CartComboItemProps {
   item: CartComboItemType;
   onRemove: () => void;
   onUpdateQuantity: (quantity: number) => void;
+  onToggleAddon: (comboItemId: string) => void;
 }
 
-const CartComboItem = ({ item, onRemove, onUpdateQuantity }: CartComboItemProps) => {
+const CartComboItem = ({ item, onRemove, onUpdateQuantity, onToggleAddon }: CartComboItemProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const coreItems = item.combo.items.filter((ci) => !ci.is_addon);
-  const selectedAddons = item.combo.items.filter(
-    (ci) => ci.is_addon && item.selected_addon_ids.includes(ci.id)
-  );
+  const allAddons = item.combo.items.filter((ci) => ci.is_addon);
+  const selectedAddons = allAddons.filter((ci) => item.selected_addon_ids.includes(ci.id));
 
   // Total price = (combo_price + sum of selected addon prices) * quantity
   const addonTotal = selectedAddons.reduce(
@@ -144,24 +145,36 @@ const CartComboItem = ({ item, onRemove, onUpdateQuantity }: CartComboItemProps)
             </div>
           ))}
 
-          {/* Selected add-ons */}
-          {selectedAddons.map((addon) => (
-            <div
-              key={addon.id}
-              className="flex items-center justify-between gap-2 text-sm text-gray-600"
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-food-orange flex-shrink-0" />
-                <span>
-                  {addon.product.name}
-                  {addon.quantity > 1 ? ` (x${addon.quantity})` : ""}
-                </span>
-              </div>
-              {addon.addon_price != null && addon.addon_price > 0 && (
-                <span className="text-gray-500">+${addon.addon_price.toFixed(2)}</span>
-              )}
+          {/* Add-ons with toggle */}
+          {allAddons.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Add-ons</p>
+              {allAddons.map((addon) => {
+                const isSelected = item.selected_addon_ids.includes(addon.id);
+                return (
+                  <label
+                    key={addon.id}
+                    className="flex items-center justify-between gap-2 text-sm text-gray-600 py-1.5 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleAddon(addon.id)}
+                      />
+                      <Package className="h-4 w-4 text-food-orange flex-shrink-0" />
+                      <span>
+                        {addon.product.name}
+                        {addon.quantity > 1 ? ` (x${addon.quantity})` : ""}
+                      </span>
+                    </div>
+                    {addon.addon_price != null && addon.addon_price > 0 && (
+                      <span className="text-gray-500">+${addon.addon_price.toFixed(2)}</span>
+                    )}
+                  </label>
+                );
+              })}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
