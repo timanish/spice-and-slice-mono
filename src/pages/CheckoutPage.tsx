@@ -53,7 +53,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { user } = useClerkUser();
   const { getToken } = useAuth();
-  const { items, removeFromCart, updateQuantity, fetchCart } = useCartStore();
+  const { items, comboItems, removeFromCart, updateQuantity, fetchCart } = useCartStore();
   const { toast } = useToast();
   const { trackCheckoutStarted, trackEvent } = usePostHogTracking();
   const { listAddresses } = useUserData();
@@ -142,16 +142,25 @@ const CheckoutPage = () => {
     fetchAddresses();
   }, [user, listAddresses]);
 
-  const subtotal = items.reduce((sum, item) => {
+  const itemsSubtotal = items.reduce((sum, item) => {
     const basePrice = item.product.is_weighted && item.weight
       ? item.weight * item.product.price_per_unit
       : item.quantity * item.product.price_per_unit;
-    
+
     const discount = item.discount_percentage || 0;
     const finalPrice = basePrice * (1 - discount / 100);
-    
+
     return sum + finalPrice;
   }, 0);
+
+  const comboSubtotal = comboItems.reduce((sum, item) => {
+    const addonTotal = item.combo.items
+      .filter((ci) => ci.is_addon && item.selected_addon_ids.includes(ci.id))
+      .reduce((s, ci) => s + (ci.addon_price || 0), 0);
+    return sum + (item.combo.combo_price + addonTotal) * item.quantity;
+  }, 0);
+
+  const subtotal = itemsSubtotal + comboSubtotal;
 
   const { calculateCartTax, calculateItemTax, categoryTaxRates, isLoading: isTaxLoading } = useTaxCalculation();
   
@@ -396,6 +405,7 @@ const CheckoutPage = () => {
         const requestBody = {
           userId: user.id,
           cartItems: enrichedCartItems,
+          comboCartItems: comboItems,
           promoCodeId: promoId,
           promoDiscount: promoDiscount,
           fulfillmentType: fulfillmentType,
@@ -473,6 +483,7 @@ const CheckoutPage = () => {
 
         const requestBody = {
           cartItems: enrichedCartItems,
+          comboCartItems: comboItems,
           successUrl,
           cancelUrl,
           promoCodeId: promoId,

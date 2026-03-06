@@ -14,14 +14,15 @@ interface ShoppingCartProps {
 
 const ShoppingCart: React.FC<ShoppingCartProps> = ({ open, onOpenChange, hideButton = false }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { 
-    isCheckingOut, 
-    showMap, 
-    handleCheckout, 
-    items, 
-    paymentMethod, 
+  const {
+    isCheckingOut,
+    showMap,
+    handleCheckout,
+    items,
+    comboItems,
+    paymentMethod,
     setPaymentMethod,
-    isLoading 
+    isLoading
   } = useCartLogic(
     open !== undefined ? open : isOpen,
     onOpenChange !== undefined ? onOpenChange : setIsOpen
@@ -42,9 +43,9 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({ open, onOpenChange, hideBut
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="relative">
             <CartIcon className="h-5 w-5" />
-            {!isLoading && items.length > 0 && (
+            {!isLoading && (items.length > 0 || comboItems.length > 0) && (
               <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                {items.reduce((acc, item) => acc + item.quantity, 0)}
+                {items.reduce((acc, item) => acc + item.quantity, 0) + comboItems.reduce((acc, item) => acc + item.quantity, 0)}
               </span>
             )}
           </Button>

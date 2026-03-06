@@ -10,7 +10,7 @@ export const useCartLogic = (
   isOpen: boolean,
   setIsOpen: (isOpen: boolean) => void,
 ) => {
-  const { items, fetchCart, isLoading } = useCartStore();
+  const { items, comboItems, fetchCart, isLoading } = useCartStore();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
@@ -47,7 +47,7 @@ export const useCartLogic = (
 
   const handleCheckout = async () => {
     try {
-      if (items.length === 0) {
+      if (items.length === 0 && comboItems.length === 0) {
         toast({
           title: "Cart is empty",
           description: "Add some items to your cart before checking out",
@@ -192,6 +192,7 @@ export const useCartLogic = (
     showMap,
     handleCheckout,
     items,
+    comboItems,
     paymentMethod,
     setPaymentMethod,
     isLoading,
