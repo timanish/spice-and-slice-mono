@@ -619,7 +619,7 @@ const CheckoutPage = () => {
     }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && comboItems.length === 0) {
     return (
       <>
         <Navigation />
@@ -740,7 +740,7 @@ const CheckoutPage = () => {
                     <Package className="h-4 w-4 md:h-5 md:w-5 text-food-red" />
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900">Order Items</h2>
                     <Badge variant="secondary" className="ml-auto">
-                      {items.length} {items.length === 1 ? 'item' : 'items'}
+                      {items.length + comboItems.length} {items.length + comboItems.length === 1 ? 'item' : 'items'}
                     </Badge>
                   </div>
 
@@ -890,6 +890,80 @@ const CheckoutPage = () => {
                       </div>
                     );
                   })}
+
+                    {/* Combo Items */}
+                    {comboItems.map((comboItem) => {
+                      const addonTotal = comboItem.combo.items
+                        .filter((ci) => ci.is_addon && comboItem.selected_addon_ids.includes(ci.id))
+                        .reduce((s, ci) => s + (ci.addon_price || 0), 0);
+                      const comboUnitPrice = comboItem.combo.combo_price + addonTotal;
+                      const comboTotalPrice = comboUnitPrice * comboItem.quantity;
+
+                      return (
+                        <div
+                          key={comboItem.id}
+                          className="flex flex-col sm:flex-row gap-3 md:gap-4 p-3 md:p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="relative flex-shrink-0 self-start">
+                            {comboItem.combo.image_url ? (
+                              <img
+                                src={comboItem.combo.image_url}
+                                alt={comboItem.combo.name}
+                                className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg shadow-md"
+                              />
+                            ) : (
+                              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg shadow-md bg-gradient-to-br from-food-orange/20 to-food-red/20 flex items-center justify-center">
+                                <Package className="h-8 w-8 text-food-orange" />
+                              </div>
+                            )}
+                            <Badge className="absolute -top-2 -right-2 bg-food-orange text-white shadow-lg text-[10px]">
+                              Combo
+                            </Badge>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2 mb-2">
+                              <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2 flex-1">
+                                {comboItem.combo.name}
+                              </h3>
+                              <div className="text-right sm:hidden flex-shrink-0">
+                                <p className="text-base font-bold text-food-red">
+                                  {formatCurrency(comboTotalPrice)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Combo contents summary */}
+                            <div className="text-xs text-gray-500 mb-2 space-y-0.5">
+                              {comboItem.combo.items.filter(ci => !ci.is_addon).map(ci => (
+                                <div key={ci.id} className="flex items-center gap-1">
+                                  <Check className="h-3 w-3 text-green-600" />
+                                  <span>{ci.product.name}</span>
+                                </div>
+                              ))}
+                              {comboItem.combo.items
+                                .filter(ci => ci.is_addon && comboItem.selected_addon_ids.includes(ci.id))
+                                .map(ci => (
+                                  <div key={ci.id} className="flex items-center gap-1">
+                                    <Plus className="h-3 w-3 text-food-orange" />
+                                    <span>{ci.product.name} (+{formatCurrency(ci.addon_price || 0)})</span>
+                                  </div>
+                                ))}
+                            </div>
+
+                            <div className="text-xs md:text-sm text-gray-600">
+                              {formatCurrency(comboUnitPrice)} each &times; {comboItem.quantity}
+                            </div>
+                          </div>
+
+                          <div className="hidden sm:block text-right flex-shrink-0">
+                            <p className="text-lg font-bold text-food-red">
+                              {formatCurrency(comboTotalPrice)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </CardContent>
             </Card>
@@ -1274,6 +1348,22 @@ const CheckoutPage = () => {
                         </span>
                       </div>
                       <span className="font-medium text-gray-900 ml-2">{formatCurrency(finalPrice)}</span>
+                    </div>
+                  );
+                })}
+                {comboItems.map((comboItem) => {
+                  const addonTotal = comboItem.combo.items
+                    .filter((ci) => ci.is_addon && comboItem.selected_addon_ids.includes(ci.id))
+                    .reduce((s, ci) => s + (ci.addon_price || 0), 0);
+                  const comboTotal = (comboItem.combo.combo_price + addonTotal) * comboItem.quantity;
+                  return (
+                    <div key={comboItem.id} className="flex justify-between items-center text-sm">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-gray-900">{comboItem.combo.name}</span>
+                        <span className="text-gray-500 ml-1">x{comboItem.quantity}</span>
+                        <Badge className="ml-1 bg-food-orange text-white text-[9px] px-1 py-0">Combo</Badge>
+                      </div>
+                      <span className="font-medium text-gray-900 ml-2">{formatCurrency(comboTotal)}</span>
                     </div>
                   );
                 })}

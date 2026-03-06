@@ -227,7 +227,7 @@ const ComboCard = ({
           </div>
 
           {combo.description && (
-            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+            <p className="text-sm text-muted-foreground mb-2">
               {combo.description}
             </p>
           )}
@@ -279,13 +279,13 @@ const ComboCard = ({
           )}
 
           {/* Price + Add to Cart */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-food-red">
+              <span className="text-xl sm:text-2xl font-bold text-food-red">
                 ${totalPrice.toFixed(2)}
               </span>
               {savings > 0 && (
-                <span className="text-sm text-muted-foreground line-through">
+                <span className="text-xs sm:text-sm text-muted-foreground line-through">
                   ${(coreItemsValue + selectedAddonTotal).toFixed(2)}
                 </span>
               )}
@@ -293,7 +293,7 @@ const ComboCard = ({
             <Button
               onClick={handleAddToCart}
               disabled={isAdding}
-              className="bg-food-red hover:bg-food-red/90 text-white text-sm px-4 py-2 h-9"
+              className="bg-food-red hover:bg-food-red/90 text-white text-xs sm:text-sm px-3 sm:px-4 py-2 h-8 sm:h-9"
             >
               {isAdding ? (
                 <>
@@ -303,7 +303,7 @@ const ComboCard = ({
               ) : (
                 <>
                   <Package className="h-4 w-4 mr-1.5" />
-                  Add to Cart
+                  Add
                 </>
               )}
             </Button>
