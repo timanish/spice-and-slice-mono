@@ -374,6 +374,48 @@ serve(async (req) => {
       }
     }
 
+    // Handle combo items from cart
+    const { data: comboCartItems } = await serviceClient
+      .from("cart_combo_items")
+      .select("*, product_combos(id, combo_price, combo_items(id, product_id, quantity, weight, is_addon, addon_price))")
+      .eq("cart_id", userCart.id);
+
+    if (comboCartItems && comboCartItems.length > 0) {
+      const comboOrderItems: any[] = [];
+      for (const comboItem of comboCartItems) {
+        const combo = comboItem.product_combos;
+        if (!combo) continue;
+        for (const ci of combo.combo_items || []) {
+          if (ci.is_addon && !(comboItem.selected_addon_ids || []).includes(ci.id)) continue;
+          comboOrderItems.push({
+            order_id: order.id,
+            product_id: ci.product_id,
+            quantity: ci.weight ? ci.weight : ci.quantity * comboItem.quantity,
+            price_per_unit: ci.is_addon ? (ci.addon_price || 0) / ci.quantity : 0,
+            tax_rate: null,
+            tax_amount: 0,
+          });
+        }
+      }
+      if (comboOrderItems.length > 0) {
+        const { error: comboOrderError } = await serviceClient
+          .from("order_items")
+          .insert(comboOrderItems);
+        if (comboOrderError) {
+          console.error("Error inserting combo order items:", comboOrderError);
+        }
+      }
+
+      // Clear combo items from cart
+      const { error: clearComboError } = await serviceClient
+        .from("cart_combo_items")
+        .delete()
+        .eq("cart_id", userCart.id);
+      if (clearComboError) {
+        console.error("Error clearing combo cart items:", clearComboError);
+      }
+    }
+
     const { error: clearCartError } = await serviceClient
       .from("cart_items")
       .delete()

@@ -139,8 +139,11 @@ function validateInput(
   pickupDate: string | null,
   pickupTime: string | null,
   fulfillmentType: string,
+  comboCartItems?: any[],
 ) {
-  if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+  const hasRegularItems = cartItems && Array.isArray(cartItems) && cartItems.length > 0;
+  const hasComboItems = comboCartItems && Array.isArray(comboCartItems) && comboCartItems.length > 0;
+  if (!hasRegularItems && !hasComboItems) {
     return { valid: false, error: "Invalid cart items" };
   }
 
@@ -162,15 +165,16 @@ function calculateOrderTotal(
   promoDiscount = 0,
   deliveryFee = 0,
   taxAmount = 0,
+  comboSubtotal = 0,
 ) {
-  const subtotal = cartItems.reduce((sum: number, item: any) => {
+  const subtotal = (cartItems || []).reduce((sum: number, item: any) => {
     if (item.product.is_weighted && item.weight) {
       return sum + item.weight * item.product.price_per_unit;
     }
     return sum + item.quantity * item.product.price_per_unit;
   }, 0);
 
-  return Math.max(subtotal - promoDiscount + deliveryFee + taxAmount, 0);
+  return Math.max(subtotal + comboSubtotal - promoDiscount + deliveryFee + taxAmount, 0);
 }
 
 /**
@@ -383,6 +387,7 @@ serve(async (req) => {
         requestData.pickupDate,
         requestData.pickupTime,
         requestData.fulfillmentType || "delivery",
+        requestData.comboCartItems,
       );
 
       if (!validation.valid) {
@@ -426,25 +431,66 @@ serve(async (req) => {
 
     // --- SERVER-SIDE PRICE VALIDATION ---
     // Never trust client-sent prices. Fetch real prices from DB.
-    let cartItems: any[];
-    let subtotal: number;
-    let taxAmount: number;
+    let cartItems: any[] = [];
+    let subtotal = 0;
+    let taxAmount = 0;
 
-    try {
-      const enriched = await validateAndEnrichCartItems(serviceClient, rawCartItems);
-      cartItems = enriched.items;
-      subtotal = enriched.serverSubtotal;
-      taxAmount = enriched.serverTaxAmount;
-      console.log("Server-side prices validated. Subtotal:", subtotal, "Tax:", taxAmount);
-    } catch (priceError: any) {
-      console.error("Price validation failed:", priceError);
-      return new Response(
-        JSON.stringify({ error: priceError.message }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+    if (rawCartItems && rawCartItems.length > 0) {
+      try {
+        const enriched = await validateAndEnrichCartItems(serviceClient, rawCartItems);
+        cartItems = enriched.items;
+        subtotal = enriched.serverSubtotal;
+        taxAmount = enriched.serverTaxAmount;
+        console.log("Server-side prices validated. Subtotal:", subtotal, "Tax:", taxAmount);
+      } catch (priceError: any) {
+        console.error("Price validation failed:", priceError);
+        return new Response(
+          JSON.stringify({ error: priceError.message }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
+    // --- SERVER-SIDE COMBO PRICE CALCULATION ---
+    let comboSubtotal = 0;
+    if (comboCartItems && comboCartItems.length > 0) {
+      // Fetch combo prices from DB to validate
+      const comboIds = comboCartItems.map((ci: any) => ci.combo_id);
+      const { data: dbCombos, error: comboFetchError } = await serviceClient
+        .from("product_combos")
+        .select("id, combo_price, combo_items(id, is_addon, addon_price)")
+        .in("id", comboIds);
+
+      if (comboFetchError) {
+        console.error("Failed to fetch combo prices:", comboFetchError);
+      }
+
+      const comboMap = new Map<string, any>();
+      for (const c of dbCombos || []) {
+        comboMap.set(c.id, c);
+      }
+
+      for (const comboItem of comboCartItems) {
+        const dbCombo = comboMap.get(comboItem.combo_id);
+        if (!dbCombo) {
+          console.warn("Combo not found in DB:", comboItem.combo_id);
+          continue;
+        }
+        let itemTotal = dbCombo.combo_price;
+        // Add selected addon prices from DB
+        const addonMap = new Map<string, number>();
+        for (const ci of dbCombo.combo_items || []) {
+          if (ci.is_addon) addonMap.set(ci.id, ci.addon_price || 0);
+        }
+        for (const addonId of comboItem.selected_addon_ids || []) {
+          itemTotal += addonMap.get(addonId) || 0;
+        }
+        comboSubtotal += itemTotal * comboItem.quantity;
+      }
+      console.log("Server-side combo subtotal:", comboSubtotal);
     }
 
     // --- SERVER-SIDE DELIVERY FEE ---
@@ -548,6 +594,7 @@ serve(async (req) => {
       finalPromoDiscount,
       deliveryFee,
       taxAmount,
+      comboSubtotal,
     );
     console.log(
       "Final order total with discount, delivery fee, and tax:",
@@ -655,7 +702,7 @@ serve(async (req) => {
         delivery_distance: deliveryDistance,
         delivery_zone: deliveryZone,
         tax_amount: taxAmount,
-        taxable_amount: subtotal,
+        taxable_amount: subtotal + comboSubtotal,
       })
       .select()
       .single();

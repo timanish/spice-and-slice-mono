@@ -252,6 +252,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     const {
       cartItems: rawCartItems,
+      comboCartItems,
       successUrl,
       cancelUrl,
       deliveryDate,
@@ -264,7 +265,9 @@ serve(async (req) => {
 
     console.log("Checkout request for user:", userId);
 
-    if (!rawCartItems || !Array.isArray(rawCartItems) || rawCartItems.length === 0) {
+    const hasRegularItems = rawCartItems && Array.isArray(rawCartItems) && rawCartItems.length > 0;
+    const hasComboItems = comboCartItems && Array.isArray(comboCartItems) && comboCartItems.length > 0;
+    if (!hasRegularItems && !hasComboItems) {
       return new Response(JSON.stringify({ error: "Invalid cart items" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -272,25 +275,55 @@ serve(async (req) => {
     }
 
     // --- SERVER-SIDE PRICE VALIDATION ---
-    let cartItems: any[];
-    let subtotal: number;
-    let taxAmount: number;
+    let cartItems: any[] = [];
+    let subtotal = 0;
+    let taxAmount = 0;
 
-    try {
-      const validated = await validateCartPrices(serviceClient, rawCartItems);
-      cartItems = validated.validatedItems;
-      subtotal = validated.serverSubtotal;
-      taxAmount = validated.serverTaxAmount;
-      console.log("Server-side prices validated. Subtotal:", subtotal, "Tax:", taxAmount);
-    } catch (priceError: any) {
-      console.error("Price validation failed:", priceError);
-      return new Response(
-        JSON.stringify({ error: priceError.message }),
-        {
+    if (hasRegularItems) {
+      try {
+        const validated = await validateCartPrices(serviceClient, rawCartItems);
+        cartItems = validated.validatedItems;
+        subtotal = validated.serverSubtotal;
+        taxAmount = validated.serverTaxAmount;
+        console.log("Server-side prices validated. Subtotal:", subtotal, "Tax:", taxAmount);
+      } catch (priceError: any) {
+        console.error("Price validation failed:", priceError);
+        return new Response(
+          JSON.stringify({ error: priceError.message }),
+          {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+    }
+
+    // --- SERVER-SIDE COMBO PRICE CALCULATION ---
+    let comboSubtotal = 0;
+    if (hasComboItems) {
+      const comboIds = comboCartItems.map((ci: any) => ci.combo_id);
+      const { data: dbCombos } = await serviceClient
+        .from("product_combos")
+        .select("id, combo_price, combo_items(id, is_addon, addon_price)")
+        .in("id", comboIds);
+
+      const comboMap = new Map<string, any>();
+      for (const c of dbCombos || []) comboMap.set(c.id, c);
+
+      for (const comboItem of comboCartItems) {
+        const dbCombo = comboMap.get(comboItem.combo_id);
+        if (!dbCombo) continue;
+        let itemTotal = dbCombo.combo_price;
+        const addonMap = new Map<string, number>();
+        for (const ci of dbCombo.combo_items || []) {
+          if (ci.is_addon) addonMap.set(ci.id, ci.addon_price || 0);
+        }
+        for (const addonId of comboItem.selected_addon_ids || []) {
+          itemTotal += addonMap.get(addonId) || 0;
+        }
+        comboSubtotal += itemTotal * comboItem.quantity;
+      }
+      console.log("Server-side combo subtotal:", comboSubtotal);
     }
 
     // --- SERVER-SIDE DELIVERY FEE ---
@@ -386,6 +419,42 @@ serve(async (req) => {
       };
     });
 
+    // Add combo line items for Stripe
+    if (hasComboItems) {
+      for (const comboItem of comboCartItems) {
+        const comboIds = [comboItem.combo_id];
+        // We already fetched combo prices above, recalculate unit price
+        const dbCombosForLine = await serviceClient
+          .from("product_combos")
+          .select("id, name, combo_price, image_url, combo_items(id, is_addon, addon_price)")
+          .eq("id", comboItem.combo_id)
+          .single();
+
+        if (dbCombosForLine.data) {
+          const dbCombo = dbCombosForLine.data;
+          let unitPrice = dbCombo.combo_price;
+          for (const addonId of comboItem.selected_addon_ids || []) {
+            const addon = (dbCombo.combo_items || []).find((ci: any) => ci.id === addonId && ci.is_addon);
+            if (addon) unitPrice += addon.addon_price || 0;
+          }
+
+          const selectedAddonCount = (comboItem.selected_addon_ids || []).length;
+          lineItems.push({
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `${dbCombo.name} (Combo)`,
+                description: selectedAddonCount > 0 ? `Includes ${selectedAddonCount} add-on(s)` : undefined,
+                images: dbCombo.image_url ? [dbCombo.image_url] : undefined,
+              },
+              unit_amount: Math.round(unitPrice * 100),
+            },
+            quantity: comboItem.quantity,
+          });
+        }
+      }
+    }
+
     // Add delivery fee as a line item only for delivery orders
     if (deliveryFee > 0 && fulfillmentType === "delivery") {
       lineItems.push({
@@ -467,7 +536,9 @@ serve(async (req) => {
         delivery_distance: deliveryDistance?.toString() || "",
         delivery_zone: deliveryZone || "",
         tax_amount: taxAmount.toString(),
-        taxable_amount: subtotal.toString(),
+        taxable_amount: (subtotal + comboSubtotal).toString(),
+        combo_subtotal: comboSubtotal.toString(),
+        combo_cart_items: hasComboItems ? JSON.stringify(comboCartItems) : "",
       },
     });
 
