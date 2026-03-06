@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart";
 import { useToast } from "@/hooks/use-toast";
 import { useUser as useClerkUser, useClerk } from "@clerk/clerk-react";
-import { Flame, Package, Tag, Trash2 } from "lucide-react";
+import { AlertCircle, Flame, Package, Tag, Trash2 } from "lucide-react";
 import { memoizationUtils } from "@/stores/cart/operations/memoization";
 import { useTaxCalculation } from "@/hooks/useTaxCalculation";
 import ProductImage from "./ProductImage";
@@ -26,6 +26,7 @@ interface Product {
   price_per_unit: number;
   inventory_count: number;
   inventory_weight: number;
+  track_inventory?: boolean;
   image_url?: string;
   is_weighted?: boolean;
   unit_of_measure?: string;
@@ -105,6 +106,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
   }, [isSignedIn, user?.id]);
 
   const handleAddToCart = async () => {
+    if (isOutOfStock) return;
+
     // SECURITY: Check Clerk authentication before adding to cart
     if (!isSignedIn || !user?.id) {
       toast({
@@ -176,7 +179,14 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
   const buttonLabel = "Add to Cart";
 
-  const isDisabled = isAdding || isLoading;
+  // Out of stock check: only enforce when inventory tracking is enabled
+  const isOutOfStock = product.track_inventory === true && (
+    product.is_weighted
+      ? product.inventory_weight <= 0
+      : product.inventory_count <= 0
+  );
+
+  const isDisabled = isAdding || isLoading || isOutOfStock;
   const totalPrice = product.is_weighted ? (weight * product.price_per_unit) : product.price_per_unit;
 
   // Calculate minimum order price if applicable
@@ -194,7 +204,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
   return (
     <Card className="group relative flex flex-col h-full min-h-[420px] overflow-hidden bg-gradient-to-b from-food-cream to-white border border-gray-100 shadow-[0_2px_12px_rgba(139,69,19,0.08)] hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(139,0,0,0.12)] transition-all duration-300">
       {/* Minimum Order Badge */}
-      {hasMinimumOrder && (
+      {hasMinimumOrder && !isOutOfStock && (
         <div className="absolute top-2 left-2 z-10">
           <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">
             Min: {product.min_order_value} {product.min_order_unit}
@@ -212,12 +222,25 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </div>
       )}
 
+      {/* Out of Stock Badge */}
+      {isOutOfStock && (
+        <div className="absolute top-2 left-2 z-20">
+          <Badge className="bg-gray-800 hover:bg-gray-800 text-white text-xs flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Out of Stock
+          </Badge>
+        </div>
+      )}
+
       {/* Product Image */}
       <div className="relative overflow-hidden flex-shrink-0">
-        <ProductImage 
-          imageUrl={product.image_url} 
-          alt={product.name} 
+        <ProductImage
+          imageUrl={product.image_url}
+          alt={product.name}
         />
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-white/50" />
+        )}
       </div>
 
       {/* Product Info */}
@@ -354,9 +377,19 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
       {/* Footer with Add to Cart Button */}
       <CardFooter className="p-3 md:p-4 pt-0 flex-shrink-0">
-        {isInCart ? (
-          <Button 
-            variant="outline" 
+        {isOutOfStock ? (
+          <Button
+            variant="outline"
+            size="default"
+            className="w-full cursor-not-allowed opacity-60 border-gray-300 text-gray-500"
+            disabled
+          >
+            <AlertCircle className="mr-2 h-4 w-4" />
+            Out of Stock
+          </Button>
+        ) : isInCart ? (
+          <Button
+            variant="outline"
             size="default"
             className="w-full group/remove hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
             onClick={() => {
