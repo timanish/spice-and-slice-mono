@@ -27,6 +27,14 @@ export const useCartLogic = (
     }
   }, [isSignedIn, user?.id]);
 
+  // Fetch cart on sign-in so the badge count is visible without opening the cart
+  useEffect(() => {
+    if (isSignedIn && user?.id) {
+      fetchCart();
+    }
+  }, [isSignedIn, user?.id]);
+
+  // Also refresh when the cart sheet is opened
   useEffect(() => {
     if (isOpen && isSignedIn && user?.id) {
       fetchCart();
