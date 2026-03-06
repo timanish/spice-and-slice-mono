@@ -2,18 +2,25 @@
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
 import CartItem from '../CartItem';
-import { CartItem as CartItemType } from '@/stores/cart/types';
+import CartComboItemComponent from '../CartComboItem';
+import { CartItem as CartItemType, CartComboItem as CartComboItemType } from '@/stores/cart/types';
 
 interface CartItemListProps {
   items: CartItemType[];
+  comboItems: CartComboItemType[];
   onRemoveItem: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  onRemoveCombo: (cartComboItemId: string) => void;
+  onUpdateComboQuantity: (cartComboItemId: string, quantity: number) => void;
 }
 
-const CartItemList: React.FC<CartItemListProps> = ({ 
-  items, 
-  onRemoveItem, 
-  onUpdateQuantity 
+const CartItemList: React.FC<CartItemListProps> = ({
+  items,
+  comboItems,
+  onRemoveItem,
+  onUpdateQuantity,
+  onRemoveCombo,
+  onUpdateComboQuantity,
 }) => {
   return (
     <>
@@ -30,6 +37,14 @@ const CartItemList: React.FC<CartItemListProps> = ({
             flash_deal_id={item.flash_deal_id}
             onRemove={() => onRemoveItem(item.product_id)}
             onUpdateQuantity={(quantity) => onUpdateQuantity(item.product_id, quantity)}
+          />
+        ))}
+        {comboItems.map((item) => (
+          <CartComboItemComponent
+            key={item.id}
+            item={item}
+            onRemove={() => onRemoveCombo(item.id)}
+            onUpdateQuantity={(quantity) => onUpdateComboQuantity(item.id, quantity)}
           />
         ))}
       </div>

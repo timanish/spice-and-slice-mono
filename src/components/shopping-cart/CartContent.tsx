@@ -15,7 +15,7 @@ interface CartContentProps {
 
 const CartContent: React.FC<CartContentProps> = ({ onClose }) => {
   const navigate = useNavigate();
-  const { items, removeFromCart, updateQuantity, isLoading, hasError, errorMessage, retryFetchCart } = useCartStore();
+  const { items, comboItems, removeFromCart, updateQuantity, removeCombo, updateComboQuantity, isLoading, hasError, errorMessage, retryFetchCart } = useCartStore();
   const [isRateLimited, setIsRateLimited] = useState(false);
   
   // Calculate subtotal with discounts
@@ -23,13 +23,23 @@ const CartContent: React.FC<CartContentProps> = ({ onClose }) => {
     const basePrice = item.product.is_weighted && item.weight
       ? item.weight * item.product.price_per_unit
       : item.quantity * item.product.price_per_unit;
-    
+
     // Apply discount if present
     const discount = item.discount_percentage || 0;
     const finalPrice = basePrice * (1 - discount / 100);
-    
+
     return sum + finalPrice;
   }, 0);
+
+  // Calculate combo subtotal
+  const comboSubtotal = comboItems.reduce((sum, item) => {
+    const addonTotal = item.combo.items
+      .filter((ci) => ci.is_addon && item.selected_addon_ids.includes(ci.id))
+      .reduce((s, ci) => s + (ci.addon_price || 0), 0);
+    return sum + (item.combo.combo_price + addonTotal) * item.quantity;
+  }, 0);
+
+  const totalSubtotal = subtotal + comboSubtotal;
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -76,17 +86,20 @@ const CartContent: React.FC<CartContentProps> = ({ onClose }) => {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && comboItems.length === 0) {
     return <EmptyCart onClose={onClose} />;
   }
 
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex-1 overflow-auto">
-        <CartItemList 
+        <CartItemList
           items={items}
+          comboItems={comboItems}
           onRemoveItem={removeFromCart}
           onUpdateQuantity={updateQuantity}
+          onRemoveCombo={removeCombo}
+          onUpdateComboQuantity={updateComboQuantity}
         />
       </div>
       
@@ -95,13 +108,13 @@ const CartContent: React.FC<CartContentProps> = ({ onClose }) => {
           <div className="space-y-3">
             <div className="flex justify-between items-center pt-3">
               <p className="text-lg font-bold text-gray-900">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(subtotal)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSubtotal)}</p>
             </div>
           </div>
           
           <Button 
             className="w-full h-12 text-base font-semibold bg-food-red hover:bg-food-red/90 shadow-lg hover:shadow-xl transition-all group"
-            disabled={items.length === 0}
+            disabled={items.length === 0 && comboItems.length === 0}
             onClick={handleGoToCheckout}
           >
             <span className="flex items-center gap-2">
