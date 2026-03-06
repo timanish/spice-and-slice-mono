@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, ShoppingBag } from 'lucide-react';
 import { useTikTokVideos } from '@/hooks/useTikTokVideos';
 import TikTokStory from './TikTokStory';
 import TikTokProductShowcase from './TikTokProductShowcase';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePostHogTracking } from '@/hooks/usePostHogTracking';
 
@@ -18,6 +19,9 @@ const TikTokSection = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [direction, setDirection] = useState(0); // -1 for left, 1 for right
   const [addedVideoIds, setAddedVideoIds] = useState<Set<string>>(new Set());
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const activeProducts = videos?.[activeIndex]?.products || [];
 
   // Callback when a video's items are added to cart
   const handleVideoAddedToCart = useCallback((videoId: string) => {
@@ -173,9 +177,6 @@ const TikTokSection = () => {
                         video={videos[activeIndex]}
                         isInView={true}
                         variant="mobile"
-                        products={videos[activeIndex]?.products}
-                        hasAddedToCart={addedVideoIds.has(videos[activeIndex]?.id)}
-                        onAddedToCart={handleVideoAddedToCart}
                       />
                     </motion.div>
                   </AnimatePresence>
@@ -204,8 +205,21 @@ const TikTokSection = () => {
               ))}
             </div>
 
+            {/* Shop Featured Items button */}
+            {activeProducts.length > 0 && (
+              <div className="flex justify-center mt-4">
+                <Button
+                  onClick={() => setIsSheetOpen(true)}
+                  className="bg-food-red hover:bg-food-red/90 text-white font-semibold"
+                >
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  Shop Featured Items ({activeProducts.length})
+                </Button>
+              </div>
+            )}
+
             {/* See more link */}
-            <div className="flex justify-center mt-5">
+            <div className="flex justify-center mt-4">
               <a
                 href="https://www.tiktok.com/@spiceandslicedfw"
                 target="_blank"
@@ -218,89 +232,88 @@ const TikTokSection = () => {
             </div>
           </>
         ) : (
-          /* DESKTOP: Split view - Video on left, Products on right */
-          <div 
-            className="grid grid-cols-1 lg:grid-cols-[1fr,1.1fr] gap-6 lg:gap-8 items-start max-w-6xl mx-auto"
+          /* DESKTOP: Centered video with navigation */
+          <div
+            className="flex flex-col items-center"
             role="region"
             aria-label="TikTok videos from our kitchen"
           >
-            {/* Left side: Video with navigation */}
-            <div className="flex justify-center lg:justify-end">
-              {/* Container with arrows flanking the video */}
-              <div className="relative flex items-center gap-3">
-                {/* Left arrow */}
-                {videos.length > 1 && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={goToPrevious}
-                    className="flex-shrink-0 rounded-full border bg-white hover:bg-gray-50 transition-colors h-10 w-10"
-                    aria-label="Previous video"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                )}
+            {/* Container with arrows flanking the video */}
+            <div className="relative flex items-center gap-3">
+              {/* Left arrow */}
+              {videos.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToPrevious}
+                  className="flex-shrink-0 rounded-full border bg-white hover:bg-gray-50 transition-colors h-10 w-10"
+                  aria-label="Previous video"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
 
-                {/* Video container */}
-                <div className="relative">
-                  {/* Video with simple rounded corners */}
-                  <div className="relative overflow-hidden rounded-xl shadow-md w-[340px]">
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={activeIndex}
-                        initial={{ opacity: 0, x: direction >= 0 ? 100 : -100 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: direction >= 0 ? -100 : 100 }}
-                        transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      >
-                        <TikTokStory
-                          video={videos[activeIndex]}
-                          isInView={true}
-                          variant="desktop"
-                        />
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Dot indicators below video */}
-                  <div className="flex justify-center gap-1.5 mt-3">
-                    {videos.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => goToVideo(index)}
-                        className={`h-1.5 rounded-full transition-all duration-300 ${
-                          index === activeIndex 
-                            ? 'w-6 bg-food-red' 
-                            : 'w-1.5 bg-gray-300 hover:bg-gray-400'
-                        }`}
-                        aria-label={`Go to video ${index + 1}`}
+              {/* Video container */}
+              <div className="relative">
+                <div className="relative overflow-hidden rounded-xl shadow-md w-[340px]">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={activeIndex}
+                      initial={{ opacity: 0, x: direction >= 0 ? 100 : -100 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: direction >= 0 ? -100 : 100 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    >
+                      <TikTokStory
+                        video={videos[activeIndex]}
+                        isInView={true}
+                        variant="desktop"
                       />
-                    ))}
-                  </div>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
 
-                {/* Right arrow */}
-                {videos.length > 1 && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={goToNext}
-                    className="flex-shrink-0 rounded-full border bg-white hover:bg-gray-50 transition-colors h-10 w-10"
-                    aria-label="Next video"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                )}
+                {/* Dot indicators below video */}
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {videos.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToVideo(index)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        index === activeIndex
+                          ? 'w-6 bg-food-red'
+                          : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      aria-label={`Go to video ${index + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
+
+              {/* Right arrow */}
+              {videos.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToNext}
+                  className="flex-shrink-0 rounded-full border bg-white hover:bg-gray-50 transition-colors h-10 w-10"
+                  aria-label="Next video"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              )}
             </div>
 
-            {/* Right side: Product showcase */}
-            <div className="bg-white rounded-xl p-5 lg:p-6 border border-gray-100 shadow-sm">
-              <TikTokProductShowcase 
-                products={videos[activeIndex]?.products || []}
-                videoTitle={videos[activeIndex]?.title}
-              />
-            </div>
+            {/* Shop Featured Items button */}
+            {activeProducts.length > 0 && (
+              <Button
+                onClick={() => setIsSheetOpen(true)}
+                className="mt-4 bg-food-red hover:bg-food-red/90 text-white font-semibold"
+              >
+                <ShoppingBag className="h-4 w-4 mr-2" />
+                Shop Featured Items ({activeProducts.length})
+              </Button>
+            )}
           </div>
         )}
 
@@ -308,6 +321,19 @@ const TikTokSection = () => {
         <div aria-live="polite" className="sr-only">
           {videos[activeIndex] && `Now playing: ${videos[activeIndex].title || 'TikTok video'}, video ${activeIndex + 1} of ${videos.length}`}
         </div>
+
+        {/* Featured Products Sheet */}
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetHeader className="mb-4">
+              <SheetTitle>Featured in this Video</SheetTitle>
+            </SheetHeader>
+            <TikTokProductShowcase
+              products={activeProducts}
+              videoTitle={videos[activeIndex]?.title}
+            />
+          </SheetContent>
+        </Sheet>
     </div>
   );
 };
