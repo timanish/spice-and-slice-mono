@@ -416,6 +416,7 @@ serve(async (req) => {
 
     const {
       cartItems: rawCartItems,
+      comboCartItems,
       deliveryDate,
       deliveryTime,
       promoCode,
@@ -715,6 +716,48 @@ serve(async (req) => {
       console.log("Order items created successfully:", insertedItems);
     }
 
+    // Handle combo cart items
+    if (comboCartItems && comboCartItems.length > 0) {
+      console.log("Adding combo order items");
+      const comboOrderItems: any[] = [];
+
+      for (const comboItem of comboCartItems) {
+        // Add each product in the combo as an order item
+        const comboProducts = comboItem.combo?.items || [];
+        for (const ci of comboProducts) {
+          // Skip add-ons that weren't selected
+          if (ci.is_addon && !comboItem.selected_addon_ids?.includes(ci.id))
+            continue;
+
+          comboOrderItems.push({
+            order_id: order.id,
+            product_id: ci.product_id,
+            quantity: ci.weight
+              ? ci.weight
+              : ci.quantity * comboItem.quantity,
+            price_per_unit: ci.is_addon
+              ? (ci.addon_price || 0) / ci.quantity
+              : 0, // Combo products have bundled pricing
+            tax_rate: null,
+            tax_amount: 0,
+          });
+        }
+      }
+
+      if (comboOrderItems.length > 0) {
+        const { error: comboOrderError } = await serviceClient
+          .from("order_items")
+          .insert(comboOrderItems)
+          .select();
+
+        if (comboOrderError) {
+          console.error("Error creating combo order items:", comboOrderError);
+        } else {
+          console.log("Combo order items created successfully");
+        }
+      }
+    }
+
     console.log("Clearing user's cart");
     const { data: userCart } = await serviceClient
       .from("carts")
@@ -732,6 +775,18 @@ serve(async (req) => {
         console.error("Error clearing cart:", clearCartError);
       } else {
         console.log("Cart cleared successfully");
+      }
+
+      // Clear combo items from cart
+      const { error: clearComboError } = await serviceClient
+        .from("cart_combo_items")
+        .delete()
+        .eq("cart_id", userCart.id);
+
+      if (clearComboError) {
+        console.error("Error clearing combo cart items:", clearComboError);
+      } else {
+        console.log("Combo cart items cleared successfully");
       }
     } else {
       console.log("No cart found to clear");
@@ -755,6 +810,31 @@ serve(async (req) => {
           <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">$${itemTotal.toFixed(
             2,
           )}</td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    // Format combo items for email
+    const formattedComboItems = (comboCartItems || [])
+      .map((comboItem: any) => {
+        const comboTotal = comboItem.combo.combo_price * comboItem.quantity;
+        const addonTotal =
+          (comboItem.combo.items || [])
+            .filter(
+              (ci: any) =>
+                ci.is_addon &&
+                comboItem.selected_addon_ids?.includes(ci.id),
+            )
+            .reduce(
+              (sum: number, ci: any) => sum + (ci.addon_price || 0),
+              0,
+            ) * comboItem.quantity;
+
+        return `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${comboItem.quantity}x ${comboItem.combo.name} (Combo)</td>
+          <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">$${(comboTotal + addonTotal).toFixed(2)}</td>
         </tr>
       `;
       })
@@ -818,6 +898,7 @@ serve(async (req) => {
             </thead>
             <tbody>
               ${formattedCartItems}
+              ${formattedComboItems}
             </tbody>
             <tfoot>
               <tr>
@@ -842,7 +923,7 @@ serve(async (req) => {
               </tr>
             </tfoot>
           </table>
-          
+
           <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
             <p><strong>Payment Method: ${
               fulfillmentType === "delivery"
@@ -1006,6 +1087,7 @@ serve(async (req) => {
           </thead>
           <tbody>
             ${formattedCartItems}
+            ${formattedComboItems}
           </tbody>
           <tfoot>
             <tr>
@@ -1030,7 +1112,7 @@ serve(async (req) => {
             </tr>
           </tfoot>
         </table>
-        
+
         <p style="margin-top: 20px;"><strong>Payment Method: ${
           fulfillmentType === "delivery" ? "Cash on Delivery" : "Cash on Pickup"
         }</strong></p>
