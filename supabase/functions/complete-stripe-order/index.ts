@@ -377,7 +377,7 @@ serve(async (req) => {
     // Handle combo items from cart
     const { data: comboCartItems } = await serviceClient
       .from("cart_combo_items")
-      .select("*, product_combos(id, combo_price, combo_items(id, product_id, quantity, weight, is_addon, addon_price))")
+      .select("*, product_combos(id, name, combo_price, combo_items(id, product_id, quantity, weight, is_addon, addon_price))")
       .eq("cart_id", userCart.id);
 
     if (comboCartItems && comboCartItems.length > 0) {
@@ -385,15 +385,28 @@ serve(async (req) => {
       for (const comboItem of comboCartItems) {
         const combo = comboItem.product_combos;
         if (!combo) continue;
-        for (const ci of combo.combo_items || []) {
-          if (ci.is_addon && !(comboItem.selected_addon_ids || []).includes(ci.id)) continue;
+
+        // Calculate addon total for this combo
+        const selectedItems = (combo.combo_items || []).filter((ci: any) =>
+          !ci.is_addon || (comboItem.selected_addon_ids || []).includes(ci.id)
+        );
+        const addonTotal = selectedItems
+          .filter((ci: any) => ci.is_addon)
+          .reduce((s: number, ci: any) => s + (ci.addon_price || 0), 0);
+        const comboUnitPrice = combo.combo_price + addonTotal;
+
+        for (let i = 0; i < selectedItems.length; i++) {
+          const ci = selectedItems[i];
           comboOrderItems.push({
             order_id: order.id,
             product_id: ci.product_id,
             quantity: ci.weight ? ci.weight : ci.quantity * comboItem.quantity,
-            price_per_unit: ci.is_addon ? (ci.addon_price || 0) / ci.quantity : 0,
+            // Put full combo price on the first item, 0 on the rest
+            price_per_unit: i === 0 ? comboUnitPrice : 0,
             tax_rate: null,
             tax_amount: 0,
+            combo_id: combo.id,
+            combo_name: combo.name || "Combo",
           });
         }
       }

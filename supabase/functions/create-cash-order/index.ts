@@ -769,12 +769,23 @@ serve(async (req) => {
       const comboOrderItems: any[] = [];
 
       for (const comboItem of comboCartItems) {
-        // Add each product in the combo as an order item
         const comboProducts = comboItem.combo?.items || [];
+        const comboName = comboItem.combo?.name || "Combo";
+        const comboId = comboItem.combo_id;
+
+        // Calculate addon total for this combo
+        const addonTotal = comboProducts
+          .filter((ci: any) => ci.is_addon && comboItem.selected_addon_ids?.includes(ci.id))
+          .reduce((s: number, ci: any) => s + (ci.addon_price || 0), 0);
+        const comboUnitPrice = (comboItem.combo?.combo_price || 0) + addonTotal;
+
         for (const ci of comboProducts) {
-          // Skip add-ons that weren't selected
           if (ci.is_addon && !comboItem.selected_addon_ids?.includes(ci.id))
             continue;
+
+          const isFirstItem = ci === comboProducts.find((p: any) =>
+            !p.is_addon || comboItem.selected_addon_ids?.includes(p.id)
+          );
 
           comboOrderItems.push({
             order_id: order.id,
@@ -782,11 +793,14 @@ serve(async (req) => {
             quantity: ci.weight
               ? ci.weight
               : ci.quantity * comboItem.quantity,
-            price_per_unit: ci.is_addon
-              ? (ci.addon_price || 0) / ci.quantity
-              : 0, // Combo products have bundled pricing
+            // Put full combo price on the first item, 0 on the rest
+            price_per_unit: isFirstItem
+              ? comboUnitPrice
+              : 0,
             tax_rate: null,
             tax_amount: 0,
+            combo_id: comboId,
+            combo_name: comboName,
           });
         }
       }

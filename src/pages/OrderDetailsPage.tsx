@@ -14,6 +14,8 @@ interface OrderItem {
   id: string;
   quantity: number;
   price_per_unit: number;
+  combo_id?: string | null;
+  combo_name?: string | null;
   product: {
     name: string;
     image_url?: string;
@@ -84,6 +86,8 @@ const OrderDetailsPage = () => {
           id: item.id,
           quantity: item.quantity,
           price_per_unit: item.price_per_unit,
+          combo_id: item.combo_id || null,
+          combo_name: item.combo_name || null,
           product: item.products || { name: 'Unknown Product' },
         }));
 
@@ -151,6 +155,21 @@ const OrderDetailsPage = () => {
         <Footer />
       </div>
     );
+  }
+
+  // Separate regular items and combo items
+  const regularItems = order.order_items.filter(item => !item.combo_id);
+
+  // Group combo items by combo_id
+  const comboGroups = new Map<string, { name: string; items: OrderItem[]; totalPrice: number }>();
+  for (const item of order.order_items.filter(i => i.combo_id)) {
+    const key = item.combo_id!;
+    if (!comboGroups.has(key)) {
+      comboGroups.set(key, { name: item.combo_name || 'Combo', items: [], totalPrice: 0 });
+    }
+    const group = comboGroups.get(key)!;
+    group.items.push(item);
+    group.totalPrice += item.quantity * item.price_per_unit;
   }
 
   const subtotal = order.order_items.reduce(
@@ -257,7 +276,8 @@ const OrderDetailsPage = () => {
             <p className="text-gray-500">No items found in this order</p>
           ) : (
             <div className="space-y-4">
-              {order.order_items.map((item) => (
+              {/* Regular items */}
+              {regularItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex justify-between items-center border-b pb-4"
@@ -280,6 +300,30 @@ const OrderDetailsPage = () => {
                   <p className="font-medium">
                     ${(item.quantity * item.price_per_unit).toFixed(2)}
                   </p>
+                </div>
+              ))}
+
+              {/* Combo groups */}
+              {Array.from(comboGroups.entries()).map(([comboId, group]) => (
+                <div key={comboId} className="border-b pb-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{group.name}</p>
+                        <span className="text-xs bg-food-orange text-white px-2 py-0.5 rounded-full">Combo</span>
+                      </div>
+                    </div>
+                    <p className="font-medium">${group.totalPrice.toFixed(2)}</p>
+                  </div>
+                  <div className="ml-4 space-y-1">
+                    {group.items.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="text-gray-400">•</span>
+                        <span>{item.product?.name || 'Unknown Product'}</span>
+                        {item.quantity > 1 && <span className="text-gray-400">(x{item.quantity})</span>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

@@ -453,7 +453,7 @@ async function handleOrdersList(db: any, userId: string) {
     .select(`
       *,
       order_items (
-        id, product_id, quantity, price_per_unit, tax_rate, tax_amount,
+        id, product_id, quantity, price_per_unit, tax_rate, tax_amount, combo_id, combo_name,
         products:product_id ( name, image_url, is_weighted, unit_of_measure )
       )
     `)
@@ -470,7 +470,7 @@ async function handleOrdersGet(db: any, userId: string, payload: any) {
     .select(`
       *,
       order_items (
-        id, product_id, quantity, price_per_unit, tax_rate, tax_amount,
+        id, product_id, quantity, price_per_unit, tax_rate, tax_amount, combo_id, combo_name,
         products:product_id ( name, image_url, is_weighted, unit_of_measure )
       )
     `)
