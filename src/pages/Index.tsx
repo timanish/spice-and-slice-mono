@@ -10,6 +10,7 @@ import TestimonialsSection from '@/components/home/TestimonialsSection';
 import RecipeInspirationSection from '@/components/home/RecipeInspirationSection';
 import GlobalProductSearch from '@/components/home/GlobalProductSearch';
 import TikTokSection from '@/components/home/TikTokSection';
+import ShopCombosSection from '@/components/home/ShopCombosSection';
 import LeaveReviewButton from '@/components/home/LeaveReviewButton';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 
@@ -23,7 +24,18 @@ const Index = memo(() => {
       <Navigation />
       <main>
         <Hero />
-        <TikTokSection />
+        <section className="py-8 md:py-12">
+          <div className="container">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+              <div className="lg:col-span-3">
+                <ShopCombosSection />
+              </div>
+              <div className="lg:col-span-2">
+                <TikTokSection />
+              </div>
+            </div>
+          </div>
+        </section>
         <GlobalProductSearch />
         <CollectionsSection />
         <FeaturedProductsSection />

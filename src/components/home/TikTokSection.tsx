@@ -85,8 +85,7 @@ const TikTokSection = () => {
 
   if (isLoading) {
     return (
-      <section className="py-12 bg-gradient-to-b from-gray-50 to-white">
-        <div className="container">
+      <div>
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-64"></div>
             <div className="flex gap-4 overflow-hidden">
@@ -95,8 +94,7 @@ const TikTokSection = () => {
               ))}
             </div>
           </div>
-        </div>
-      </section>
+      </div>
     );
   }
 
@@ -105,8 +103,7 @@ const TikTokSection = () => {
   }
 
   return (
-    <section className="py-12 bg-gray-50/50">
-      <div className="container">
+    <div>
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
@@ -311,8 +308,7 @@ const TikTokSection = () => {
         <div aria-live="polite" className="sr-only">
           {videos[activeIndex] && `Now playing: ${videos[activeIndex].title || 'TikTok video'}, video ${activeIndex + 1} of ${videos.length}`}
         </div>
-      </div>
-    </section>
+    </div>
   );
 };
 
