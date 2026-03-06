@@ -25,6 +25,7 @@ import AdminFeaturedProductsPage from "./pages/AdminFeaturedProductsPage";
 import AdminTestimonialsPage from "./pages/AdminTestimonialsPage";
 import AdminRecipesPage from "./pages/AdminRecipesPage";
 import AdminFlashDealsPage from "./pages/AdminFlashDealsPage";
+import AdminShopCombosPage from "./pages/AdminShopCombosPage";
 import AdminLunchBoxSubscriptionsPage from "./pages/AdminLunchBoxSubscriptionsPage";
 import AdminLunchBoxMenuPage from "./pages/AdminLunchBoxMenuPage";
 import AdminDeliverySettingsPage from "./pages/AdminDeliverySettingsPage";
@@ -153,6 +154,11 @@ function App() {
                   <Route path="/admin/flash-deals" element={
                     <AdminGuard>
                       <AdminFlashDealsPage />
+                    </AdminGuard>
+                  } />
+                  <Route path="/admin/shop-combos" element={
+                    <AdminGuard>
+                      <AdminShopCombosPage />
                     </AdminGuard>
                   } />
                   <Route path="/admin/subscriptions" element={
