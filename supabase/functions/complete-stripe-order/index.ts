@@ -397,10 +397,18 @@ serve(async (req) => {
 
         for (let i = 0; i < selectedItems.length; i++) {
           const ci = selectedItems[i];
+          // First item carries the combo price — use comboItem.quantity (number of combos)
+          // so that quantity * price_per_unit = correct total.
+          // Other items use ci.quantity * comboItem.quantity for display.
+          const itemQty = ci.weight
+            ? ci.weight
+            : i === 0
+              ? comboItem.quantity
+              : ci.quantity * comboItem.quantity;
           comboOrderItems.push({
             order_id: order.id,
             product_id: ci.product_id,
-            quantity: ci.weight ? ci.weight : ci.quantity * comboItem.quantity,
+            quantity: itemQty,
             // Put full combo price on the first item, 0 on the rest
             price_per_unit: i === 0 ? comboUnitPrice : 0,
             tax_rate: null,

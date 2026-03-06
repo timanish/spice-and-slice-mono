@@ -779,20 +779,27 @@ serve(async (req) => {
           .reduce((s: number, ci: any) => s + (ci.addon_price || 0), 0);
         const comboUnitPrice = (comboItem.combo?.combo_price || 0) + addonTotal;
 
+        let isFirstSelected = true;
         for (const ci of comboProducts) {
           if (ci.is_addon && !comboItem.selected_addon_ids?.includes(ci.id))
             continue;
 
-          const isFirstItem = ci === comboProducts.find((p: any) =>
-            !p.is_addon || comboItem.selected_addon_ids?.includes(p.id)
-          );
+          const isFirstItem = isFirstSelected;
+          isFirstSelected = false;
+
+          // First item carries the combo price — use comboItem.quantity (number of combos)
+          // so that quantity * price_per_unit = correct total.
+          // Other items use ci.quantity * comboItem.quantity for display.
+          const itemQty = ci.weight
+            ? ci.weight
+            : isFirstItem
+              ? comboItem.quantity
+              : ci.quantity * comboItem.quantity;
 
           comboOrderItems.push({
             order_id: order.id,
             product_id: ci.product_id,
-            quantity: ci.weight
-              ? ci.weight
-              : ci.quantity * comboItem.quantity,
+            quantity: itemQty,
             // Put full combo price on the first item, 0 on the rest
             price_per_unit: isFirstItem
               ? comboUnitPrice
