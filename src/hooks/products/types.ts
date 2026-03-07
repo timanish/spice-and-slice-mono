@@ -14,7 +14,9 @@ export interface Product {
   low_stock_weight_threshold: number;
   upc_code: string | null;
   category_id: string;
-  category?: { id: string; name: string; tax_rate: number | null };
+  shippable_nationwide?: boolean | null; // null = inherit from category
+  category?: { id: string; name: string; tax_rate: number | null; shippable_nationwide?: boolean | null };
+  effective_shippable_nationwide?: boolean; // resolved: product override ?? category default ?? false
   sub_category: string | null;
   brand: string | null;
   tags: string[] | null;

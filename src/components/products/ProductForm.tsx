@@ -8,7 +8,10 @@ import { Button } from '@/components/ui/button';
 import { ProductSchema, type ProductFormValues } from '@/lib/validations/product';
 import { ProductImageUpload } from './ProductImageUpload';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Globe } from 'lucide-react';
 import { useCategoriesFetcher } from '@/hooks/useCategoriesFetcher';
 
 interface ProductFormProps {
@@ -38,6 +41,7 @@ export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
       min_order_value: null,
       min_order_unit: null,
       priority: 0,
+      shippable_nationwide: null,
     },
   });
 
@@ -358,7 +362,7 @@ export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
               Override category tax rate for this specific product. Leave empty to use category tax rate.
             </p>
           </div>
-          
+
           <FormField
             control={form.control}
             name="tax_rate"
@@ -366,10 +370,10 @@ export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
               <FormItem>
                 <FormLabel>Tax Rate (%)</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    min="0" 
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
                     max="100"
                     placeholder="e.g., 8.5 for 8.5%"
                     {...field}
@@ -388,7 +392,60 @@ export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
             )}
           />
         </div>
-        
+
+        {/* Shipping Eligibility */}
+        <div className="border rounded-lg p-4 space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium flex items-center gap-1.5">
+              <Globe className="h-4 w-4 text-blue-600" />
+              Nationwide Shipping Eligibility
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Can this product be shipped nationwide? Leave as "Inherit" to use the category's default setting.
+            </p>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="shippable_nationwide"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <RadioGroup
+                    value={field.value === null || field.value === undefined ? 'inherit' : field.value ? 'yes' : 'no'}
+                    onValueChange={(value) => {
+                      if (value === 'inherit') field.onChange(null);
+                      else if (value === 'yes') field.onChange(true);
+                      else field.onChange(false);
+                    }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="inherit" id="shipping-inherit" />
+                      <Label htmlFor="shipping-inherit" className="text-sm font-normal cursor-pointer">
+                        Inherit from category
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="shipping-yes" />
+                      <Label htmlFor="shipping-yes" className="text-sm font-normal cursor-pointer">
+                        Yes — Ships Nationwide
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="shipping-no" />
+                      <Label htmlFor="shipping-no" className="text-sm font-normal cursor-pointer">
+                        No — Local Only
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Creating..." : "Create Product"}
         </Button>

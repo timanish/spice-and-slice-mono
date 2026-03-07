@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart";
 import { useToast } from "@/hooks/use-toast";
 import { useUser as useClerkUser, useClerk } from "@clerk/clerk-react";
-import { AlertCircle, Flame, Package, Tag, Trash2 } from "lucide-react";
+import { AlertCircle, Flame, Globe, Package, Tag, Trash2 } from "lucide-react";
 import { memoizationUtils } from "@/stores/cart/operations/memoization";
 import { useTaxCalculation } from "@/hooks/useTaxCalculation";
 import ProductImage from "./ProductImage";
@@ -37,6 +37,7 @@ interface Product {
   tax_rate?: number | null;
   discount_percentage?: number | null;
   flash_deal_id?: string | null;
+  effective_shippable_nationwide?: boolean;
 }
 
 interface ProductCardProps {
@@ -228,6 +229,16 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           <Badge className="bg-gray-800 hover:bg-gray-800 text-white text-xs flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
             Out of Stock
+          </Badge>
+        </div>
+      )}
+
+      {/* Ships Nationwide Badge */}
+      {product.effective_shippable_nationwide && !isOutOfStock && (
+        <div className={`absolute ${hasDiscount ? 'top-[4.5rem]' : 'top-2'} right-2 z-10`}>
+          <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-xs flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            Ships Nationwide
           </Badge>
         </div>
       )}

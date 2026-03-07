@@ -52,7 +52,7 @@ const fetchProductsFromDB = async (): Promise<Product[]> => {
       .select(
         `
         *,
-        category:categories(id, name, tax_rate, is_active, priority)
+        category:categories(id, name, tax_rate, is_active, priority, shippable_nationwide)
       `
       )
       .eq("is_active", true)
@@ -88,7 +88,12 @@ const fetchProductsFromDB = async (): Promise<Product[]> => {
         // Finally by name alphabetically
         return (a.name || "").localeCompare(b.name || "");
       });
-      allProducts = [...allProducts, ...sortedProducts];
+      // Compute effective shippable_nationwide flag for each product
+      const productsWithShipping = sortedProducts.map((p: any) => ({
+        ...p,
+        effective_shippable_nationwide: p.shippable_nationwide ?? p.category?.shippable_nationwide ?? false,
+      }));
+      allProducts = [...allProducts, ...productsWithShipping];
 
       if (data.length < pageSize) {
         hasMore = false;
