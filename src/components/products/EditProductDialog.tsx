@@ -28,6 +28,7 @@ interface EditProductDialogProps {
     min_order_value?: number | null;
     min_order_unit?: 'pieces' | 'kg' | 'lbs' | null;
     tax_rate?: number | null;
+    shippable_nationwide?: boolean | null;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -76,6 +77,7 @@ export const EditProductDialog = ({
           min_order_unit: data.min_order_unit,
           tax_rate: data.tax_rate,
           priority: data.priority ?? 0,
+          shippable_nationwide: data.shippable_nationwide,
           updated_at: new Date().toISOString(),
         },
         [{ column: 'id', operator: 'eq', value: product.id }],

@@ -55,6 +55,27 @@ export function validateMinimumOrders(
 }
 
 /**
+ * Validates that all cart items are eligible for the selected fulfillment type.
+ * When nationwide shipping is selected, local-only items are flagged.
+ */
+export function validateShippingEligibility(
+  items: CartItem[],
+  fulfillmentType: "delivery" | "pickup" | "nationwide"
+): { isValid: boolean; localOnlyItems: string[] } {
+  if (fulfillmentType !== "nationwide") {
+    return { isValid: true, localOnlyItems: [] };
+  }
+
+  const localOnly = items.filter(
+    (item) => !item.product.shippable_nationwide
+  );
+  return {
+    isValid: localOnly.length === 0,
+    localOnlyItems: localOnly.map((item) => item.product.name),
+  };
+}
+
+/**
  * Generates a user-friendly error message for minimum order validation failures
  */
 export function formatMinimumOrderErrors(

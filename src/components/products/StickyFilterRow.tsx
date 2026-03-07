@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { X, ChevronDown, Globe, SlidersHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -121,11 +121,20 @@ const StickyFilterRow: React.FC<StickyFilterRowProps> = ({
     onFilterChange(newFilters);
   };
 
-  const hasActiveFilters = 
+  const handleRemoveNationwide = () => {
+    const newFilters = {
+      ...filters,
+      shippableNationwide: false
+    };
+    onFilterChange(newFilters);
+  };
+
+  const hasActiveFilters =
     filters.searchTerm.length > 0 ||
-    filters.categories.length > 0 || 
-    filters.brands.length > 0 || 
-    filters.priceRangeModified;
+    filters.categories.length > 0 ||
+    filters.brands.length > 0 ||
+    filters.priceRangeModified ||
+    filters.shippableNationwide;
 
   const isPriceFiltered = filters.priceRangeModified && 
     (filters.priceRange[0] !== minPrice || filters.priceRange[1] !== maxPrice);
@@ -185,7 +194,7 @@ const StickyFilterRow: React.FC<StickyFilterRowProps> = ({
 
             {/* Brand Badges */}
             {filters.brands.map(brand => (
-              <Badge 
+              <Badge
                 key={brand}
                 variant="secondary"
                 className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer transition-all hover:scale-105 rounded-full font-medium text-sm"
@@ -195,6 +204,19 @@ const StickyFilterRow: React.FC<StickyFilterRowProps> = ({
                 <X className="h-3.5 w-3.5" />
               </Badge>
             ))}
+
+            {/* Ships Nationwide Badge */}
+            {filters.shippableNationwide && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 cursor-pointer transition-all hover:scale-105 rounded-full font-medium text-sm"
+                onClick={handleRemoveNationwide}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Ships Nationwide
+                <X className="h-3.5 w-3.5" />
+              </Badge>
+            )}
 
             {/* Clear All Button */}
             {hasActiveFilters && (

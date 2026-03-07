@@ -138,6 +138,7 @@ export const useProductManagement = () => {
         min_order_unit: data.min_order_unit,
         tax_rate: data.tax_rate,
         priority: data.priority ?? 0,
+        shippable_nationwide: data.shippable_nationwide,
         is_active: true,
       });
 

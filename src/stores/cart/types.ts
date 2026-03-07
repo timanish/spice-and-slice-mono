@@ -15,6 +15,7 @@ export interface CartItem {
     min_order_unit?: "pieces" | "kg" | "lbs" | null;
     category: string;
     tax_rate?: number | null;
+    shippable_nationwide?: boolean | null;
   };
   // Adding these fields to match usage in CartContent.tsx
   name?: string;

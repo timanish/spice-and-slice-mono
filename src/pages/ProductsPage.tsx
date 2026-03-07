@@ -12,17 +12,19 @@ const ProductsPage = memo(() => {
   const [searchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
   const searchParam = searchParams.get('search');
-  
+  const nationwideParam = searchParams.get('nationwide');
+
   // Check profile completion
   useProfileCompletion();
-  
+
   // Initialize filters with category and search from URL if present - use function form to ensure correct initial value
   const [filters, setFilters] = useState<ProductFiltersType>(() => ({
     searchTerm: searchParam || '',
     categories: categoryParam ? [categoryParam] : [],
     brands: [],
     priceRange: [0, 1000],
-    priceRangeModified: false
+    priceRangeModified: false,
+    shippableNationwide: nationwideParam === 'true'
   }));
 
   // Update filters when URL parameters change
@@ -32,9 +34,10 @@ const ProductsPage = memo(() => {
       searchTerm: searchParam || '',
       categories: categoryParam ? [categoryParam] : [],
       brands: categoryParam ? prev.brands : [], // Keep brands when only search changes
-      priceRangeModified: categoryParam ? false : prev.priceRangeModified // Keep price filter when only search changes
+      priceRangeModified: categoryParam ? false : prev.priceRangeModified, // Keep price filter when only search changes
+      shippableNationwide: nationwideParam === 'true'
     }));
-  }, [categoryParam, searchParam]);
+  }, [categoryParam, searchParam, nationwideParam]);
 
   const handleFilterChange = useCallback((newFilters: ProductFiltersType) => {
     setFilters(newFilters);

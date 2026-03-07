@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useProductQuery } from '@/hooks/products';
 import FilterSection from './FilterSection';
 import PriceRangeFilter from './PriceRangeFilter';
 import CheckboxGroup from './CheckboxGroup';
 import SearchInput from './SearchInput';
+import { Globe } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -29,6 +32,7 @@ export interface ProductFilters {
   brands: string[];
   priceRange: [number, number];
   priceRangeModified?: boolean;
+  shippableNationwide?: boolean;
 }
 
 // Alias for better readability
@@ -50,7 +54,8 @@ const ProductFilters = ({
     categories: [],
     brands: [],
     priceRange: [minPrice, maxPrice],
-    priceRangeModified: false
+    priceRangeModified: false,
+    shippableNationwide: false
   });
   
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -70,7 +75,8 @@ const ProductFilters = ({
         categories: activeFilters.categories || [],
         brands: activeFilters.brands || [],
         priceRange: activeFilters.priceRange || [minPrice, maxPrice],
-        priceRangeModified: activeFilters.priceRangeModified || false
+        priceRangeModified: activeFilters.priceRangeModified || false,
+        shippableNationwide: activeFilters.shippableNationwide || false
       });
     }
   }, [
@@ -78,8 +84,9 @@ const ProductFilters = ({
     JSON.stringify(activeFilters?.categories), 
     JSON.stringify(activeFilters?.brands), 
     JSON.stringify(activeFilters?.priceRange), 
-    activeFilters?.priceRangeModified, 
-    minPrice, 
+    activeFilters?.priceRangeModified,
+    activeFilters?.shippableNationwide,
+    minPrice,
     maxPrice
   ]);
 
@@ -293,7 +300,7 @@ const ProductFilters = ({
                   Brands
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 pb-0">
-                  <CheckboxGroup 
+                  <CheckboxGroup
                     items={brands}
                     selectedItems={filters.brands}
                     onChange={handleBrandChange}
@@ -303,6 +310,25 @@ const ProductFilters = ({
               </AccordionItem>
             </Accordion>
           )}
+
+          {/* Ships Nationwide Toggle */}
+          <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-blue-600" />
+                Ships Nationwide
+              </Label>
+              <p className="text-xs text-gray-500">Show only items that ship across the US</p>
+            </div>
+            <Switch
+              checked={filters.shippableNationwide || false}
+              onCheckedChange={(checked) => {
+                const newFilters = { ...filters, shippableNationwide: checked };
+                setFilters(newFilters);
+                onFilterChange(newFilters);
+              }}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

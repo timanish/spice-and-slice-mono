@@ -60,6 +60,7 @@ export const ProductSchema = z
       .max(10, { message: "Priority cannot exceed 10" })
       .optional()
       .default(0),
+    shippable_nationwide: z.boolean().nullable().optional().default(null),
   })
   .refine(
     (data) => {

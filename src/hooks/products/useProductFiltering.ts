@@ -70,6 +70,11 @@ export const useProductFiltering = (
         return false;
       }
 
+      // Ships nationwide filter
+      if (filters.shippableNationwide && !product.effective_shippable_nationwide) {
+        return false;
+      }
+
       return true;
     });
 

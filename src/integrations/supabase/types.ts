@@ -110,6 +110,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           priority: number | null
+          shippable_nationwide: boolean | null
           tax_rate: number | null
           updated_at: string | null
         }
@@ -121,6 +122,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           priority?: number | null
+          shippable_nationwide?: boolean | null
           tax_rate?: number | null
           updated_at?: string | null
         }
@@ -132,6 +134,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           priority?: number | null
+          shippable_nationwide?: boolean | null
           tax_rate?: number | null
           updated_at?: string | null
         }
@@ -1135,6 +1138,7 @@ export type Database = {
           name: string
           price_per_unit: number
           priority: number | null
+          shippable_nationwide: boolean | null
           sub_category: string | null
           tags: string[] | null
           tax_rate: number | null
@@ -1164,6 +1168,7 @@ export type Database = {
           name: string
           price_per_unit: number
           priority?: number | null
+          shippable_nationwide?: boolean | null
           sub_category?: string | null
           tags?: string[] | null
           tax_rate?: number | null
@@ -1193,6 +1198,7 @@ export type Database = {
           name?: string
           price_per_unit?: number
           priority?: number | null
+          shippable_nationwide?: boolean | null
           sub_category?: string | null
           tags?: string[] | null
           tax_rate?: number | null

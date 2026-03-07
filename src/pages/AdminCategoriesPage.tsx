@@ -5,13 +5,14 @@ import { useAdminCrud } from '@/hooks/useAdminCrud';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Globe } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 
@@ -27,6 +28,7 @@ interface Category {
   active_products_count: number;
   inactive_products_count: number;
   tax_rate: number | null;
+  shippable_nationwide: boolean;
 }
 
 interface ProductStatus {
@@ -47,6 +49,7 @@ const AdminCategoriesPage = () => {
     tax_rate: '',
     priority: 0,
     is_active: true,
+    shippable_nationwide: false,
   });
 
   const { data: categories = [], isLoading } = useQuery({
@@ -142,8 +145,8 @@ const AdminCategoriesPage = () => {
 
   // Create/Update category mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: { id?: string; name: string; description: string; display_order: number; tax_rate: number | null; priority: number; is_active?: boolean }) => {
-      const { id, name, description, display_order, tax_rate, priority, is_active } = data;
+    mutationFn: async (data: { id?: string; name: string; description: string; display_order: number; tax_rate: number | null; priority: number; is_active?: boolean; shippable_nationwide?: boolean }) => {
+      const { id, name, description, display_order, tax_rate, priority, is_active, shippable_nationwide } = data;
 
       let categoryId = id;
 
@@ -165,6 +168,7 @@ const AdminCategoriesPage = () => {
           tax_rate,
           priority,
           is_active,
+          shippable_nationwide,
           updated_at: new Date().toISOString()
         }, [{ column: 'id', operator: 'eq', value: id }]);
 
@@ -200,7 +204,8 @@ const AdminCategoriesPage = () => {
           display_order,
           tax_rate,
           priority,
-          is_active: is_active !== undefined ? is_active : true
+          is_active: is_active !== undefined ? is_active : true,
+          shippable_nationwide: shippable_nationwide || false
         }, '*');
         categoryId = newCategory?.[0]?.id;
       }
@@ -272,6 +277,7 @@ const AdminCategoriesPage = () => {
       tax_rate: '',
       priority: 0,
       is_active: true,
+      shippable_nationwide: false,
     });
   };
 
@@ -284,6 +290,7 @@ const AdminCategoriesPage = () => {
       tax_rate: category.tax_rate ? (category.tax_rate * 100).toString() : '',
       priority: (category as any).priority ?? 0,
       is_active: category.is_active,
+      shippable_nationwide: category.shippable_nationwide || false,
     });
     setIsDialogOpen(true);
   };
@@ -310,6 +317,7 @@ const AdminCategoriesPage = () => {
       tax_rate,
       priority: formData.priority,
       is_active: formData.is_active,
+      shippable_nationwide: formData.shippable_nationwide,
     });
   };
 
@@ -443,6 +451,23 @@ const AdminCategoriesPage = () => {
                   />
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="shippable_nationwide" className="flex items-center gap-1.5">
+                      <Globe className="h-4 w-4 text-blue-600" />
+                      Ships Nationwide (Default)
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Products in this category can be shipped nationwide by default. Individual products can override this.
+                    </p>
+                  </div>
+                  <Switch
+                    id="shippable_nationwide"
+                    checked={formData.shippable_nationwide}
+                    onCheckedChange={(checked) => setFormData({ ...formData, shippable_nationwide: checked })}
+                  />
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => {
                     setIsDialogOpen(false);
@@ -481,6 +506,7 @@ const AdminCategoriesPage = () => {
                     <TableHead>Status</TableHead>
                     <TableHead>Products</TableHead>
                     <TableHead>Default Tax Rate</TableHead>
+                    <TableHead>Ships Nationwide</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -513,6 +539,16 @@ const AdminCategoriesPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>{formatTaxRate(category.tax_rate)}</TableCell>
+                      <TableCell>
+                        {category.shippable_nationwide ? (
+                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1 w-fit">
+                            <Globe className="h-3 w-3" />
+                            Yes
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Local only</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
