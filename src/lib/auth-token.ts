@@ -68,3 +68,21 @@ export async function fetchWithAuth(
     body: JSON.stringify(body),
   });
 }
+
+/**
+ * Call a Supabase edge function without auth (anonymous access).
+ */
+export function fetchAnonymous(
+  functionPath: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+  return fetch(`${supabaseUrl}/functions/v1/${functionPath}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}

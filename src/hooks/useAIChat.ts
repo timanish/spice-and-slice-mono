@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { fetchWithAuth } from "@/lib/auth-token";
+import { fetchWithAuth, fetchAnonymous } from "@/lib/auth-token";
 
 export interface ChatMessage {
   id: string;
@@ -13,13 +13,34 @@ export interface UseAIChatReturn {
   error: string | null;
   sendMessage: (content: string) => Promise<void>;
   clearChat: () => void;
+  remainingMessages: number | null;
 }
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export const useAIChat = (): UseAIChatReturn => {
+const ANON_MESSAGE_LIMIT = 5;
+const ANON_STORAGE_KEY = "ai_chat_count";
+
+function getAnonCount(): number {
+  try {
+    return parseInt(sessionStorage.getItem(ANON_STORAGE_KEY) || "0", 10);
+  } catch {
+    return 0;
+  }
+}
+
+function incrementAnonCount(): void {
+  try {
+    const count = getAnonCount();
+    sessionStorage.setItem(ANON_STORAGE_KEY, String(count + 1));
+  } catch {
+    // sessionStorage unavailable (private browsing etc.)
+  }
+}
+
+export const useAIChat = (isAuthenticated: boolean): UseAIChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +60,14 @@ export const useAIChat = (): UseAIChatReturn => {
   const sendMessage = useCallback(async (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || isStreamingRef.current) return;
+
+    // Check anonymous message limit (client-side)
+    if (!isAuthenticated) {
+      if (getAnonCount() >= ANON_MESSAGE_LIMIT) {
+        setError("signup_required");
+        return;
+      }
+    }
 
     setError(null);
     cancelledRef.current = false;
@@ -69,9 +98,9 @@ export const useAIChat = (): UseAIChatReturn => {
     setIsStreaming(true);
 
     try {
-      const response = await fetchWithAuth("ai-chat", {
-        messages: apiMessages,
-      });
+      const response = isAuthenticated
+        ? await fetchWithAuth("ai-chat", { messages: apiMessages })
+        : await fetchAnonymous("ai-chat", { messages: apiMessages });
 
       if (!response.ok) {
         let errorMessage: string;
@@ -137,6 +166,11 @@ export const useAIChat = (): UseAIChatReturn => {
           }
         }
       }
+
+      // Increment anonymous message counter after successful response
+      if (!isAuthenticated) {
+        incrementAnonCount();
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred";
@@ -155,7 +189,7 @@ export const useAIChat = (): UseAIChatReturn => {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const clearChat = useCallback(() => {
     cancelledRef.current = true;
@@ -164,5 +198,9 @@ export const useAIChat = (): UseAIChatReturn => {
     setError(null);
   }, []);
 
-  return { messages, isStreaming, error, sendMessage, clearChat };
+  const remainingMessages = isAuthenticated
+    ? null
+    : Math.max(0, ANON_MESSAGE_LIMIT - getAnonCount());
+
+  return { messages, isStreaming, error, sendMessage, clearChat, remainingMessages };
 };

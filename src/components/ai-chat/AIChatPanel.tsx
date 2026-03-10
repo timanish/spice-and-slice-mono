@@ -6,10 +6,11 @@ import type { ChatMessage } from "@/hooks/useAIChat";
 
 interface AIChatPanelProps {
   onClose: () => void;
+  isAuthenticated?: boolean;
 }
 
-export const AIChatPanel = ({ onClose }: AIChatPanelProps) => {
-  const { messages, isStreaming, error, sendMessage, clearChat } = useAIChat();
+export const AIChatPanel = ({ onClose, isAuthenticated = true }: AIChatPanelProps) => {
+  const { messages, isStreaming, error, sendMessage, clearChat } = useAIChat(isAuthenticated);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
