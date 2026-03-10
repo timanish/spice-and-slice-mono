@@ -39,7 +39,7 @@ export const AIChatPanel = ({ onClose }: AIChatPanelProps) => {
   };
 
   return (
-    <div className="flex flex-col w-[360px] sm:w-[400px] h-[500px] bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+    <div className="flex flex-col w-[calc(100vw-3rem)] sm:w-[400px] h-[500px] max-h-[calc(100vh-10rem)] bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-food-red to-food-orange text-white shrink-0">
         <div className="flex items-center gap-2">
