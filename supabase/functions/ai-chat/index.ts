@@ -70,11 +70,14 @@ KNOWLEDGE RULES:
 - If a product is listed below, give specifics (name, price, category). If it's not listed, say "I don't see that in our current inventory, but you can call us at 682-255-5004 to check."
 - Never make up products, prices, or deals that aren't in the data below.
 - For weighted items, mention the price is per unit of measure (e.g., per lb, per kg).
+- When asked about delivery, use the DELIVERY ZONES section below to give exact distances, fees, and free shipping thresholds.
 - If asked about something off-topic, briefly redirect: "I can help with anything related to our store and products."
 
 {{PRODUCT_DATA}}
 
 {{FLASH_DEALS}}
+
+{{DELIVERY_ZONES}}
 
 {{USER_CONTEXT}}`;
 
@@ -153,6 +156,34 @@ async function fetchFlashDeals(db: any): Promise<string> {
   } catch (e) {
     console.error("Failed to fetch flash deals:", e);
     return "CURRENT DEALS:\nDeal data temporarily unavailable.";
+  }
+}
+
+async function fetchDeliveryZones(db: any): Promise<string> {
+  try {
+    const { data: zones, error } = await db
+      .from("delivery_zones")
+      .select("zone_name, min_distance, max_distance, delivery_fee, free_shipping_threshold, is_active")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true });
+
+    if (error || !zones || zones.length === 0) {
+      return "DELIVERY ZONES:\nDelivery info temporarily unavailable. Call 682-255-5004 for delivery details.";
+    }
+
+    let summary = "DELIVERY ZONES (from store at 7451 N Beach St, Fort Worth):\n";
+    for (const z of zones) {
+      const fee = z.delivery_fee === 0 ? "FREE" : `$${z.delivery_fee}`;
+      const freeAt = z.free_shipping_threshold > 0
+        ? ` (free delivery on orders over $${z.free_shipping_threshold})`
+        : "";
+      summary += `\n- ${z.min_distance}-${z.max_distance} miles: ${fee}${freeAt}`;
+    }
+    summary += "\n- Beyond max zone: no delivery available, pickup only";
+    return summary;
+  } catch (e) {
+    console.error("Failed to fetch delivery zones:", e);
+    return "DELIVERY ZONES:\nDelivery info temporarily unavailable.";
   }
 }
 
@@ -265,9 +296,10 @@ serve(async (req: Request) => {
     }
 
     // 6. Build system prompt with product data and user context
-    const [productSummary, dealsSummary] = await Promise.all([
+    const [productSummary, dealsSummary, zonesSummary] = await Promise.all([
       fetchProductSummary(db),
       fetchFlashDeals(db),
+      fetchDeliveryZones(db),
     ]);
 
     let contextBlock = "";
@@ -289,6 +321,7 @@ serve(async (req: Request) => {
     const systemPrompt = SYSTEM_PROMPT
       .replace("{{PRODUCT_DATA}}", productSummary)
       .replace("{{FLASH_DEALS}}", dealsSummary)
+      .replace("{{DELIVERY_ZONES}}", zonesSummary)
       .replace("{{USER_CONTEXT}}", contextBlock);
 
     // 7. Call Claude API with streaming
