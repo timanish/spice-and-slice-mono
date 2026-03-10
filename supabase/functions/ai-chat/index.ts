@@ -94,6 +94,10 @@ function validateMessages(messages: any): { valid: ChatMessage[]; error?: string
     if (typeof msg.content !== "string" || msg.content.trim().length === 0) {
       return { valid: [], error: "Each message must have non-empty content" };
     }
+    const MAX_MESSAGE_LENGTH = 4000;
+    if (msg.content.length > MAX_MESSAGE_LENGTH) {
+      return { valid: [], error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` };
+    }
   }
 
   // Keep only the last 20 messages
@@ -121,7 +125,10 @@ serve(async (req: Request) => {
     // 2. Rate limit by IP (pre-auth, 30/min)
     const clientIp = getClientIp(req);
     if (isRateLimitedByIp(clientIp, 30, 60)) {
-      return errorResponse("Too many requests, please try again later", 429);
+      return new Response(JSON.stringify({ error: "Too many requests, please try again later" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
     }
 
     // 3. Authenticate via Clerk JWT
@@ -139,7 +146,10 @@ serve(async (req: Request) => {
 
     // 4. Rate limit by user ID (post-auth, 20/min)
     if (isRateLimitedByProfileId(userId, 20, 60)) {
-      return errorResponse("Too many requests, please try again later", 429);
+      return new Response(JSON.stringify({ error: "Too many requests, please try again later" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
     }
 
     // 5. Parse and validate request body
@@ -157,10 +167,21 @@ serve(async (req: Request) => {
       return errorResponse(validationError);
     }
 
-    // 6. Build system prompt with user context
+    // 6. Build system prompt with user context (sanitized)
     let contextBlock = "";
     if (userContext && typeof userContext === "object") {
-      contextBlock = "\nUser Context:\n" + JSON.stringify(userContext, null, 2);
+      const ALLOWED_CONTEXT_KEYS = new Set(["name", "email", "recentOrders", "preferences"]);
+      const MAX_CONTEXT_LENGTH = 2000;
+      const sanitized: Record<string, any> = {};
+      for (const key of Object.keys(userContext)) {
+        if (ALLOWED_CONTEXT_KEYS.has(key)) {
+          sanitized[key] = userContext[key];
+        }
+      }
+      const serialized = JSON.stringify(sanitized, null, 2);
+      if (serialized.length <= MAX_CONTEXT_LENGTH) {
+        contextBlock = "\nUser Context:\n" + serialized;
+      }
     }
     const systemPrompt = SYSTEM_PROMPT.replace("{{USER_CONTEXT}}", contextBlock);
 
