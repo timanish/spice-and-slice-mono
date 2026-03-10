@@ -7,8 +7,8 @@
  * Flow:
  *  1. CORS preflight
  *  2. Rate limit by IP (pre-auth)
- *  3. Authenticate via Clerk JWT
- *  4. Rate limit by user ID (post-auth)
+ *  3. Authenticate via Clerk JWT (optional — anonymous allowed)
+ *  4. Rate limit: 5/hour anonymous, 20/min authenticated
  *  5. Validate request body
  *  6. Build system prompt with store context
  *  7. Call Claude API with streaming
@@ -163,7 +163,7 @@ interface ChatMessage {
   content: string;
 }
 
-function validateMessages(messages: any): { valid: ChatMessage[]; error?: string } {
+function validateMessages(messages: any, maxHistory = 20): { valid: ChatMessage[]; error?: string } {
   if (!Array.isArray(messages) || messages.length === 0) {
     return { valid: [], error: "messages must be a non-empty array" };
   }
@@ -186,8 +186,8 @@ function validateMessages(messages: any): { valid: ChatMessage[]; error?: string
     }
   }
 
-  // Keep only the last 20 messages
-  const trimmed = messages.slice(-20).map((m: any) => ({
+  // Keep only the last N messages
+  const trimmed = messages.slice(-maxHistory).map((m: any) => ({
     role: m.role as "user" | "assistant",
     content: m.content.trim(),
   }));
@@ -217,25 +217,36 @@ serve(async (req: Request) => {
       });
     }
 
-    // 3. Authenticate via Clerk JWT
+    // 3. Authenticate — optional (anonymous users allowed with stricter limits)
     const db = getServiceClient();
     const authHeader = req.headers.get("Authorization");
-    let userId: string;
+    let userId: string | null = null;
+    let isAnonymous = true;
 
-    try {
-      userId = await authenticateRequest(authHeader, db, false);
-    } catch (authError: any) {
-      const msg = authError.message || "Unauthorized";
-      const status = msg.includes("Admin access required") ? 403 : 401;
-      return errorResponse("Unauthorized: " + msg, status);
+    if (authHeader) {
+      try {
+        userId = await authenticateRequest(authHeader, db, false);
+        isAnonymous = false;
+      } catch {
+        // Invalid/expired token — treat as anonymous
+      }
     }
 
-    // 4. Rate limit by user ID (post-auth, 20/min)
-    if (isRateLimitedByProfileId(userId, 20, 60)) {
-      return new Response(JSON.stringify({ error: "Too many requests, please try again later" }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
-      });
+    // 4. Rate limit — stricter for anonymous users
+    if (isAnonymous) {
+      if (isRateLimitedByIp(clientIp, 5, 3600)) {
+        return new Response(
+          JSON.stringify({ error: "Message limit reached. Sign up for unlimited access.", code: "anon_limit" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } },
+        );
+      }
+    } else {
+      if (isRateLimitedByProfileId(userId!, 20, 60)) {
+        return new Response(
+          JSON.stringify({ error: "Too many requests, please try again later" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } },
+        );
+      }
     }
 
     // 5. Parse and validate request body
@@ -248,7 +259,7 @@ serve(async (req: Request) => {
 
     const { messages, userContext } = body;
 
-    const { valid: validMessages, error: validationError } = validateMessages(messages);
+    const { valid: validMessages, error: validationError } = validateMessages(messages, isAnonymous ? 5 : 20);
     if (validationError) {
       return errorResponse(validationError);
     }
@@ -298,7 +309,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1024,
+        max_tokens: isAnonymous ? 512 : 1024,
         system: systemPrompt,
         messages: validMessages,
         stream: true,
