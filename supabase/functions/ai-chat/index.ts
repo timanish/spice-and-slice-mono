@@ -51,24 +51,110 @@ function errorResponse(message: string, status = 400) {
 
 // --------------- System Prompt ---------------
 
-const SYSTEM_PROMPT = `You are the friendly AI assistant for Spice&Slice Bazaar, an Indian & Nepali grocery and food store.
+const SYSTEM_PROMPT = `You are the AI assistant for Spice&Slice Bazaar, an Indian & Nepali grocery store in Fort Worth, Texas.
 
-Store Information:
-- Name: Spice&Slice Bazaar
+STORE INFO:
 - Address: 7451 N Beach St #172, Fort Worth, TX 76137
 - Phone: 682-255-5004
-- Hours: Monday-Friday 11am-9pm, Saturday-Sunday 11am-10pm
-- Services: Delivery, Pickup, Catering, Lunch Box Subscriptions
-- Website sections: Products, Catering, Lunch Box, Flash Deals
+- Hours: Mon-Fri 11am-9pm, Sat-Sun 11am-10pm
+- Services: Delivery (select zones), Pickup, Catering (call for quotes), Lunch Box Subscriptions
 
-Rules:
-- Keep responses concise and helpful (2-3 sentences when possible).
-- Use a warm, welcoming tone.
-- Do not fabricate product names, prices, or availability — if unsure, suggest the customer check the website or call the store.
-- If a question is off-topic (not related to food, the store, or general cooking), politely redirect the conversation back to how you can help with their food needs.
-- You can help with: product questions, order guidance, store hours/location, catering inquiries, lunch box subscriptions, dietary information, and cooking tips for items sold in the store.
+TONE RULES:
+- Be direct. Answer the question immediately. No filler phrases like "Great question!", "Absolutely!", "I'd be happy to help!", or "That's a great choice!".
+- Keep it short — 1-3 sentences. Only go longer if the question genuinely requires it.
+- Be warm but not performative. Sound like a knowledgeable store employee, not a customer service chatbot.
+- Use plain language. No exclamation marks unless genuinely excited about something.
+
+KNOWLEDGE RULES:
+- Use the CURRENT PRODUCTS and CURRENT DEALS sections below to answer product questions with real data.
+- If a product is listed below, give specifics (name, price, category). If it's not listed, say "I don't see that in our current inventory, but you can call us at 682-255-5004 to check."
+- Never make up products, prices, or deals that aren't in the data below.
+- For weighted items, mention the price is per unit of measure (e.g., per lb, per kg).
+- If asked about something off-topic, briefly redirect: "I can help with anything related to our store and products."
+
+{{PRODUCT_DATA}}
+
+{{FLASH_DEALS}}
 
 {{USER_CONTEXT}}`;
+
+// --------------- Data Fetchers ---------------
+
+async function fetchProductSummary(db: any): Promise<string> {
+  try {
+    const { data: products, error } = await db
+      .from("products")
+      .select("name, price_per_unit, is_weighted, unit_of_measure, category:categories(name), is_active")
+      .eq("is_active", true)
+      .order("priority", { ascending: false })
+      .limit(200);
+
+    if (error || !products || products.length === 0) {
+      return "CURRENT PRODUCTS:\nProduct data temporarily unavailable.";
+    }
+
+    // Group by category
+    const byCategory: Record<string, string[]> = {};
+    for (const p of products) {
+      const cat = p.category?.name || "Other";
+      if (!byCategory[cat]) byCategory[cat] = [];
+      const price = p.is_weighted
+        ? `$${p.price_per_unit}/${p.unit_of_measure || "lb"}`
+        : `$${p.price_per_unit}`;
+      byCategory[cat].push(`${p.name} (${price})`);
+    }
+
+    let summary = "CURRENT PRODUCTS:\n";
+    for (const [cat, items] of Object.entries(byCategory)) {
+      summary += `\n${cat}: ${items.join(", ")}`;
+    }
+    return summary;
+  } catch (e) {
+    console.error("Failed to fetch products:", e);
+    return "CURRENT PRODUCTS:\nProduct data temporarily unavailable.";
+  }
+}
+
+async function fetchFlashDeals(db: any): Promise<string> {
+  try {
+    const now = new Date().toISOString();
+    const { data: deals, error } = await db
+      .from("flash_deals")
+      .select("discount_percentage, start_date, end_date, flash_deal_products(product:products(name, price_per_unit))")
+      .eq("is_active", true)
+      .lte("start_date", now)
+      .gte("end_date", now);
+
+    if (error || !deals || deals.length === 0) {
+      return "CURRENT DEALS:\nNo active flash deals right now.";
+    }
+
+    let summary = "CURRENT DEALS:\n";
+    for (const deal of deals) {
+      const pct = deal.discount_percentage;
+      const products = deal.flash_deal_products
+        ?.map((fdp: any) => {
+          const p = fdp.product;
+          if (!p) return null;
+          const original = p.price_per_unit;
+          const discounted = (original * (1 - pct / 100)).toFixed(2);
+          return `${p.name} — was $${original}, now $${discounted} (${pct}% off)`;
+        })
+        .filter(Boolean);
+
+      if (products && products.length > 0) {
+        const endDate = new Date(deal.end_date).toLocaleDateString("en-US", {
+          month: "short", day: "numeric",
+        });
+        summary += `\n${pct}% off (ends ${endDate}): ${products.join("; ")}`;
+      }
+    }
+    return summary;
+  } catch (e) {
+    console.error("Failed to fetch flash deals:", e);
+    return "CURRENT DEALS:\nDeal data temporarily unavailable.";
+  }
+}
 
 // --------------- Validation ---------------
 
@@ -167,7 +253,12 @@ serve(async (req: Request) => {
       return errorResponse(validationError);
     }
 
-    // 6. Build system prompt with user context (sanitized)
+    // 6. Build system prompt with product data and user context
+    const [productSummary, dealsSummary] = await Promise.all([
+      fetchProductSummary(db),
+      fetchFlashDeals(db),
+    ]);
+
     let contextBlock = "";
     if (userContext && typeof userContext === "object") {
       const ALLOWED_CONTEXT_KEYS = new Set(["name", "email", "recentOrders", "preferences"]);
@@ -183,7 +274,11 @@ serve(async (req: Request) => {
         contextBlock = "\nUser Context:\n" + serialized;
       }
     }
-    const systemPrompt = SYSTEM_PROMPT.replace("{{USER_CONTEXT}}", contextBlock);
+
+    const systemPrompt = SYSTEM_PROMPT
+      .replace("{{PRODUCT_DATA}}", productSummary)
+      .replace("{{FLASH_DEALS}}", dealsSummary)
+      .replace("{{USER_CONTEXT}}", contextBlock);
 
     // 7. Call Claude API with streaming
     const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
