@@ -47,6 +47,7 @@ import { Root } from './Root';
 import { CartInitializer } from "./components/CartInitializer";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { PostHogUserTracker } from "./components/analytics/PostHogUserTracker";
+import { AIChatBubble } from "./components/ai-chat/AIChatBubble";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,7 @@ function App() {
               <AuthProvider>
                 <PostHogUserTracker />
                 <CartInitializer />
+                <AIChatBubble />
                 <Routes>
                   
                   <Route path="/" element={<Index />} />
