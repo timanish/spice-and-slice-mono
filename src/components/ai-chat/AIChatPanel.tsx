@@ -16,7 +16,7 @@ export const AIChatPanel = ({ onClose }: AIChatPanelProps) => {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
 
   // Focus input on mount
@@ -71,7 +71,7 @@ export const AIChatPanel = ({ onClose }: AIChatPanelProps) => {
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" role="log" aria-live="polite">
         {messages.length === 0 && !error && (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-8">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-food-red to-food-orange flex items-center justify-center">
@@ -91,7 +91,7 @@ export const AIChatPanel = ({ onClose }: AIChatPanelProps) => {
         ))}
 
         {error && (
-          <div className="flex justify-center">
+          <div className="flex justify-center" role="alert">
             <span className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-full">
               {error}
             </span>
