@@ -47,6 +47,9 @@
     },
     "send-lunchbox-subscription-email": {
       "verify_jwt": false
+    },
+    "ai-chat": {
+      "verify_jwt": false
     }
   }
 }
