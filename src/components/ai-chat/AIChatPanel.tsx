@@ -6,11 +6,11 @@ import type { ChatMessage } from "@/hooks/useAIChat";
 
 interface AIChatPanelProps {
   onClose: () => void;
-  isAuthenticated?: boolean;
+  isAuthenticated: boolean;
 }
 
-export const AIChatPanel = ({ onClose, isAuthenticated = true }: AIChatPanelProps) => {
-  const { messages, isStreaming, error, sendMessage, clearChat } = useAIChat(isAuthenticated);
+export const AIChatPanel = ({ onClose, isAuthenticated }: AIChatPanelProps) => {
+  const { messages, isStreaming, error, sendMessage, clearChat, remainingMessages } = useAIChat(isAuthenticated);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -103,6 +103,33 @@ export const AIChatPanel = ({ onClose, isAuthenticated = true }: AIChatPanelProp
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Signup prompt for anonymous users at limit */}
+      {!isAuthenticated && (error === "signup_required" || remainingMessages === 0) && (
+        <div className="border-t border-gray-200 px-4 py-3 bg-gradient-to-r from-food-red/5 to-food-orange/5 text-center shrink-0">
+          <p className="text-sm font-medium text-gray-800">
+            Sign up to keep chatting
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Free accounts get unlimited messages
+          </p>
+          <a
+            href="/auth"
+            className="inline-block mt-2 px-4 py-1.5 text-sm font-medium text-white bg-food-red rounded-lg hover:bg-food-red/90 transition-colors"
+          >
+            Sign up free
+          </a>
+        </div>
+      )}
+
+      {/* Remaining messages hint for anonymous users */}
+      {!isAuthenticated && remainingMessages !== null && remainingMessages > 0 && remainingMessages <= 3 && (
+        <div className="text-center py-1 shrink-0">
+          <span className="text-xs text-gray-400">
+            {remainingMessages} free {remainingMessages === 1 ? "message" : "messages"} remaining
+          </span>
+        </div>
+      )}
+
       {/* Input area */}
       <div className="border-t border-gray-200 p-3 flex items-end gap-2 shrink-0">
         <textarea
@@ -112,14 +139,14 @@ export const AIChatPanel = ({ onClose, isAuthenticated = true }: AIChatPanelProp
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           rows={1}
-          disabled={isStreaming}
+          disabled={isStreaming || (!isAuthenticated && remainingMessages === 0)}
           className="flex-1 resize-none max-h-20 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-food-orange focus:border-transparent placeholder-gray-400 disabled:opacity-50"
         />
         <Button
           size="icon"
           className="h-9 w-9 shrink-0 rounded-xl bg-food-red hover:bg-food-red/90 text-white"
           onClick={handleSend}
-          disabled={!input.trim() || isStreaming}
+          disabled={!input.trim() || isStreaming || (!isAuthenticated && remainingMessages === 0)}
           aria-label="Send message"
         >
           {isStreaming ? (

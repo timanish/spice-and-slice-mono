@@ -7,13 +7,17 @@ export const AIChatBubble = () => {
   const { isLoaded, isSignedIn } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!isLoaded || !isSignedIn) return null;
+  // Wait for Clerk to load, but don't gate on isSignedIn
+  if (!isLoaded) return null;
 
   return (
     <div className="fixed bottom-24 right-6 z-50 sm:bottom-6 flex flex-col items-end gap-3">
       {isOpen && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <AIChatPanel onClose={() => setIsOpen(false)} />
+          <AIChatPanel
+            onClose={() => setIsOpen(false)}
+            isAuthenticated={isSignedIn || false}
+          />
         </div>
       )}
 
