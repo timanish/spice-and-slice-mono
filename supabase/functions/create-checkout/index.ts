@@ -538,7 +538,6 @@ serve(async (req) => {
         tax_amount: taxAmount.toString(),
         taxable_amount: (subtotal + comboSubtotal).toString(),
         combo_subtotal: comboSubtotal.toString(),
-        combo_cart_items: hasComboItems ? JSON.stringify(comboCartItems) : "",
       },
     });
 
