@@ -20,7 +20,7 @@ export const useProductFiltering = (
     }
 
     const filtered = allProducts.filter((product) => {
-      // Search term filter - search in name, description, brand, and category
+      // Search term filter - search in name, description, brand, category, and tags
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
         const matchesName = product.name.toLowerCase().includes(searchLower);
@@ -31,12 +31,16 @@ export const useProductFiltering = (
         const matchesCategory = product.category?.name
           ?.toLowerCase()
           .includes(searchLower);
+        const matchesTags = product.tags?.some(
+          (tag) => tag.toLowerCase().includes(searchLower)
+        );
 
         if (
           !matchesName &&
           !matchesDescription &&
           !matchesBrand &&
-          !matchesCategory
+          !matchesCategory &&
+          !matchesTags
         ) {
           return false;
         }

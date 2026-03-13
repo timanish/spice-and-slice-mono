@@ -124,6 +124,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
           handleSuggestionClick(suggestions[highlightedIndex]);
+        } else {
+          // Submit search with the typed term as-is
+          setShowSuggestions(false);
+          setHighlightedIndex(-1);
         }
         break;
       case 'Escape':
