@@ -440,7 +440,8 @@ const CheckoutPage = () => {
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.details || 'Failed to create order');
+          console.error("COD order error:", error);
+          throw new Error('Failed to create order');
         }
 
         const cashOrderResult = await response.json();
@@ -520,7 +521,8 @@ const CheckoutPage = () => {
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.details || error.error || 'Failed to create checkout');
+          console.error("Stripe checkout error:", error);
+          throw new Error('Failed to create checkout');
         }
 
         const checkoutData = await response.json();
@@ -532,14 +534,10 @@ const CheckoutPage = () => {
         }
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "An error occurred during checkout";
       console.error("Checkout error:", error);
       toast({
         title: "Checkout failed",
-        description: errorMessage,
+        description: "Something went wrong. Please try again or contact support if the issue persists.",
         variant: "destructive",
       });
     } finally {
