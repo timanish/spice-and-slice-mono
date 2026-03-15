@@ -1,7 +1,8 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCategoriesFetcher } from "@/hooks/useCategoriesFetcher";
+import { useAdminCrud } from "@/hooks/useAdminCrud";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,6 +124,7 @@ export function BulkMenuItemUploader() {
   const [defaultCategoryId, setDefaultCategoryId] = useState("");
   const [isImporting, setIsImporting] = useState(false);
 
+  const { insert } = useAdminCrud();
   const { data: categories = [] } = useCategoriesFetcher({ includeHidden: true });
 
   // Fetch existing menu items for duplicate detection
@@ -265,7 +267,7 @@ export function BulkMenuItemUploader() {
 
     for (const row of toImport) {
       try {
-        const { error } = await supabase.from("menu_items").insert({
+        await insert("menu_items", {
           name: row.name,
           description: row.description || null,
           price: row.price,
@@ -275,8 +277,6 @@ export function BulkMenuItemUploader() {
           is_spicy: row.is_spicy,
           serves_people: row.serves_people,
         });
-
-        if (error) throw error;
 
         setRows((prev) =>
           prev.map((r) =>
@@ -431,6 +431,7 @@ export function BulkMenuItemUploader() {
                     <TableHead>Name</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Sub-category</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Flags</TableHead>
                     <TableHead className="w-[60px]" />
@@ -538,6 +539,17 @@ export function BulkMenuItemUploader() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={row.sub_category}
+                          onChange={(e) =>
+                            updateRow(row.id, "sub_category", e.target.value)
+                          }
+                          className="h-8 text-sm w-[130px]"
+                          placeholder="e.g., Appetizers"
+                          disabled={row.status === "imported"}
+                        />
                       </TableCell>
                       <TableCell>
                         <Input
