@@ -32,7 +32,9 @@ import {
   Loader2,
   FileSpreadsheet,
   Download,
+  Sparkles,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
 
 interface CsvRow {
   id: string;
@@ -115,14 +117,18 @@ Chicken Tikka Masala,Creamy tomato curry with tender chicken,14.99,,false,true,2
 Vegetable Samosa,Crispy pastry with spiced potato filling,6.99,,true,false,
 Mango Lassi,Sweet mango yogurt drink,4.99,,true,false,1`;
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
 export function BulkMenuItemUploader() {
   const { toast } = useToast();
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [defaultCategoryId, setDefaultCategoryId] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { insert } = useAdminCrud();
   const { data: categories = [] } = useCategoriesFetcher({ includeHidden: true });
@@ -303,6 +309,75 @@ export function BulkMenuItemUploader() {
     });
   };
 
+  const handleGenerateDescriptions = async () => {
+    // Only generate for rows without descriptions
+    const needsDescription = rows.filter(
+      (r) => r.status !== "imported" && !r.description?.trim(),
+    );
+
+    if (needsDescription.length === 0) {
+      toast({ title: "All items already have descriptions" });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const token = await getToken();
+      const items = needsDescription.map((r) => ({
+        name: r.name,
+        sub_category: r.sub_category || undefined,
+      }));
+
+      // Batch in groups of 50
+      for (let i = 0; i < items.length; i += 50) {
+        const batch = items.slice(i, i + 50);
+        const batchRows = needsDescription.slice(i, i + 50);
+
+        const res = await fetch(
+          `${SUPABASE_URL}/functions/v1/generate-menu-descriptions`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ items: batch }),
+          },
+        );
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to generate descriptions");
+        }
+
+        const { descriptions } = await res.json();
+
+        // Match descriptions back to rows
+        setRows((prev) =>
+          prev.map((r) => {
+            const batchIdx = batchRows.findIndex((br) => br.id === r.id);
+            if (batchIdx >= 0 && descriptions[batchIdx]?.description) {
+              return { ...r, description: descriptions[batchIdx].description };
+            }
+            return r;
+          }),
+        );
+      }
+
+      toast({
+        title: `Generated descriptions for ${needsDescription.length} items`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to generate descriptions",
+        description: err.message,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const downloadSample = () => {
     const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -409,6 +484,19 @@ export function BulkMenuItemUploader() {
                   </Badge>
                 )}
               </CardTitle>
+              <Button
+                variant="outline"
+                onClick={handleGenerateDescriptions}
+                disabled={isGenerating || rows.length === 0}
+                className="mr-2"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                {isGenerating ? "Generating..." : "AI Descriptions"}
+              </Button>
               <Button
                 onClick={handleImport}
                 disabled={isImporting || pendingCount === 0}
