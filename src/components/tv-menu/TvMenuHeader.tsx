@@ -21,17 +21,17 @@ export function TvMenuHeader({ text, accentColor, textColor }: Props) {
 
   return (
     <div
-      className="flex items-center justify-between px-8 py-4 shrink-0"
+      className="relative flex items-center justify-center px-8 py-4 shrink-0"
       style={{ borderBottom: `2px solid ${accentColor}22` }}
     >
       <h1
-        className="text-3xl font-serif font-bold"
+        className="text-3xl font-serif font-bold text-center"
         style={{ color: accentColor }}
       >
         {text || "Our Menu"}
       </h1>
       <span
-        className="text-xl font-mono opacity-70"
+        className="absolute right-8 text-xl font-mono opacity-70"
         style={{ color: textColor }}
       >
         {formattedTime}
