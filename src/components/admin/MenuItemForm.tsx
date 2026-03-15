@@ -35,6 +35,7 @@ interface MenuItemFormProps {
   categories: Category[];
   defaultValues?: Partial<MenuItemFormValues>;
   submitLabel?: string;
+  currentImageUrl?: string | null;
 }
 
 export const MenuItemForm = ({ 
@@ -51,7 +52,8 @@ export const MenuItemForm = ({
     is_spicy: false,
     serves_people: null,
   }, 
-  submitLabel = "Create Menu Item" 
+  submitLabel = "Create Menu Item",
+  currentImageUrl,
 }: MenuItemFormProps) => {
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
   
@@ -112,7 +114,7 @@ export const MenuItemForm = ({
         <ProductImageUpload
           selectedImage={selectedImage}
           onImageSelect={setSelectedImage}
-          currentImageUrl={defaultValues.name ? "" : undefined}
+          currentImageUrl={currentImageUrl ?? undefined}
         />
         
         <FormField

@@ -492,6 +492,7 @@ export const MenuItems = () => {
                 serves_people: editItem.serves_people,
               }}
               submitLabel="Update Menu Item"
+              currentImageUrl={editItem.image_url}
             />
           )}
         </DialogContent>
