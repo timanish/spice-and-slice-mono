@@ -33,6 +33,8 @@ import AdminPickupSettingsPage from "./pages/AdminPickupSettingsPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage";
 import AdminOrdersManagementPage from "./pages/AdminOrdersManagementPage";
 import AdminTikTokPage from "./pages/AdminTikTokPage";
+import AdminTvMenuPage from "./pages/AdminTvMenuPage";
+import TvMenuDisplayPage from "./pages/TvMenuDisplayPage";
 import AdminStoreSettingsPage from "./pages/AdminStoreSettingsPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
 import OrderCanceledPage from "./pages/OrderCanceledPage";
@@ -203,6 +205,12 @@ function App() {
                       <AdminTikTokPage />
                     </AdminGuard>
                   } />
+                  <Route path="/admin/tv-menu" element={
+                    <AdminGuard>
+                      <AdminTvMenuPage />
+                    </AdminGuard>
+                  } />
+                  <Route path="/tv-menu" element={<TvMenuDisplayPage />} />
                   <Route path="/order-success" element={<OrderSuccessPage />} />
                   <Route path="/lunch-box-success" element={<LunchBoxSuccessPage />} />
                   <Route path="/order-canceled" element={<OrderCanceledPage />} />
