@@ -11,6 +11,7 @@ export const useProductMetadata = () => {
         .from("categories")
         .select("name, display_order, products:products!category_id(count)")
         .eq("is_active", true)
+        .eq("show_on_website", true)
         .eq("products.is_active", true)
         .order("display_order", { ascending: true });
 

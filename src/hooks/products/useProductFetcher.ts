@@ -52,11 +52,12 @@ const fetchProductsFromDB = async (): Promise<Product[]> => {
       .select(
         `
         *,
-        category:categories(id, name, tax_rate, is_active, priority, shippable_nationwide)
+        category:categories(id, name, tax_rate, is_active, priority, shippable_nationwide, show_on_website)
       `
       )
       .eq("is_active", true)
       .eq("category.is_active", true)
+      .eq("category.show_on_website", true)
       .range(from, from + pageSize - 1);
 
     if (error) {
@@ -66,7 +67,7 @@ const fetchProductsFromDB = async (): Promise<Product[]> => {
 
     if (data) {
       const activeProducts = data.filter(
-        (item: any) => item.category?.is_active !== false
+        (item: any) => item.category?.is_active !== false && item.category?.show_on_website !== false
       );
       // Sort by product priority DESC, then category priority DESC, then name ASC
       const sortedProducts = activeProducts.sort((a: any, b: any) => {
@@ -117,8 +118,9 @@ export const fetchAllMenuItems = async (): Promise<MenuItem[]> => {
   while (hasMore) {
     const { data, error } = await supabase
       .from("menu_items")
-      .select("*, category:categories(id, name, tax_rate, is_active)")
+      .select("*, category:categories(id, name, tax_rate, is_active, show_on_website)")
       .eq("category.is_active", true)
+      .eq("category.show_on_website", true)
       .order("name")
       .range(from, from + pageSize - 1);
 
@@ -129,7 +131,7 @@ export const fetchAllMenuItems = async (): Promise<MenuItem[]> => {
 
     if (data) {
       const activeItems = data.filter(
-        (item: any) => item.category?.is_active !== false
+        (item: any) => item.category?.is_active !== false && item.category?.show_on_website !== false
       );
       allMenuItems = [...allMenuItems, ...activeItems];
 

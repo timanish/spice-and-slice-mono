@@ -20,6 +20,7 @@ export const useCategoriesFetcher = () => {
         .from("categories")
         .select("*")
         .eq("is_active", true)
+        .eq("show_on_website", true)
         .order("display_order")
         .order("name");
 

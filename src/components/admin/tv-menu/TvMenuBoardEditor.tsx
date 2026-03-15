@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { TvMenuBoard, TvMenuBoardConfig, DEFAULT_CONFIG } from "@/types/tv-menu";
-import { useCategoriesFetcher } from "@/hooks/useCategoriesFetcher";
-import { useMenuItemFetcher } from "@/hooks/products/useProductFetcher";
+import { MenuItem } from "@/hooks/products/types";
 import {
   Dialog,
   DialogContent,
@@ -34,8 +35,34 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
     theme: { ...DEFAULT_CONFIG.theme, ...(board.config?.theme ?? {}) },
   });
 
-  const { data: categories = [], isLoading: categoriesLoading } = useCategoriesFetcher();
-  const { data: menuItems = [], isLoading: itemsLoading } = useMenuItemFetcher();
+  // Fetch ALL active categories (including TV-only ones hidden from website)
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ["all-categories-for-tv"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Fetch ALL menu items (including from TV-only categories)
+  const { data: menuItems = [], isLoading: itemsLoading } = useQuery({
+    queryKey: ["all-menu-items-for-tv"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("menu_items")
+        .select("*, category:categories(id, name)")
+        .eq("is_available", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as MenuItem[];
+    },
+  });
 
   useEffect(() => {
     setConfig({
@@ -117,6 +144,11 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                             onCheckedChange={() => toggleCategory(cat.id)}
                           />
                           <span className="text-sm font-medium">{cat.name}</span>
+                          {!(cat as any).show_on_website && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                              TV Only
+                            </span>
+                          )}
                         </label>
                       ))}
                     </div>

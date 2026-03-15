@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Tag, Globe } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Globe, Monitor } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 
@@ -29,6 +29,7 @@ interface Category {
   inactive_products_count: number;
   tax_rate: number | null;
   shippable_nationwide: boolean;
+  show_on_website: boolean;
 }
 
 interface ProductStatus {
@@ -50,6 +51,7 @@ const AdminCategoriesPage = () => {
     priority: 0,
     is_active: true,
     shippable_nationwide: false,
+    show_on_website: true,
   });
 
   const { data: categories = [], isLoading } = useQuery({
@@ -145,8 +147,8 @@ const AdminCategoriesPage = () => {
 
   // Create/Update category mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: { id?: string; name: string; description: string; display_order: number; tax_rate: number | null; priority: number; is_active?: boolean; shippable_nationwide?: boolean }) => {
-      const { id, name, description, display_order, tax_rate, priority, is_active, shippable_nationwide } = data;
+    mutationFn: async (data: { id?: string; name: string; description: string; display_order: number; tax_rate: number | null; priority: number; is_active?: boolean; shippable_nationwide?: boolean; show_on_website?: boolean }) => {
+      const { id, name, description, display_order, tax_rate, priority, is_active, shippable_nationwide, show_on_website } = data;
 
       let categoryId = id;
 
@@ -169,6 +171,7 @@ const AdminCategoriesPage = () => {
           priority,
           is_active,
           shippable_nationwide,
+          show_on_website,
           updated_at: new Date().toISOString()
         }, [{ column: 'id', operator: 'eq', value: id }]);
 
@@ -205,7 +208,8 @@ const AdminCategoriesPage = () => {
           tax_rate,
           priority,
           is_active: is_active !== undefined ? is_active : true,
-          shippable_nationwide: shippable_nationwide || false
+          shippable_nationwide: shippable_nationwide || false,
+          show_on_website: show_on_website !== undefined ? show_on_website : true,
         }, '*');
         categoryId = newCategory?.[0]?.id;
       }
@@ -291,6 +295,7 @@ const AdminCategoriesPage = () => {
       priority: (category as any).priority ?? 0,
       is_active: category.is_active,
       shippable_nationwide: category.shippable_nationwide || false,
+      show_on_website: category.show_on_website !== false,
     });
     setIsDialogOpen(true);
   };
@@ -318,6 +323,7 @@ const AdminCategoriesPage = () => {
       priority: formData.priority,
       is_active: formData.is_active,
       shippable_nationwide: formData.shippable_nationwide,
+      show_on_website: formData.show_on_website,
     });
   };
 
@@ -468,6 +474,23 @@ const AdminCategoriesPage = () => {
                   />
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="show_on_website" className="flex items-center gap-1.5">
+                      <Monitor className="h-4 w-4 text-purple-600" />
+                      Show on Website
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Turn off to hide from the main website (e.g., TV-only menu categories)
+                    </p>
+                  </div>
+                  <Switch
+                    id="show_on_website"
+                    checked={formData.show_on_website}
+                    onCheckedChange={(checked) => setFormData({ ...formData, show_on_website: checked })}
+                  />
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => {
                     setIsDialogOpen(false);
@@ -507,6 +530,7 @@ const AdminCategoriesPage = () => {
                     <TableHead>Products</TableHead>
                     <TableHead>Default Tax Rate</TableHead>
                     <TableHead>Ships Nationwide</TableHead>
+                    <TableHead>Website</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -547,6 +571,18 @@ const AdminCategoriesPage = () => {
                           </Badge>
                         ) : (
                           <span className="text-gray-400 text-sm">Local only</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {category.show_on_website !== false ? (
+                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
+                            Visible
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 flex items-center gap-1 w-fit">
+                            <Monitor className="h-3 w-3" />
+                            TV Only
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
