@@ -1,0 +1,11 @@
+❌ Pinchtab server is not running on http://127.0.0.1:9867
+
+To start the server:
+  pinchtab                    # Run in foreground (recommended for beginners)
+  pinchtab &                  # Run in background
+  pinchtab --port 9868        # Use different port
+
+Then try your command again:
+  /Users/anishtimsina/.pinchtab/bin/0.7.8/pinchtab-darwin-arm64 snap -i -c
+
+Learn more: https://github.com/pinchtab/pinchtab#quick-start
