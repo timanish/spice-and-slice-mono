@@ -21,7 +21,7 @@ interface ProductFormProps {
 
 export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
-  const { data: categories = [], isLoading: categoriesLoading } = useCategoriesFetcher();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategoriesFetcher({ includeHidden: true });
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),

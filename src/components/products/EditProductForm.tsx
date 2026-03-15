@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Globe } from 'lucide-react';
 import { useCategoriesFetcher } from '@/hooks/useCategoriesFetcher';
+// Admin forms need all categories including TV-only ones
 
 interface EditProductFormProps {
   product: {
@@ -42,7 +43,7 @@ interface EditProductFormProps {
 
 export const EditProductForm = ({ product, onSubmit, isSubmitting }: EditProductFormProps) => {
   const [selectedImage, setSelectedImage] = React.useState<File | null>(null);
-  const { data: categories = [], isLoading: categoriesLoading } = useCategoriesFetcher();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategoriesFetcher({ includeHidden: true });
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {

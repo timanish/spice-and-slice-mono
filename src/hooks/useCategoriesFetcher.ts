@@ -12,21 +12,28 @@ export interface Category {
   updated_at: string;
 }
 
-export const useCategoriesFetcher = () => {
+export const useCategoriesFetcher = (options?: { includeHidden?: boolean }) => {
+  const includeHidden = options?.includeHidden ?? false;
+
   return useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories", { includeHidden }],
     queryFn: async (): Promise<Category[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("categories")
         .select("*")
-        .eq("is_active", true)
-        .eq("show_on_website", true)
+        .eq("is_active", true);
+
+      if (!includeHidden) {
+        query = query.eq("show_on_website", true);
+      }
+
+      const { data, error } = await query
         .order("display_order")
         .order("name");
 
       if (error) throw error;
       return data as Category[];
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    staleTime: 1000 * 60 * 5,
   });
 };

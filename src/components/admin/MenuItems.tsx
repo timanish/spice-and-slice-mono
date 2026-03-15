@@ -8,7 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useCategoriesFetcher } from '@/hooks/useCategoriesFetcher';
 import { MenuItemForm, MenuItemFormValues } from './MenuItemForm';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Plus, Search } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Zap } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -40,9 +41,10 @@ export const MenuItems = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [quickCreateCategoryId, setQuickCreateCategoryId] = useState<string>('');
 
   // Fetch categories
-  const { data: categories = [] } = useCategoriesFetcher();
+  const { data: categories = [] } = useCategoriesFetcher({ includeHidden: true });
 
   // Fetch menu items
   const { data: menuItems, isLoading, error, refetch } = useQuery({
@@ -259,13 +261,50 @@ export const MenuItems = () => {
     }
   };
   
+  const handleQuickCreate = async () => {
+    if (!quickCreateCategoryId) return;
+    const cat = categories.find(c => c.id === quickCreateCategoryId);
+    const catName = cat?.name || 'New';
+
+    try {
+      setIsSubmitting(true);
+      const { data, error } = await supabase
+        .from('menu_items')
+        .insert({
+          name: `New ${catName} Item`,
+          price: 0,
+          category_id: quickCreateCategoryId,
+          is_vegetarian: false,
+          is_spicy: false,
+        })
+        .select('*, category:categories(id, name)')
+        .single();
+
+      if (error) throw error;
+
+      toast({ title: "Item created", description: "Edit the details below." });
+      await queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+      await queryClient.invalidateQueries({ queryKey: ['all-menu_items'] });
+
+      // Open edit dialog for the new item
+      if (data) {
+        setEditItem(data as MenuItem);
+        setIsEditOpen(true);
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const toggleCategory = (category: string) => {
     setSelectedCategory(category);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header with Add Button */}
+      {/* Header with Add + Quick Create */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Menu Items</h2>
@@ -273,10 +312,34 @@ export const MenuItems = () => {
             {menuItems?.length || 0} total items across {categoryNames.length} categories
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Menu Item
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Quick Create */}
+          <div className="flex items-center gap-2">
+            <Select value={quickCreateCategoryId} onValueChange={setQuickCreateCategoryId}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={handleQuickCreate}
+              disabled={!quickCreateCategoryId || isSubmitting}
+              className="gap-1"
+            >
+              <Zap className="h-4 w-4" />
+              Quick Create
+            </Button>
+          </div>
+          <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Menu Item
+          </Button>
+        </div>
       </div>
 
       {/* Search Bar */}

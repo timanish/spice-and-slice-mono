@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   ListChecks,
   Sparkles,
+  Upload,
   Home,
   ArrowLeft,
   type LucideIcon,
@@ -45,6 +46,7 @@ const navSections: NavSection[] = [
       { label: "Products", path: "/admin/products", icon: Package },
       { label: "Categories", path: "/admin/categories", icon: Tag },
       { label: "Menu Items", path: "/admin/menu-items", icon: Settings },
+      { label: "Bulk Operations", path: "/admin/bulk-operations", icon: Upload },
     ],
   },
   {
