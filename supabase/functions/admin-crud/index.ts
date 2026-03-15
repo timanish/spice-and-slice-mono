@@ -42,6 +42,7 @@ const TABLE_WHITELIST = new Set([
   "tiktok_video_products",
   "product_combos",
   "combo_items",
+  "tv_menu_boards",
   "orders",
   "order_items",
   "lunch_box_subscriptions",

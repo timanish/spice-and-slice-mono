@@ -4,6 +4,7 @@ import {
   Package,
   Tag,
   Settings,
+  Monitor,
   Image,
   Layers,
   Calendar,
@@ -57,6 +58,7 @@ const navSections: NavSection[] = [
       { label: "Festivals", path: "/admin/festivals", icon: Calendar },
       { label: "Festival Products", path: "/admin/festivals/products", icon: Sparkles },
       { label: "Tiktok", path: "/admin/tiktok", icon: Sparkles },
+      { label: "TV Menu Board", path: "/admin/tv-menu", icon: Monitor },
     ],
   },
   {
