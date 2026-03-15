@@ -9,7 +9,7 @@ import { useCategoriesFetcher } from '@/hooks/useCategoriesFetcher';
 import { useAdminCrud } from '@/hooks/useAdminCrud';
 import { MenuItemForm, MenuItemFormValues } from './MenuItemForm';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Plus, Search, Zap } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Zap, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -42,6 +42,7 @@ export const MenuItems = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>('all');
   const [quickCreateCategoryId, setQuickCreateCategoryId] = useState<string>('');
 
   const { insert: adminInsert, update: adminUpdate, remove: adminRemove } = useAdminCrud();
@@ -80,29 +81,49 @@ export const MenuItems = () => {
     return Object.keys(groupedItems).sort();
   }, [groupedItems]);
 
-  // Filter items based on search and category
+  // Get unique sub-category names from current filtered view
+  const subCategoryNames = React.useMemo(() => {
+    if (!menuItems) return [];
+    let items = menuItems;
+    if (selectedCategory !== 'all') {
+      items = items.filter(item => item.category?.name === selectedCategory);
+    }
+    const subs = new Set<string>();
+    items.forEach(item => {
+      if (item.sub_category?.trim()) subs.add(item.sub_category.trim());
+    });
+    return Array.from(subs).sort();
+  }, [menuItems, selectedCategory]);
+
+  // Filter items based on search, category, and sub-category
   const filteredItems = React.useMemo(() => {
     if (!menuItems) return [];
-    
+
     let filtered = menuItems;
-    
+
     // Filter by category
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(item => item.category?.name === selectedCategory);
     }
-    
+
+    // Filter by sub-category
+    if (selectedSubCategory !== 'all') {
+      filtered = filtered.filter(item => (item.sub_category?.trim() || '') === selectedSubCategory);
+    }
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(query) ||
         item.description?.toLowerCase().includes(query) ||
-        item.category?.name?.toLowerCase().includes(query)
+        item.category?.name?.toLowerCase().includes(query) ||
+        item.sub_category?.toLowerCase().includes(query)
       );
     }
-    
+
     return filtered;
-  }, [menuItems, selectedCategory, searchQuery]);
+  }, [menuItems, selectedCategory, selectedSubCategory, searchQuery]);
 
   // Create new menu item
   const handleCreateMenuItem = async (data: MenuItemFormValues, image: File | null) => {
@@ -283,8 +304,41 @@ export const MenuItems = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (filteredItems.length === 0) return;
+
+    const label = selectedSubCategory !== 'all'
+      ? `all ${filteredItems.length} items in sub-category "${selectedSubCategory}"`
+      : `all ${filteredItems.length} filtered items`;
+
+    if (!confirm(`Are you sure you want to delete ${label}? This cannot be undone.`)) return;
+
+    try {
+      setIsSubmitting(true);
+      let deleted = 0;
+      for (const item of filteredItems) {
+        try {
+          await adminRemove('menu_items', [{ column: 'id', operator: 'eq', value: item.id }]);
+          deleted++;
+        } catch (e) {
+          console.error(`Failed to delete ${item.name}:`, e);
+        }
+      }
+
+      toast({ title: `Deleted ${deleted} items` });
+      setSelectedSubCategory('all');
+      await queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+      await queryClient.invalidateQueries({ queryKey: ['all-menu_items'] });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const toggleCategory = (category: string) => {
     setSelectedCategory(category);
+    setSelectedSubCategory('all');
   };
 
   return (
@@ -338,8 +392,38 @@ export const MenuItems = () => {
         />
       </div>
 
+      {/* Sub-category filter + bulk actions */}
+      {subCategoryNames.length > 0 && (
+        <div className="flex items-center gap-3">
+          <Filter className="h-4 w-4 text-gray-400" />
+          <Select value={selectedSubCategory} onValueChange={setSelectedSubCategory}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Filter by sub-category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sub-categories</SelectItem>
+              {subCategoryNames.map((sub) => (
+                <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filteredItems.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isSubmitting}
+              className="gap-1"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete {filteredItems.length} items
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Category Tabs */}
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+      <Tabs value={selectedCategory} onValueChange={toggleCategory} className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto">
           <TabsTrigger value="all">All ({menuItems?.length || 0})</TabsTrigger>
           {categoryNames.map((category) => (
