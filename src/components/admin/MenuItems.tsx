@@ -6,6 +6,7 @@ import { uploadImage } from '@/lib/upload-image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCategoriesFetcher } from '@/hooks/useCategoriesFetcher';
+import { useAdminCrud } from '@/hooks/useAdminCrud';
 import { MenuItemForm, MenuItemFormValues } from './MenuItemForm';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Plus, Search, Zap } from 'lucide-react';
@@ -42,6 +43,8 @@ export const MenuItems = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [quickCreateCategoryId, setQuickCreateCategoryId] = useState<string>('');
+
+  const { insert: adminInsert, update: adminUpdate, remove: adminRemove } = useAdminCrud();
 
   // Fetch categories
   const { data: categories = [] } = useCategoriesFetcher({ includeHidden: true });
@@ -116,21 +119,17 @@ export const MenuItems = () => {
       }
 
       // Insert menu item
-      const { error } = await supabase
-        .from('menu_items')
-        .insert({
-          name: data.name,
-          description: data.description || null,
-          price: data.price,
-          category_id: data.category_id,
-          sub_category: data.sub_category || null,
-          is_vegetarian: data.is_vegetarian,
-          is_spicy: data.is_spicy,
-          serves_people: data.serves_people || null,
-          image_url: imageUrl
-        });
-      
-      if (error) throw error;
+      await adminInsert('menu_items', {
+        name: data.name,
+        description: data.description || null,
+        price: data.price,
+        category_id: data.category_id,
+        sub_category: data.sub_category || null,
+        is_vegetarian: data.is_vegetarian,
+        is_spicy: data.is_spicy,
+        serves_people: data.serves_people || null,
+        image_url: imageUrl
+      });
       
       toast({
         title: "Success",
@@ -180,23 +179,18 @@ export const MenuItems = () => {
       }
 
       // Update menu item
-      const { error } = await supabase
-        .from('menu_items')
-        .update({
-          name: data.name,
-          description: data.description || null,
-          price: data.price,
-          category_id: data.category_id,
-          sub_category: data.sub_category || null,
-          is_vegetarian: data.is_vegetarian,
-          is_spicy: data.is_spicy,
-          serves_people: data.serves_people || null,
-          image_url: imageUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editItem.id);
-      
-      if (error) throw error;
+      await adminUpdate('menu_items', {
+        name: data.name,
+        description: data.description || null,
+        price: data.price,
+        category_id: data.category_id,
+        sub_category: data.sub_category || null,
+        is_vegetarian: data.is_vegetarian,
+        is_spicy: data.is_spicy,
+        serves_people: data.serves_people || null,
+        image_url: imageUrl,
+        updated_at: new Date().toISOString()
+      }, [{ column: 'id', operator: 'eq', value: editItem.id }]);
       
       toast({
         title: "Success",
@@ -236,12 +230,7 @@ export const MenuItems = () => {
       }
       
       // Delete menu item
-      const { error } = await supabase
-        .from('menu_items')
-        .delete()
-        .eq('id', item.id);
-      
-      if (error) throw error;
+      await adminRemove('menu_items', [{ column: 'id', operator: 'eq', value: item.id }]);
       
       toast({
         title: "Success",
@@ -268,19 +257,15 @@ export const MenuItems = () => {
 
     try {
       setIsSubmitting(true);
-      const { data, error } = await supabase
-        .from('menu_items')
-        .insert({
-          name: `New ${catName} Item`,
-          price: 0,
-          category_id: quickCreateCategoryId,
-          is_vegetarian: false,
-          is_spicy: false,
-        })
-        .select('*, category:categories(id, name)')
-        .single();
+      const result = await adminInsert('menu_items', {
+        name: `New ${catName} Item`,
+        price: 0,
+        category_id: quickCreateCategoryId,
+        is_vegetarian: false,
+        is_spicy: false,
+      }, '*, category:categories(id, name)');
 
-      if (error) throw error;
+      const data = result.data?.[0];
 
       toast({ title: "Item created", description: "Edit the details below." });
       await queryClient.invalidateQueries({ queryKey: ['menu-items'] });
