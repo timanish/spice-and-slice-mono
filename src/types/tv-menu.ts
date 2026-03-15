@@ -16,8 +16,11 @@ export interface TvMenuBoardConfig {
   show_prices: boolean;
   columns: number;
   group_by_subcategory: boolean;
+  display_mode: "scroll" | "pages" | "static";
   auto_scroll: boolean;
   scroll_speed: "slow" | "medium" | "fast";
+  page_duration: number; // seconds per page for "pages" mode
+  total_screens: number; // 1 = single screen, 2 = split across 2 TVs
   header_text: string;
   footer_text: string;
   theme: TvMenuBoardTheme;
@@ -50,8 +53,11 @@ export const DEFAULT_CONFIG: TvMenuBoardConfig = {
   show_prices: true,
   columns: 2,
   group_by_subcategory: true,
+  display_mode: "pages",
   auto_scroll: true,
   scroll_speed: "medium",
+  page_duration: 10,
+  total_screens: 1,
   header_text: "Our Menu",
   footer_text: "",
   theme: DEFAULT_THEME,

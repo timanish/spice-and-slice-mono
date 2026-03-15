@@ -282,20 +282,58 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
           <TabsContent value="display" className="mt-4">
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-semibold">Auto-Scroll</Label>
-                    <p className="text-xs text-gray-500">
-                      Automatically scroll through the menu on the TV
-                    </p>
+                {/* Display Mode */}
+                <div>
+                  <Label className="text-sm font-semibold">Display Mode</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    How the menu animates on the TV screen
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      { value: "pages", label: "Sliding Pages", desc: "Full-screen pages that slide automatically" },
+                      { value: "scroll", label: "Continuous Scroll", desc: "Smooth scrolling like a ticker" },
+                      { value: "static", label: "Static", desc: "No animation, fixed display" },
+                    ] as const).map(({ value, label, desc }) => (
+                      <button
+                        key={value}
+                        onClick={() => update("display_mode", value)}
+                        className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                          (config.display_mode ?? "pages") === value
+                            ? "border-food-red bg-food-red/5"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{label}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{desc}</div>
+                      </button>
+                    ))}
                   </div>
-                  <Switch
-                    checked={config.auto_scroll}
-                    onCheckedChange={(v) => update("auto_scroll", v)}
-                  />
                 </div>
 
-                {config.auto_scroll && (
+                {/* Page duration (pages mode) */}
+                {(config.display_mode ?? "pages") === "pages" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-semibold">Page Duration</Label>
+                      <span className="text-sm text-gray-500 font-mono">
+                        {config.page_duration ?? 10}s
+                      </span>
+                    </div>
+                    <Slider
+                      value={[config.page_duration ?? 10]}
+                      onValueChange={([v]) => update("page_duration", v)}
+                      min={5}
+                      max={30}
+                      step={1}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      How long each page is shown before sliding to the next
+                    </p>
+                  </div>
+                )}
+
+                {/* Scroll speed (scroll mode) */}
+                {(config.display_mode ?? "pages") === "scroll" && (
                   <div>
                     <Label className="text-sm font-semibold">Scroll Speed</Label>
                     <div className="flex gap-3 mt-2">
@@ -315,6 +353,29 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                     </div>
                   </div>
                 )}
+
+                {/* Multi-screen */}
+                <div>
+                  <Label className="text-sm font-semibold">Number of TV Screens</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Split the menu across multiple screens. Use <code className="bg-gray-100 px-1 rounded">/tv-menu?screen=1&of=2</code> and <code className="bg-gray-100 px-1 rounded">/tv-menu?screen=2&of=2</code> on each TV.
+                  </p>
+                  <div className="flex gap-3">
+                    {[1, 2, 3].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => update("total_screens", n)}
+                        className={`px-6 py-2 rounded-lg border-2 font-medium transition-colors ${
+                          (config.total_screens ?? 1) === n
+                            ? "border-food-red bg-food-red/5 text-food-red"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {n === 1 ? "1 (Single)" : n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div>
                   <Label className="text-sm font-semibold">Header Text</Label>
