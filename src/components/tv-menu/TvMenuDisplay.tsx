@@ -102,6 +102,7 @@ export function TvMenuDisplay() {
         text={config.header_text}
         accentColor={theme.accent_color}
         textColor={theme.text_color}
+        backgroundColor={theme.background_color}
       />
 
       {isMultiScreenStatic || displayMode === "static" ? (
