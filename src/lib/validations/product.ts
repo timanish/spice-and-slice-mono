@@ -61,6 +61,7 @@ export const ProductSchema = z
       .optional()
       .default(0),
     shippable_nationwide: z.boolean().nullable().optional().default(null),
+    sub_category: z.string().optional().nullable().or(z.literal("")),
   })
   .refine(
     (data) => {

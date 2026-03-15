@@ -42,6 +42,7 @@ export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
       min_order_unit: null,
       priority: 0,
       shippable_nationwide: null,
+      sub_category: '',
     },
   });
 
@@ -108,6 +109,23 @@ export const ProductForm = ({ onSubmit, isSubmitting }: ProductFormProps) => {
             )}
           />
           
+          <FormField
+            control={form.control}
+            name="sub_category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sub-category (TV Menu)</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Goat, Chicken, Lamb" {...field} value={field.value ?? ''} />
+                </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  Used for grouping on TV menu boards only. Not shown on the website.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="priority"

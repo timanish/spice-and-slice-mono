@@ -36,6 +36,7 @@ interface EditProductFormProps {
     min_order_unit?: 'pieces' | 'kg' | 'lbs' | null;
     tax_rate?: number | null;
     shippable_nationwide?: boolean | null;
+    sub_category?: string | null;
   };
   onSubmit: (data: ProductFormValues, image: File | null) => Promise<void>;
   isSubmitting: boolean;
@@ -64,6 +65,7 @@ export const EditProductForm = ({ product, onSubmit, isSubmitting }: EditProduct
       tax_rate: product.tax_rate ? product.tax_rate * 100 : null,
       priority: (product as any).priority ?? 0,
       shippable_nationwide: product.shippable_nationwide ?? null,
+      sub_category: product.sub_category || '',
     },
   });
 
@@ -87,6 +89,7 @@ export const EditProductForm = ({ product, onSubmit, isSubmitting }: EditProduct
       tax_rate: product.tax_rate ? product.tax_rate * 100 : null,
       priority: (product as any).priority ?? 0,
       shippable_nationwide: product.shippable_nationwide ?? null,
+      sub_category: product.sub_category || '',
     });
     setSelectedImage(null);
   }, [product.id, form, product]);
@@ -154,15 +157,32 @@ export const EditProductForm = ({ product, onSubmit, isSubmitting }: EditProduct
           
           <FormField
             control={form.control}
+            name="sub_category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sub-category (TV Menu)</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Goat, Chicken, Lamb" {...field} value={field.value ?? ''} />
+                </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  Used for grouping on TV menu boards only. Not shown on the website.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="priority"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Display Priority (0-10)</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    max="10" 
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10"
                     step="1"
                     placeholder="0"
                     {...field}

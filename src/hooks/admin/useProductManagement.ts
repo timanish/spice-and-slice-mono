@@ -139,6 +139,7 @@ export const useProductManagement = () => {
         tax_rate: data.tax_rate,
         priority: data.priority ?? 0,
         shippable_nationwide: data.shippable_nationwide,
+        sub_category: data.sub_category || null,
         is_active: true,
       });
 
