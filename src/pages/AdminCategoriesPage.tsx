@@ -282,6 +282,7 @@ const AdminCategoriesPage = () => {
       priority: 0,
       is_active: true,
       shippable_nationwide: false,
+      show_on_website: true,
     });
   };
 
