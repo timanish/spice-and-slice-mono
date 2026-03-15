@@ -105,18 +105,22 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides }) => {
         </AnimatePresence>
       </Carousel>
       
-      {/* Navigation arrows */}
-      <HeroNavigation 
-        onPrevSlide={prevSlide} 
-        onNextSlide={nextSlide} 
-      />
+      {/* Navigation arrows — hidden when only 1 slide */}
+      {slides.length > 1 && (
+        <HeroNavigation 
+          onPrevSlide={prevSlide} 
+          onNextSlide={nextSlide} 
+        />
+      )}
       
-      {/* Dot indicators */}
-      <HeroIndicators 
-        totalSlides={slides.length} 
-        currentSlide={current} 
-        onSlideChange={goToSlide} 
-      />
+      {/* Dot indicators — hidden when only 1 slide */}
+      {slides.length > 1 && (
+        <HeroIndicators 
+          totalSlides={slides.length} 
+          currentSlide={current} 
+          onSlideChange={goToSlide} 
+        />
+      )}
     </div>
   );
 };

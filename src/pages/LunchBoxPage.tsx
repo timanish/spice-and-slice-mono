@@ -420,7 +420,8 @@ const LunchBoxPage = () => {
                       <span className="text-5xl font-bold text-gray-900">$199.99</span>
                       <span className="text-gray-500 ml-2">/month</span>
                     </div>
-                    <p className="text-sm text-green-600 font-semibold">(15% savings!)</p>
+                    <p className="text-sm text-gray-500 mb-1">($9.99 per meal)</p>
+                    <p className="text-sm text-green-600 font-semibold">(15% savings vs weekly!)</p>
                   </div>
 
                   <div className="space-y-4 mb-10 flex-grow">

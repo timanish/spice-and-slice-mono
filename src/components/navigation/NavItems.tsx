@@ -35,8 +35,8 @@ const NavItems: React.FC<NavItemsProps> = ({ items, onClick }) => {
           key={item.name}
           to={item.path}
           className={cn(
-            "text-gray-600 hover:text-food-red transition-colors whitespace-nowrap py-2 md:py-0",
-            location.pathname === item.path && "text-food-red font-medium"
+            "text-gray-600 hover:text-food-red transition-colors whitespace-nowrap py-2 md:py-0 relative",
+            location.pathname === item.path && "text-food-red font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-food-red after:rounded-full md:after:block after:hidden"
           )}
           onClick={() => handleClick(item)}
         >
