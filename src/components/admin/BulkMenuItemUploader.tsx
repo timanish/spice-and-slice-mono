@@ -46,6 +46,7 @@ interface CsvRow {
   is_vegetarian: boolean;
   is_spicy: boolean;
   serves_people: number | null;
+  image_url: string;
   status: "pending" | "duplicate" | "imported" | "error";
   duplicateOf?: string;
   similarityScore?: number;
@@ -129,6 +130,7 @@ export function BulkMenuItemUploader() {
   const [defaultCategoryId, setDefaultCategoryId] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isFetchingImages, setIsFetchingImages] = useState(false);
 
   const { insert } = useAdminCrud();
   const { data: categories = [] } = useCategoriesFetcher({ includeHidden: true });
@@ -219,6 +221,7 @@ export function BulkMenuItemUploader() {
         is_vegetarian: raw.is_vegetarian?.toLowerCase() === "true",
         is_spicy: raw.is_spicy?.toLowerCase() === "true",
         serves_people: raw.serves_people ? parseInt(raw.serves_people) : null,
+        image_url: raw.image_url || "",
         status,
         duplicateOf,
         similarityScore,
@@ -282,6 +285,7 @@ export function BulkMenuItemUploader() {
           is_vegetarian: row.is_vegetarian,
           is_spicy: row.is_spicy,
           serves_people: row.serves_people,
+          image_url: row.image_url || null,
         });
 
         setRows((prev) =>
@@ -375,6 +379,77 @@ export function BulkMenuItemUploader() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleFetchImages = async () => {
+    const needsImage = rows.filter(
+      (r) => r.status !== "imported" && !r.image_url?.trim(),
+    );
+
+    if (needsImage.length === 0) {
+      toast({ title: "All items already have images" });
+      return;
+    }
+
+    setIsFetchingImages(true);
+    try {
+      const token = await getToken();
+      let fetched = 0;
+
+      // Batch in groups of 10 (edge function limit)
+      for (let i = 0; i < needsImage.length; i += 10) {
+        const batch = needsImage.slice(i, i + 10);
+        const items = batch.map((r) => ({
+          name: r.name,
+          sub_category: r.sub_category || undefined,
+        }));
+
+        const res = await fetch(
+          `${SUPABASE_URL}/functions/v1/fetch-menu-images`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ items }),
+          },
+        );
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to fetch images");
+        }
+
+        const { results } = await res.json();
+
+        setRows((prev) =>
+          prev.map((r) => {
+            const batchIdx = batch.findIndex((br) => br.id === r.id);
+            if (batchIdx >= 0 && results[batchIdx]?.image_url) {
+              fetched++;
+              return { ...r, image_url: results[batchIdx].image_url };
+            }
+            return r;
+          }),
+        );
+      }
+
+      toast({
+        title: `Fetched images for ${fetched} of ${needsImage.length} items`,
+        description: fetched < needsImage.length
+          ? "Some items had no matching images"
+          : undefined,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch images",
+        description: err.message,
+      });
+    } finally {
+      setIsFetchingImages(false);
     }
   };
 
@@ -486,6 +561,19 @@ export function BulkMenuItemUploader() {
               </CardTitle>
               <Button
                 variant="outline"
+                onClick={handleFetchImages}
+                disabled={isFetchingImages || rows.length === 0}
+                className="mr-2"
+              >
+                {isFetchingImages ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                {isFetchingImages ? "Fetching..." : "AI Images"}
+              </Button>
+              <Button
+                variant="outline"
                 onClick={handleGenerateDescriptions}
                 disabled={isGenerating || rows.length === 0}
                 className="mr-2"
@@ -516,6 +604,7 @@ export function BulkMenuItemUploader() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px]">Status</TableHead>
+                    <TableHead className="w-[50px]">Image</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Category</TableHead>
@@ -560,6 +649,19 @@ export function BulkMenuItemUploader() {
                           <Badge className="bg-red-100 text-red-700 text-xs">
                             <X className="h-3 w-3" />
                           </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {row.image_url ? (
+                          <img
+                            src={row.image_url}
+                            alt={row.name}
+                            className="w-10 h-10 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
+                            --
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
