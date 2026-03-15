@@ -30,7 +30,7 @@ export function TvMenuHeader({ text, accentColor, textColor, backgroundColor }: 
         }}
       />
 
-      <div className="relative flex items-center justify-center px-10 py-5">
+      <div className="relative flex items-center justify-center px-10 py-3">
         {/* Subtle glow behind title */}
         <div
           className="absolute inset-0 opacity-10 blur-3xl"
@@ -52,7 +52,7 @@ export function TvMenuHeader({ text, accentColor, textColor, backgroundColor }: 
         </div>
 
         <h1
-          className="text-4xl md:text-5xl font-serif font-bold text-center tracking-wide relative"
+          className="text-3xl font-serif font-bold text-center tracking-wide relative"
           style={{
             color: accentColor,
             textShadow: `0 0 40px ${accentColor}30, 0 2px 4px ${backgroundColor}80`,

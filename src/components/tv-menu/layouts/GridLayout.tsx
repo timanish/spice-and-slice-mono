@@ -14,7 +14,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
   const gridCols = Math.min(columns + 1, 4);
 
   return (
-    <div className="px-8 py-6 space-y-8">
+    <div className="px-5 py-4 space-y-5">
       {cats.map(([catId, { categoryName, items }]) => {
         const sections = useSubcategories
           ? groupBySubcategory(items)
@@ -22,8 +22,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
 
         return (
           <div key={catId}>
-            {/* Category Header — centered with ornaments */}
-            <div className="flex items-center gap-4 mb-5">
+            <div className="flex items-center gap-3 mb-3">
               <div
                 className="flex-1 h-px"
                 style={{
@@ -31,7 +30,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                 }}
               />
               <h2
-                className="text-2xl font-serif font-bold tracking-wide px-2"
+                className="text-lg font-serif font-bold tracking-wide px-2"
                 style={{
                   color: theme.category_header_color,
                   textShadow: `0 0 25px ${theme.category_header_color}20`,
@@ -48,12 +47,13 @@ export function GridLayout({ itemsByCategory, config }: Props) {
             </div>
 
             {sections.map((section, si) => (
-              <div key={section.subCategory ?? si} className="mb-5">
+              <div key={section.subCategory ?? si} className="mb-3">
                 {section.subCategory && (
                   <h3
-                    className="text-sm font-semibold mb-3 px-2 tracking-widest uppercase text-center"
+                    className="font-semibold mb-2 px-1 tracking-widest uppercase text-center"
                     style={{
                       color: theme.accent_color,
+                      fontSize: "0.65rem",
                       letterSpacing: "0.15em",
                     }}
                   >
@@ -62,7 +62,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                 )}
 
                 <div
-                  className="gap-3"
+                  className="gap-2"
                   style={{
                     display: "grid",
                     gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
@@ -71,14 +71,14 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                   {section.items.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-xl overflow-hidden text-center"
+                      className="rounded-lg overflow-hidden text-center"
                       style={{
                         backgroundColor: `${theme.text_color}06`,
                         border: `1px solid ${theme.text_color}10`,
                       }}
                     >
                       {show_images && item.image_url && (
-                        <div className="relative h-20 overflow-hidden">
+                        <div className="relative h-16 overflow-hidden">
                           <img
                             src={item.image_url}
                             alt={item.name}
@@ -92,26 +92,27 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                           />
                         </div>
                       )}
-                      <div className="p-3">
+                      <div className="p-2">
                         <h3
-                          className="font-semibold text-sm leading-tight"
-                          style={{ color: theme.text_color }}
+                          className="font-semibold leading-tight"
+                          style={{ color: theme.text_color, fontSize: "0.8rem" }}
                         >
                           {item.name}
                         </h3>
                         {show_descriptions && item.description && (
                           <p
-                            className="text-xs mt-1 opacity-40 line-clamp-1"
-                            style={{ color: theme.text_color }}
+                            className="mt-0.5 opacity-40 line-clamp-1"
+                            style={{ color: theme.text_color, fontSize: "0.6rem" }}
                           >
                             {item.description}
                           </p>
                         )}
                         {show_prices && (
                           <p
-                            className="font-bold text-base mt-1.5 tabular-nums"
+                            className="font-bold mt-1 tabular-nums"
                             style={{
                               color: theme.price_color,
+                              fontSize: "0.85rem",
                               textShadow: `0 0 12px ${theme.price_color}15`,
                             }}
                           >

@@ -13,7 +13,7 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
   const cats = Array.from(itemsByCategory.entries());
 
   return (
-    <div className="px-10 py-6 space-y-10">
+    <div className="px-6 py-4 space-y-6">
       {cats.map(([catId, { categoryName, items }]) => {
         const sections = useSubcategories
           ? groupBySubcategory(items)
@@ -21,17 +21,17 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
 
         return (
           <div key={catId}>
-            {/* Category Header — bold with accent bar */}
-            <div className="mb-6">
-              <div className="flex items-center gap-4">
+            {/* Category Header */}
+            <div className="mb-4">
+              <div className="flex items-center gap-3">
                 <div
-                  className="w-1.5 h-10 rounded-full"
+                  className="w-1 h-7 rounded-full"
                   style={{
                     background: `linear-gradient(180deg, ${theme.category_header_color}, ${theme.accent_color})`,
                   }}
                 />
                 <h2
-                  className="text-3xl font-serif font-bold tracking-wide"
+                  className="text-xl font-serif font-bold tracking-wide"
                   style={{
                     color: theme.category_header_color,
                     textShadow: `0 0 30px ${theme.category_header_color}20`,
@@ -41,7 +41,7 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                 </h2>
               </div>
               <div
-                className="mt-3 h-px ml-6"
+                className="mt-2 h-px ml-4"
                 style={{
                   background: `linear-gradient(90deg, ${theme.category_header_color}40, transparent 80%)`,
                 }}
@@ -49,18 +49,18 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
             </div>
 
             {sections.map((section, si) => (
-              <div key={section.subCategory ?? si} className="mb-6">
+              <div key={section.subCategory ?? si} className="mb-4">
                 {section.subCategory && (
-                  <div className="flex items-center gap-3 mb-4 ml-6">
+                  <div className="flex items-center gap-2 mb-2 ml-4">
                     <div
-                      className="w-6 h-0.5 rounded-full"
+                      className="w-4 h-0.5 rounded-full"
                       style={{ backgroundColor: theme.accent_color }}
                     />
                     <h3
-                      className="text-lg font-semibold tracking-wider uppercase"
+                      className="font-semibold tracking-wider uppercase"
                       style={{
                         color: theme.accent_color,
-                        fontSize: "0.85em",
+                        fontSize: "0.7rem",
                         letterSpacing: "0.15em",
                       }}
                     >
@@ -70,7 +70,7 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                 )}
 
                 <div
-                  className="gap-4"
+                  className="gap-3"
                   style={{
                     display: "grid",
                     gridTemplateColumns: `repeat(${columns}, 1fr)`,
@@ -79,16 +79,15 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                   {section.items.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-2xl overflow-hidden relative"
+                      className="rounded-xl overflow-hidden relative"
                       style={{
                         backgroundColor: `${theme.text_color}06`,
                         border: `1px solid ${theme.text_color}12`,
-                        boxShadow: `0 4px 20px ${theme.background_color}40`,
+                        boxShadow: `0 2px 12px ${theme.background_color}40`,
                       }}
                     >
-                      {/* Image with gradient overlay */}
                       {show_images && item.image_url && (
-                        <div className="relative h-28 overflow-hidden">
+                        <div className="relative h-20 overflow-hidden">
                           <img
                             src={item.image_url}
                             alt={item.name}
@@ -100,11 +99,11 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                               background: `linear-gradient(0deg, ${theme.background_color} 0%, transparent 60%)`,
                             }}
                           />
-                          {/* Price badge on image */}
                           {show_prices && (
                             <div
-                              className="absolute top-3 right-3 px-3 py-1 rounded-full text-sm font-bold"
+                              className="absolute top-2 right-2 px-2 py-0.5 rounded-full font-bold"
                               style={{
+                                fontSize: "0.75rem",
                                 backgroundColor: `${theme.price_color}20`,
                                 color: theme.price_color,
                                 backdropFilter: "blur(8px)",
@@ -117,20 +116,20 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                         </div>
                       )}
 
-                      <div className="p-4">
+                      <div className="p-3">
                         <div className="flex items-start justify-between gap-2">
                           <h3
-                            className="font-bold text-lg leading-tight"
-                            style={{ color: theme.text_color }}
+                            className="font-bold leading-tight"
+                            style={{ color: theme.text_color, fontSize: "0.9rem" }}
                           >
                             {item.name}
                           </h3>
-                          {/* Price when no image */}
                           {show_prices && !(show_images && item.image_url) && (
                             <span
-                              className="font-bold text-xl tabular-nums shrink-0"
+                              className="font-bold tabular-nums shrink-0"
                               style={{
                                 color: theme.price_color,
+                                fontSize: "0.95rem",
                                 textShadow: `0 0 15px ${theme.price_color}20`,
                               }}
                             >
@@ -140,8 +139,8 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                         </div>
                         {show_descriptions && item.description && (
                           <p
-                            className="text-sm mt-2 opacity-50 line-clamp-2 leading-relaxed"
-                            style={{ color: theme.text_color }}
+                            className="mt-1 opacity-50 line-clamp-1 leading-snug"
+                            style={{ color: theme.text_color, fontSize: "0.7rem" }}
                           >
                             {item.description}
                           </p>

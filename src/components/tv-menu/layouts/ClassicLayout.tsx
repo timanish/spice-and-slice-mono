@@ -14,7 +14,7 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
 
   return (
     <div
-      className="px-10 py-6 gap-10"
+      className="px-6 py-4 gap-6"
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
@@ -26,9 +26,9 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
           : [{ subCategory: null, items }];
 
         return (
-          <div key={catId} className="mb-4">
-            {/* Category Header — ornamental */}
-            <div className="flex items-center gap-4 mb-5">
+          <div key={catId}>
+            {/* Category Header */}
+            <div className="flex items-center gap-3 mb-3">
               <div
                 className="flex-1 h-px"
                 style={{
@@ -36,7 +36,7 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
                 }}
               />
               <h2
-                className="text-3xl font-serif font-bold tracking-wide px-3 whitespace-nowrap"
+                className="text-xl font-serif font-bold tracking-wide px-2 whitespace-nowrap"
                 style={{
                   color: theme.category_header_color,
                   textShadow: `0 0 30px ${theme.category_header_color}25`,
@@ -53,20 +53,19 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
             </div>
 
             {sections.map((section, si) => (
-              <div key={section.subCategory ?? si} className="mb-5">
-                {/* Sub-category Header */}
+              <div key={section.subCategory ?? si} className="mb-3">
                 {section.subCategory && (
-                  <div className="flex items-center gap-3 mb-3 mt-4">
+                  <div className="flex items-center gap-2 mb-1.5 mt-2">
                     <div
                       className="w-3 h-px"
                       style={{ backgroundColor: `${theme.accent_color}80` }}
                     />
                     <h3
-                      className="text-xl font-serif font-semibold tracking-wide uppercase"
+                      className="font-semibold tracking-wider uppercase"
                       style={{
                         color: theme.accent_color,
+                        fontSize: "0.75rem",
                         letterSpacing: "0.1em",
-                        fontSize: "0.95em",
                       }}
                     >
                       {section.subCategory}
@@ -78,19 +77,12 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
                   </div>
                 )}
 
-                {/* Items */}
-                <div className="space-y-2.5">
+                <div className="space-y-1">
                   {section.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group flex gap-3 px-2 py-1.5 rounded-lg transition-colors"
-                      style={{
-                        backgroundColor: "transparent",
-                      }}
-                    >
+                    <div key={item.id} className="flex gap-2 px-1 py-0.5">
                       {show_images && item.image_url && (
                         <div
-                          className="w-12 h-12 rounded-lg overflow-hidden shrink-0"
+                          className="w-8 h-8 rounded overflow-hidden shrink-0"
                           style={{ border: `1px solid ${theme.accent_color}30` }}
                         >
                           <img
@@ -103,21 +95,22 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-1">
                           <span
-                            className="font-semibold text-lg tracking-wide"
-                            style={{ color: theme.text_color }}
+                            className="font-semibold tracking-wide"
+                            style={{ color: theme.text_color, fontSize: "0.95rem" }}
                           >
                             {item.name}
                           </span>
                           {show_prices && (
                             <>
                               <span
-                                className="flex-1 mx-2 border-b border-dotted opacity-20"
+                                className="flex-1 mx-1 border-b border-dotted opacity-20"
                                 style={{ borderColor: theme.text_color }}
                               />
                               <span
-                                className="font-bold text-xl tabular-nums whitespace-nowrap"
+                                className="font-bold tabular-nums whitespace-nowrap"
                                 style={{
                                   color: theme.price_color,
+                                  fontSize: "0.95rem",
                                   textShadow: `0 0 20px ${theme.price_color}20`,
                                 }}
                               >
@@ -128,8 +121,8 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
                         </div>
                         {show_descriptions && item.description && (
                           <p
-                            className="text-sm mt-0.5 opacity-50 line-clamp-1 italic"
-                            style={{ color: theme.text_color }}
+                            className="mt-0 opacity-50 line-clamp-1 italic"
+                            style={{ color: theme.text_color, fontSize: "0.7rem" }}
                           >
                             {item.description}
                           </p>
