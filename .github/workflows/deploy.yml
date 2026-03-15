@@ -1,6 +1,8 @@
 name: Deploy
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       deploy_frontend:
@@ -24,8 +26,8 @@ jobs:
       - name: Set deploy targets
         id: check
         run: |
-          echo "frontend=${{ inputs.deploy_frontend }}" >> $GITHUB_OUTPUT
-          echo "functions=${{ inputs.deploy_functions }}" >> $GITHUB_OUTPUT
+          echo "frontend=${{ inputs.deploy_frontend || github.event_name == 'push' }}" >> $GITHUB_OUTPUT
+          echo "functions=${{ inputs.deploy_functions || 'false' }}" >> $GITHUB_OUTPUT
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,7 +45,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Build
-        if: inputs.deploy_frontend
+        if: steps.check.outputs.frontend == 'true'
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -58,7 +60,7 @@ jobs:
         run: npm run build
 
       - name: Upload build artifact
-        if: inputs.deploy_frontend
+        if: steps.check.outputs.frontend == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -67,7 +69,7 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend
     needs: build
-    if: inputs.deploy_frontend
+    if: needs.build.outputs.has_frontend == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -91,7 +93,7 @@ jobs:
   deploy-functions:
     name: Deploy Edge Functions
     needs: build
-    if: inputs.deploy_functions
+    if: needs.build.outputs.has_functions == 'true'
     runs-on: ubuntu-latest
 
     steps:
