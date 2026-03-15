@@ -27,14 +27,16 @@ function productToMenuItem(p: any): MenuItem {
   };
 }
 
-export function usePublishedTvMenu(boardId?: string) {
+export function usePublishedTvMenu(boardId?: string, slug?: string) {
   return useQuery<TvMenuData | null>({
-    queryKey: ["published-tv-menu", boardId ?? "published"],
+    queryKey: ["published-tv-menu", slug ?? boardId ?? "published"],
     queryFn: async () => {
       // Fetch the board
       let boardQuery = supabase.from("tv_menu_boards" as any).select("*");
 
-      if (boardId) {
+      if (slug) {
+        boardQuery = boardQuery.eq("slug", slug);
+      } else if (boardId) {
         boardQuery = boardQuery.eq("id", boardId);
       } else {
         boardQuery = boardQuery.eq("is_published", true);

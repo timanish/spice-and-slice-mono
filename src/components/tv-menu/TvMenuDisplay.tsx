@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { usePublishedTvMenu } from "@/hooks/usePublishedTvMenu";
 import { TvMenuHeader } from "./TvMenuHeader";
 import { TvMenuFooter } from "./TvMenuFooter";
@@ -14,11 +14,12 @@ import { MenuItem } from "@/hooks/products/types";
 
 export function TvMenuDisplay() {
   const [searchParams] = useSearchParams();
+  const { slug } = useParams<{ slug?: string }>();
   const boardId = searchParams.get("board_id") ?? undefined;
   const screenNumber = parseInt(searchParams.get("screen") ?? "0") || 0;
   const totalScreens = parseInt(searchParams.get("of") ?? "0") || 0;
 
-  const { data, isLoading, error } = usePublishedTvMenu(boardId);
+  const { data, isLoading, error } = usePublishedTvMenu(boardId, slug);
 
   // Daily reload for memory hygiene on 24/7 displays
   useEffect(() => {

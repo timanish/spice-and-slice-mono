@@ -24,7 +24,7 @@ interface Props {
   board: TvMenuBoard;
   open: boolean;
   onClose: () => void;
-  onSave: (config: TvMenuBoardConfig) => void;
+  onSave: (config: TvMenuBoardConfig, slug?: string) => void;
   isSaving: boolean;
 }
 
@@ -34,6 +34,7 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
     ...board.config,
     theme: { ...DEFAULT_CONFIG.theme, ...(board.config?.theme ?? {}) },
   });
+  const [slug, setSlug] = useState((board as any).slug ?? "");
 
   // Fetch ALL active categories (including TV-only ones hidden from website)
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -106,6 +107,7 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
       ...board.config,
       theme: { ...DEFAULT_CONFIG.theme, ...(board.config?.theme ?? {}) },
     });
+    setSlug((board as any).slug ?? "");
   }, [board]);
 
   const update = <K extends keyof TvMenuBoardConfig>(key: K, value: TvMenuBoardConfig[K]) => {
@@ -441,6 +443,30 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                   </div>
                 </div>
 
+                {/* URL Slug */}
+                <div>
+                  <Label className="text-sm font-semibold">URL Slug</Label>
+                  <Input
+                    className="mt-2"
+                    value={slug}
+                    onChange={(e) =>
+                      setSlug(
+                        e.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9-]/g, "-")
+                          .replace(/-+/g, "-")
+                          .replace(/^-|-$/g, ""),
+                      )
+                    }
+                    placeholder="e.g., meat-shop"
+                  />
+                  {slug && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      URL: <code className="bg-gray-100 px-1 rounded">/tv-menu/{slug}</code>
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <Label className="text-sm font-semibold">Header Text</Label>
                   <Input
@@ -517,7 +543,7 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => onSave(config)} disabled={isSaving}>
+          <Button onClick={() => onSave(config, slug || undefined)} disabled={isSaving}>
             {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save Changes
           </Button>

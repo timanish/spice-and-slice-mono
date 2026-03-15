@@ -217,6 +217,7 @@ function App() {
                     </AdminGuard>
                   } />
                   <Route path="/tv-menu" element={<TvMenuDisplayPage />} />
+                  <Route path="/tv-menu/:slug" element={<TvMenuDisplayPage />} />
                   <Route path="/order-success" element={<OrderSuccessPage />} />
                   <Route path="/lunch-box-success" element={<LunchBoxSuccessPage />} />
                   <Route path="/order-canceled" element={<OrderCanceledPage />} />

@@ -38,7 +38,7 @@ export function useTvMenuBoards() {
   });
 
   const updateBoard = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Pick<TvMenuBoard, "name" | "config">> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Pick<TvMenuBoard, "name" | "config"> & { slug: string | null }> }) => {
       const res = await update(
         "tv_menu_boards",
         data as Record<string, unknown>,

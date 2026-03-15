@@ -54,7 +54,9 @@ export function TvMenuBoardsList() {
   };
 
   const handlePreview = (board: TvMenuBoard) => {
-    window.open(`/tv-menu?board_id=${board.id}`, "_blank");
+    const slug = (board as any).slug;
+    const url = slug ? `/tv-menu/${slug}` : `/tv-menu?board_id=${board.id}`;
+    window.open(url, "_blank");
   };
 
   if (isLoading) {
@@ -159,6 +161,12 @@ export function TvMenuBoardsList() {
                         {board.config?.category_ids?.length ?? 0} categories
                         &middot; Updated{" "}
                         {new Date(board.updated_at).toLocaleDateString()}
+                        {(board as any).slug && (
+                          <>
+                            {" "}&middot;{" "}
+                            <code className="bg-gray-100 px-1 rounded">/tv-menu/{(board as any).slug}</code>
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -225,9 +233,9 @@ export function TvMenuBoardsList() {
           board={editingBoard}
           open={!!editingBoard}
           onClose={() => setEditingBoard(null)}
-          onSave={(config) => {
+          onSave={(config, slug) => {
             updateBoard.mutate(
-              { id: editingBoard.id, data: { config } },
+              { id: editingBoard.id, data: { config, slug: slug ?? null } },
               { onSuccess: () => setEditingBoard(null) },
             );
           }}
