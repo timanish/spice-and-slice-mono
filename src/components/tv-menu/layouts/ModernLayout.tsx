@@ -88,7 +88,7 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                     >
                       {/* Image with gradient overlay */}
                       {show_images && item.image_url && (
-                        <div className="relative h-36 overflow-hidden">
+                        <div className="relative h-28 overflow-hidden">
                           <img
                             src={item.image_url}
                             alt={item.name}

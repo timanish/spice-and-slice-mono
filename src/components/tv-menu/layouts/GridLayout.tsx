@@ -78,7 +78,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                       }}
                     >
                       {show_images && item.image_url && (
-                        <div className="relative h-24 overflow-hidden">
+                        <div className="relative h-20 overflow-hidden">
                           <img
                             src={item.image_url}
                             alt={item.name}

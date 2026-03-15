@@ -30,13 +30,15 @@ export function TvMenuDisplay() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Hide cursor on TV display
+  // Hide cursor only when ?cursor=hide is set (for actual TV deployment)
+  const hideCursor = searchParams.get("cursor") === "hide";
   useEffect(() => {
+    if (!hideCursor) return;
     document.body.style.cursor = "none";
     return () => {
       document.body.style.cursor = "";
     };
-  }, []);
+  }, [hideCursor]);
 
   // Split items for multi-screen mode
   const displayData = useMemo(() => {

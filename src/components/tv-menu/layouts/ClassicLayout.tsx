@@ -89,12 +89,16 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
                       }}
                     >
                       {show_images && item.image_url && (
-                        <img
-                          src={item.image_url}
-                          alt={item.name}
-                          className="w-14 h-14 rounded-lg object-cover shrink-0 ring-1"
-                          style={{ ringColor: `${theme.accent_color}30` }}
-                        />
+                        <div
+                          className="w-12 h-12 rounded-lg overflow-hidden shrink-0"
+                          style={{ border: `1px solid ${theme.accent_color}30` }}
+                        >
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-1">
