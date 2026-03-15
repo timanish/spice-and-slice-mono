@@ -36,6 +36,7 @@ const Footer = () => {
                   href="https://www.facebook.com/profile.php?id=61571574123654" 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  aria-label="Follow us on Facebook"
                   className="w-10 h-10 rounded-full bg-gray-800 hover:bg-food-red flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 >
                   <Facebook className="h-5 w-5" />
@@ -44,6 +45,7 @@ const Footer = () => {
                   href="https://www.instagram.com/spiceandslicedfw/" 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  aria-label="Follow us on Instagram"
                   className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-500 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 >
                   <Instagram className="h-5 w-5" />
@@ -52,6 +54,7 @@ const Footer = () => {
                   href="https://www.tiktok.com/@spiceandslicedfw" 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  aria-label="Follow us on TikTok"
                   className="w-10 h-10 rounded-full bg-gray-800 hover:bg-black flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg"
                 >
                   <TikTokIcon className="h-5 w-5" />

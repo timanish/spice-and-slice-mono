@@ -40,6 +40,7 @@ const Navigation = () => {
   
   const navItems: NavItem[] = [
     { name: "Home", path: "/" },
+    { name: "Products", path: "/products" },
     { name: "Lunch Box", path: "/lunch-box" },
     { name: "Catering", path: "/catering" }
   ];
