@@ -118,7 +118,7 @@ const OnboardingPage = () => {
         {/* Welcome Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-3">
-            Welcome to Spice Splice!
+            Welcome to Spice & Slice!
           </h1>
           <p className="text-lg text-muted-foreground mb-2">
             Let's get your account set up for a seamless ordering experience

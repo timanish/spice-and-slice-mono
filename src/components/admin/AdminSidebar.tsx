@@ -125,7 +125,7 @@ export const AdminSidebar = ({ onNavigate }: AdminSidebarProps) => {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-            <p className="text-xs text-gray-500">Spice&Splice</p>
+            <p className="text-xs text-gray-500">Spice&Slice</p>
           </div>
         </Link>
       </div>

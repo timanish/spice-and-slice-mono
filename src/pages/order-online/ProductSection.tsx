@@ -210,16 +210,28 @@ const ProductSection: React.FC<ProductSectionProps> = ({
 
     if (error) {
       return (
-        <div className="bg-red-50 border border-red-200 p-6 rounded-lg text-center">
-          <p className="text-red-600 mb-4">Failed to load products</p>
-          <Button 
-            variant="outline" 
-            onClick={() => refetch()}
-            disabled={isRefetching}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-            Try Again
-          </Button>
+        <div className="bg-red-50 border border-red-200 p-8 rounded-lg text-center max-w-md mx-auto">
+          <div className="text-4xl mb-4" role="img" aria-label="Error">🍽️</div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to load products</h3>
+          <p className="text-gray-600 mb-6">
+            We're having trouble fetching our menu. Please try again or contact us for help.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => refetch()}
+              disabled={isRefetching}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              Try Again
+            </Button>
+            <Button 
+              variant="ghost"
+              onClick={() => window.location.href = '/contact'}
+            >
+              Contact Support
+            </Button>
+          </div>
         </div>
       );
     }

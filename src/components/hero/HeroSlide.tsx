@@ -54,8 +54,8 @@ const HeroSlide: React.FC<HeroSlideProps> = ({ slide }) => {
           className="hidden" 
         />
         
-        {/* Gradient Overlays for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent"></div>
+        {/* Gradient Overlays for better text readability (WCAG AA compliant) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/65 to-black/20"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40"></div>
       </div>
 
@@ -84,9 +84,9 @@ const HeroSlide: React.FC<HeroSlideProps> = ({ slide }) => {
         >
           {/* Title */}
           <motion.h1 
-            className="text-5xl md:text-7xl font-serif font-bold bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent drop-shadow-2xl"
+            className="text-5xl md:text-7xl font-serif font-bold text-white"
             variants={titleVariants}
-            style={{ lineHeight: '1.15' }}
+            style={{ lineHeight: '1.15', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
           >
             {slide.title}
           </motion.h1>

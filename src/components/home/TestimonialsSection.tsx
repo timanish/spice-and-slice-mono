@@ -42,7 +42,7 @@ const TestimonialsSection = () => {
       customer_name: "Prajwol P.",
       customer_image: "/assets/waiwai.png",
       rating: 5,
-      review: "It was super good, thanks Spice&Splice team for this. Love it! Delivery was quick. I've been ordering from them for months now and never disappointed.",
+      review: "It was super good, thanks Spice&Slice team for this. Love it! Delivery was quick. I've been ordering from them for months now and never disappointed.",
       source: "admin",
       user_id: null,
     },
@@ -127,7 +127,7 @@ const TestimonialsSection = () => {
             </h2>
           </div>
           <p className="text-muted-foreground text-lg">
-            This is what customers feel about Spice&Splice.
+            This is what customers feel about Spice&Slice.
           </p>
         </div>
 

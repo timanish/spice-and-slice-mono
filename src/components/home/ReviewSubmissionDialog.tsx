@@ -137,7 +137,7 @@ const ReviewSubmissionDialog = ({ open, onOpenChange }: ReviewSubmissionDialogPr
                         Leave a Review
                     </DialogTitle>
                     <DialogDescription>
-                        Share your experience with Spice&Splice! Your review will be submitted for approval.
+                        Share your experience with Spice&Slice! Your review will be submitted for approval.
                     </DialogDescription>
                 </DialogHeader>
 

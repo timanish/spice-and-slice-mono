@@ -86,16 +86,46 @@ const ProductList = memo(({ queryResult }: ProductListProps) => {
   if (error) {
     console.error('Error in ProductList:', error);
     return (
-      <div className="bg-red-50 border border-red-200 p-6 rounded-lg text-center">
-        <p className="text-red-600 mb-4">Failed to load products</p>
-        <Button 
-          variant="outline" 
-          onClick={handleRefetch}
-          disabled={isRefetching}
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-          Try Again
-        </Button>
+      <div className="bg-red-50 border border-red-200 p-8 rounded-lg text-center max-w-md mx-auto">
+        <div className="text-4xl mb-4" role="img" aria-label="Error">🍽️</div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to load products</h3>
+        <p className="text-gray-600 mb-6">
+          We're having trouble fetching our menu. Please try again or browse by category below.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+          <Button 
+            variant="outline" 
+            onClick={handleRefetch}
+            disabled={isRefetching}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Try Again
+          </Button>
+          <Button 
+            variant="ghost"
+            onClick={() => window.location.href = '/contact'}
+          >
+            Contact Support
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {['Chicken', 'Rice', 'Biryani', 'Curry', 'Naan', 'Spices'].map((tag) => (
+            <span
+              key={tag}
+              className="px-3 py-1 text-sm bg-white border border-gray-200 rounded-full text-gray-600 cursor-pointer hover:border-food-red hover:text-food-red transition-colors"
+              onClick={() => {
+                const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+                if (searchInput) {
+                  searchInput.value = tag;
+                  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                handleRefetch();
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
