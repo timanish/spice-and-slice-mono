@@ -70,18 +70,6 @@ export function useTvMenuBoards() {
 
   const publishBoard = useMutation({
     mutationFn: async (id: string) => {
-      // Unpublish all boards first
-      const boards = boardsQuery.data ?? [];
-      for (const board of boards) {
-        if (board.is_published) {
-          await update(
-            "tv_menu_boards",
-            { is_published: false },
-            [{ column: "id", operator: "eq", value: board.id }],
-          );
-        }
-      }
-      // Publish the selected board
       await update(
         "tv_menu_boards",
         { is_published: true },
