@@ -241,6 +241,18 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                 {/* Toggles */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Group by Sub-category</Label>
+                      <p className="text-xs text-gray-500">
+                        Show sub-category headers within each category section
+                      </p>
+                    </div>
+                    <Switch
+                      checked={config.group_by_subcategory ?? true}
+                      onCheckedChange={(v) => update("group_by_subcategory", v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
                     <Label className="text-sm">Show Images</Label>
                     <Switch
                       checked={config.show_images}

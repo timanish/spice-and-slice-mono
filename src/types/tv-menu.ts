@@ -15,6 +15,7 @@ export interface TvMenuBoardConfig {
   show_descriptions: boolean;
   show_prices: boolean;
   columns: number;
+  group_by_subcategory: boolean;
   auto_scroll: boolean;
   scroll_speed: "slow" | "medium" | "fast";
   header_text: string;
@@ -48,6 +49,7 @@ export const DEFAULT_CONFIG: TvMenuBoardConfig = {
   show_descriptions: false,
   show_prices: true,
   columns: 2,
+  group_by_subcategory: true,
   auto_scroll: true,
   scroll_speed: "medium",
   header_text: "Our Menu",
