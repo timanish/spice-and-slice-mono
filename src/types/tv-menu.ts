@@ -8,6 +8,7 @@ export interface TvMenuBoardTheme {
 }
 
 export interface TvMenuBoardConfig {
+  data_source: "menu_items" | "products" | "both";
   category_ids: string[];
   excluded_item_ids: string[];
   layout: "classic" | "modern" | "grid";
@@ -45,6 +46,7 @@ export const DEFAULT_THEME: TvMenuBoardTheme = {
 };
 
 export const DEFAULT_CONFIG: TvMenuBoardConfig = {
+  data_source: "menu_items",
   category_ids: [],
   excluded_item_ids: [],
   layout: "classic",

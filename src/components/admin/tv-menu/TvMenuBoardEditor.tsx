@@ -50,17 +50,53 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
     },
   });
 
-  // Fetch ALL menu items (including from TV-only categories)
+  // Fetch items based on data source
+  const dataSource = config.data_source ?? "menu_items";
+
   const { data: menuItems = [], isLoading: itemsLoading } = useQuery({
-    queryKey: ["all-menu-items-for-tv"],
+    queryKey: ["all-items-for-tv", dataSource],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("menu_items")
-        .select("*, category:categories(id, name)")
-        .eq("is_available", true)
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as MenuItem[];
+      const items: MenuItem[] = [];
+
+      if (dataSource === "menu_items" || dataSource === "both") {
+        const { data, error } = await supabase
+          .from("menu_items")
+          .select("*, category:categories(id, name)")
+          .eq("is_available", true)
+          .order("name");
+        if (error) throw error;
+        if (data) items.push(...(data as any as MenuItem[]));
+      }
+
+      if (dataSource === "products" || dataSource === "both") {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*, category:categories(id, name)")
+          .eq("is_active", true)
+          .order("name");
+        if (error) throw error;
+        if (data) {
+          items.push(
+            ...data.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              price: p.price_per_unit,
+              category_id: p.category_id,
+              category: p.category,
+              sub_category: p.sub_category,
+              is_vegetarian: null,
+              is_spicy: null,
+              image_url: p.image_url,
+              serves_people: null,
+              created_at: p.created_at,
+              updated_at: p.updated_at,
+            } as MenuItem)),
+          );
+        }
+      }
+
+      return items;
     },
   });
 
@@ -124,6 +160,34 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
           <TabsContent value="content" className="mt-4">
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-6">
+                {/* Data Source */}
+                <div>
+                  <Label className="text-sm font-semibold">Data Source</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Choose where to pull items from
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      { value: "menu_items", label: "Menu Items", desc: "Restaurant menu" },
+                      { value: "products", label: "Products", desc: "Store products" },
+                      { value: "both", label: "Both", desc: "Combined" },
+                    ] as const).map(({ value, label, desc }) => (
+                      <button
+                        key={value}
+                        onClick={() => update("data_source", value)}
+                        className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                          (config.data_source ?? "menu_items") === value
+                            ? "border-food-red bg-food-red/5"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{label}</div>
+                        <div className="text-xs text-gray-500">{desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Categories */}
                 <div>
                   <Label className="text-sm font-semibold">Categories to Display</Label>

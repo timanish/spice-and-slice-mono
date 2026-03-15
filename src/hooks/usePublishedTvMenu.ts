@@ -8,6 +8,25 @@ export interface TvMenuData {
   itemsByCategory: Map<string, { categoryName: string; items: MenuItem[] }>;
 }
 
+// Normalize a product row to MenuItem shape for display
+function productToMenuItem(p: any): MenuItem {
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    price: p.price_per_unit,
+    category_id: p.category_id,
+    category: p.category,
+    sub_category: p.sub_category,
+    is_vegetarian: null,
+    is_spicy: null,
+    image_url: p.image_url,
+    serves_people: null,
+    created_at: p.created_at,
+    updated_at: p.updated_at,
+  };
+}
+
 export function usePublishedTvMenu(boardId?: string) {
   return useQuery<TvMenuData | null>({
     queryKey: ["published-tv-menu", boardId ?? "published"],
@@ -32,15 +51,36 @@ export function usePublishedTvMenu(boardId?: string) {
         return { board, itemsByCategory: new Map() };
       }
 
-      // Fetch menu items for selected categories
-      const { data: menuItems, error: itemsError } = await supabase
-        .from("menu_items")
-        .select("*, category:categories(id, name)")
-        .in("category_id", config.category_ids)
-        .eq("is_available", true)
-        .order("name");
+      const dataSource = config.data_source ?? "menu_items";
+      const allItems: MenuItem[] = [];
 
-      if (itemsError) throw itemsError;
+      // Fetch menu items
+      if (dataSource === "menu_items" || dataSource === "both") {
+        const { data: menuItems, error: itemsError } = await supabase
+          .from("menu_items")
+          .select("*, category:categories(id, name)")
+          .in("category_id", config.category_ids)
+          .eq("is_available", true)
+          .order("name");
+
+        if (itemsError) throw itemsError;
+        if (menuItems) allItems.push(...(menuItems as any as MenuItem[]));
+      }
+
+      // Fetch products
+      if (dataSource === "products" || dataSource === "both") {
+        const { data: products, error: productsError } = await supabase
+          .from("products")
+          .select("*, category:categories(id, name)")
+          .in("category_id", config.category_ids)
+          .eq("is_active", true)
+          .order("name");
+
+        if (productsError) throw productsError;
+        if (products) {
+          allItems.push(...products.map(productToMenuItem));
+        }
+      }
 
       // Filter out excluded items and group by category
       const excluded = new Set(config.excluded_item_ids ?? []);
@@ -51,7 +91,7 @@ export function usePublishedTvMenu(boardId?: string) {
         grouped.set(catId, { categoryName: "", items: [] });
       }
 
-      for (const item of (menuItems ?? []) as any[]) {
+      for (const item of allItems) {
         if (excluded.has(item.id)) continue;
         const catId = item.category_id;
         if (!catId) continue;
@@ -61,7 +101,7 @@ export function usePublishedTvMenu(boardId?: string) {
           if (!group.categoryName && item.category?.name) {
             group.categoryName = item.category.name;
           }
-          group.items.push(item as MenuItem);
+          group.items.push(item);
         }
       }
 
