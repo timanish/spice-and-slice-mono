@@ -197,7 +197,8 @@ async function handleCartGet(db: any, userId: string) {
       products:product_id (
         id, name, price_per_unit, is_weighted, unit_of_measure,
         image_url, tax_rate, category_id, min_order_value,
-        min_order_unit, is_active
+        min_order_unit, is_active, shippable_nationwide,
+        categories:category_id ( shippable_nationwide )
       )
     `)
     .eq("cart_id", cartId);
@@ -205,15 +206,24 @@ async function handleCartGet(db: any, userId: string) {
   if (error) throw error;
 
   // Reshape to match frontend CartItem shape
-  const shaped = (items || []).map((item: any) => ({
-    id: item.id,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    weight: item.weight,
-    discount_percentage: item.discount_percentage,
-    flash_deal_id: item.flash_deal_id,
-    product: item.products,
-  }));
+  const shaped = (items || []).map((item: any) => {
+    const product = item.products;
+    // Resolve effective shippable_nationwide: product override ?? category default ?? false
+    const effectiveShippable = product?.shippable_nationwide ??
+      product?.categories?.shippable_nationwide ?? false;
+    return {
+      id: item.id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      weight: item.weight,
+      discount_percentage: item.discount_percentage,
+      flash_deal_id: item.flash_deal_id,
+      product: {
+        ...product,
+        shippable_nationwide: effectiveShippable,
+      },
+    };
+  });
 
   // Fetch combo items in cart
   const { data: comboCartItems, error: comboError } = await db
