@@ -189,11 +189,14 @@ const CheckoutPage = () => {
   const deliveryFee = (fulfillmentType === 'pickup' || fulfillmentType === 'nationwide') ? 0 : deliveryFeeData.deliveryFee;
 
   // Nationwide shipping eligibility
+  const NATIONWIDE_MIN_ORDER = 50;
   const nationwideItems = items.filter(item => item.product.shippable_nationwide);
   const localOnlyItems = items.filter(item => !item.product.shippable_nationwide);
   const hasNationwideItems = nationwideItems.length > 0;
   const isOutsideDeliveryRange = !deliveryFeeData.isWithinDeliveryRange && (userProfile?.distance_from_store ?? 0) > 0;
   const isNationwideAvailable = isOutsideDeliveryRange && hasNationwideItems;
+  const meetsNationwideMinimum = subtotal >= NATIONWIDE_MIN_ORDER;
+  const nationwideAmountNeeded = Math.max(0, NATIONWIDE_MIN_ORDER - subtotal);
   const shippingValidation = validateShippingEligibility(items, fulfillmentType);
 
   const { settings: pickupSettings, isPickupAvailable, validation: pickupValidation, isLoading: isPickupLoading } = usePickupSettings();
@@ -365,6 +368,15 @@ const CheckoutPage = () => {
         document.getElementById('delivery-time-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
+    }
+
+    if (fulfillmentType === 'nationwide' && !meetsNationwideMinimum) {
+      toast({
+        title: "Minimum order not met",
+        description: `Nationwide shipping requires a minimum order of $${NATIONWIDE_MIN_ORDER}. Add $${nationwideAmountNeeded.toFixed(2)} more to proceed.`,
+        variant: "destructive",
+      });
+      return;
     }
 
     if (fulfillmentType === 'nationwide' && !shippingValidation.isValid) {
@@ -607,6 +619,15 @@ const CheckoutPage = () => {
         document.getElementById('delivery-time-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
+    }
+
+    if (fulfillmentType === 'nationwide' && !meetsNationwideMinimum) {
+      toast({
+        title: "Minimum order not met",
+        description: `Nationwide shipping requires a minimum order of $${NATIONWIDE_MIN_ORDER}. Add $${nationwideAmountNeeded.toFixed(2)} more to proceed.`,
+        variant: "destructive",
+      });
+      return;
     }
 
     if (fulfillmentType === 'nationwide' && !shippingValidation.isValid) {
@@ -1202,12 +1223,12 @@ const CheckoutPage = () => {
                     </Card>
                   )}
 
-                  {/* Nationwide Shipping Estimate */}
+                  {/* Nationwide Shipping Info */}
                   <Card className="shadow-lg border-2">
                     <CardContent className="p-4 md:p-6">
                       <div className="flex items-center gap-2 mb-3">
                         <Truck className="h-5 w-5 text-blue-600" />
-                        <h3 className="text-base md:text-lg font-bold">Shipping Estimate</h3>
+                        <h3 className="text-base md:text-lg font-bold">Shipping Info</h3>
                       </div>
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm font-medium text-blue-900">We will email you the shipment details when we ship the item.</p>
@@ -1215,6 +1236,16 @@ const CheckoutPage = () => {
                           Shipments typically take 3–5 business days.
                         </p>
                       </div>
+                      {!meetsNationwideMinimum && (
+                        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <p className="text-sm font-medium text-amber-900">
+                            Minimum order of {formatCurrency(NATIONWIDE_MIN_ORDER)} required
+                          </p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            Add {formatCurrency(nationwideAmountNeeded)} more to your cart to proceed with nationwide shipping.
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </>
