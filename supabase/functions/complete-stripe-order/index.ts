@@ -243,7 +243,7 @@ serve(async (req) => {
       delivery_address_label: null,
     };
 
-    if (fulfillment_type === "delivery" && address_id) {
+    if ((fulfillment_type === "delivery" || fulfillment_type === "nationwide") && address_id) {
       const { data: userAddress } = await serviceClient
         .from("user_addresses")
         .select("address_line1, city, state, postal_code, label")

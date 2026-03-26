@@ -40,6 +40,7 @@ import {
   AlertCircle,
   ChefHat,
   FileText,
+  Globe,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -373,6 +374,7 @@ const AdminOrdersManagementPage = () => {
                       <SelectItem value="all">All Types</SelectItem>
                       <SelectItem value="delivery">Delivery</SelectItem>
                       <SelectItem value="pickup">Pickup</SelectItem>
+                      <SelectItem value="nationwide">Nationwide</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -406,13 +408,15 @@ const AdminOrdersManagementPage = () => {
                               {formatStatusLabel(order.fulfillment_status)}
                             </div>
                           </Badge>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className={order.fulfillment_type === "nationwide" ? "border-blue-300 text-blue-700" : ""}>
                             {order.fulfillment_type === "delivery" ? (
                               <Truck className="h-3 w-3 mr-1" />
+                            ) : order.fulfillment_type === "nationwide" ? (
+                              <Globe className="h-3 w-3 mr-1" />
                             ) : (
                               <Package className="h-3 w-3 mr-1" />
                             )}
-                            {order.fulfillment_type}
+                            {order.fulfillment_type === "nationwide" ? "nationwide shipping" : order.fulfillment_type}
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-600">
@@ -458,11 +462,17 @@ const AdminOrdersManagementPage = () => {
                       <div className="space-y-3">
                         <h4 className="font-semibold text-sm text-gray-700 flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
-                          {order.fulfillment_type === "delivery" ? "Delivery Details" : "Pickup Details"}
+                          {order.fulfillment_type === "nationwide" ? "Nationwide Shipping Details" : order.fulfillment_type === "delivery" ? "Delivery Details" : "Pickup Details"}
                         </h4>
                         <div className="space-y-2 text-sm">
-                          {order.fulfillment_type === "delivery" ? (
+                          {(order.fulfillment_type === "delivery" || order.fulfillment_type === "nationwide") ? (
                             <>
+                              {order.fulfillment_type === "nationwide" && (
+                                <div className="text-blue-700 bg-blue-50 rounded px-2 py-1 text-xs font-medium inline-flex items-center gap-1 mb-1">
+                                  <Globe className="h-3 w-3" />
+                                  Nationwide Shipping
+                                </div>
+                              )}
                               {order.user_addresses ? (
                                 <div>
                                   {order.user_addresses.address_line1}<br />
@@ -477,7 +487,7 @@ const AdminOrdersManagementPage = () => {
                                   <span>{order.delivery_date} {order.delivery_time}</span>
                                 </div>
                               )}
-                              {order.delivery_zone && (
+                              {order.delivery_zone && order.fulfillment_type !== "nationwide" && (
                                 <div className="text-gray-600">Zone: {order.delivery_zone}</div>
                               )}
                             </>

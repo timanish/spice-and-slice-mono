@@ -339,9 +339,16 @@ serve(async (req) => {
       console.log("Server-side delivery fee:", deliveryFee);
     }
 
+    // Nationwide shipping: no delivery fee, no zone lookup
+    if (fulfillmentType === "nationwide") {
+      deliveryFee = 0;
+      deliveryZone = null;
+      console.log("Nationwide shipping: no delivery fee");
+    }
+
     // Fetch user address if provided
     let addressData = null;
-    if (addressId && fulfillmentType === "delivery") {
+    if (addressId && (fulfillmentType === "delivery" || fulfillmentType === "nationwide")) {
       const { data: userAddress } = await serviceClient
         .from("user_addresses")
         .select("*")

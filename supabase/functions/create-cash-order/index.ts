@@ -147,8 +147,8 @@ function validateInput(
     return { valid: false, error: "Invalid cart items" };
   }
 
-  // Only validate delivery date/time for delivery orders
-  if (fulfillmentType === "delivery" && (!deliveryDate || !deliveryTime)) {
+  // Validate delivery date/time for delivery and nationwide orders
+  if ((fulfillmentType === "delivery" || fulfillmentType === "nationwide") && (!deliveryDate || !deliveryTime)) {
     return { valid: false, error: "Missing delivery date or time" };
   }
 
@@ -504,9 +504,16 @@ serve(async (req) => {
       console.log("Server-side delivery fee:", deliveryFee);
     }
 
+    // Nationwide shipping: no delivery fee
+    if (fulfillmentType === "nationwide") {
+      deliveryFee = 0;
+      deliveryZone = null;
+      console.log("Nationwide shipping: no delivery fee");
+    }
+
     // Get user's address (either from user_addresses table or profile)
     let addressData = null;
-    if (addressId && fulfillmentType === "delivery") {
+    if (addressId && (fulfillmentType === "delivery" || fulfillmentType === "nationwide")) {
       const { data: userAddress, error: addressError } = await serviceClient
         .from("user_addresses")
         .select("*")
