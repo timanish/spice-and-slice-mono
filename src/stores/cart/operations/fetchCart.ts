@@ -51,12 +51,14 @@ export const fetchCart = async (
     console.error("Error in fetchCart:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Failed to load your cart";
+    const currentState = get();
     set({
       isLoading: false,
       hasError: true,
       errorMessage,
-      items: [],
-      comboItems: [],
+      // Keep existing items (from localStorage hydration) instead of wiping to empty
+      items: currentState.items,
+      comboItems: currentState.comboItems,
     });
   }
 };

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { CartItem, CartStore } from "./types";
+import { CartItem, CartComboItem, CartStore } from "./types";
 import {
   fetchCart,
   addToCart,
@@ -17,11 +17,48 @@ export interface CartStoreState extends CartStore {
   // No need for additional properties here as we moved them to CartStore interface
 }
 
+// --- localStorage persistence helpers ---
+const CART_STORAGE_KEY = "cart-cache";
+
+function loadCartFromStorage(): { items: CartItem[]; comboItems: CartComboItem[] } {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.items)) {
+        return { items: parsed.items, comboItems: parsed.comboItems || [] };
+      }
+    }
+  } catch {
+    // corrupt data — ignore
+  }
+  return { items: [], comboItems: [] };
+}
+
+function saveCartToStorage(items: CartItem[], comboItems: CartComboItem[]) {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items, comboItems }));
+  } catch {
+    // storage full or unavailable — ignore
+  }
+}
+
+export function clearCartStorage() {
+  try {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Hydrate from localStorage immediately so the UI never flashes empty
+const hydrated = loadCartFromStorage();
+
 // Create the store using zustand
 export const useCartStore = create<CartStore>((set, get) => ({
-  items: [],
-  comboItems: [],
-  isLoading: false,
+  items: hydrated.items,
+  comboItems: hydrated.comboItems,
+  isLoading: hydrated.items.length === 0,
   hasError: false,
   errorMessage: null,
   lastFetchTime: null,
@@ -140,3 +177,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
     await toggleComboAddon(cartComboItemId, addonId, set as any, get as any);
   },
 }));
+
+// Persist cart to localStorage on every state change
+useCartStore.subscribe((state) => {
+  saveCartToStorage(state.items, state.comboItems);
+});

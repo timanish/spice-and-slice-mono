@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { useCartStore } from '@/stores/cart';
+import { clearCartStorage } from '@/stores/cart/store';
 import { useUser } from '@clerk/clerk-react';
 import { memoizationUtils } from '@/stores/cart/operations/memoization';
 
 /**
- * CartInitializer component - Fetches cart data on app load
- * This ensures the cart is populated before any page renders
+ * CartInitializer component - Fetches cart data on app load.
+ * Cart is hydrated from localStorage instantly (no flash),
+ * then synced with the server in the background.
  */
 export const CartInitializer = () => {
   const fetchCart = useCartStore((state) => state.fetchCart);
@@ -17,8 +19,9 @@ export const CartInitializer = () => {
       fetchCart();
     } else if (isLoaded && !isSignedIn) {
       memoizationUtils.setClerkUserId(null);
+      clearCartStorage();
     }
-  }, [isLoaded, isSignedIn, user?.id]); 
+  }, [isLoaded, isSignedIn, user?.id]);
 
   return null;
 };
