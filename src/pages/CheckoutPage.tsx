@@ -1210,9 +1210,9 @@ const CheckoutPage = () => {
                         <h3 className="text-base md:text-lg font-bold">Shipping Estimate</h3>
                       </div>
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p className="text-sm font-medium text-blue-900">Estimated delivery: 3–5 business days</p>
+                        <p className="text-sm font-medium text-blue-900">We will email you the shipment details when we ship the item.</p>
                         <p className="text-xs text-blue-700 mt-1">
-                          You'll receive a shipping confirmation with tracking details once your order ships.
+                          Shipments typically take 3–5 business days.
                         </p>
                       </div>
                     </CardContent>
@@ -1554,7 +1554,7 @@ const CheckoutPage = () => {
                 )}
                 {fulfillmentType === 'nationwide' ? (
                   <p className="text-gray-600 ml-6">
-                    Estimated delivery: 3–5 business days
+                    Shipment details will be emailed. Typically 3–5 business days.
                   </p>
                 ) : fulfillmentType === 'delivery' ? (
                   <p className="text-gray-600 ml-6">
