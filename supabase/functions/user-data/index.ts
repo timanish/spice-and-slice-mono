@@ -197,20 +197,34 @@ async function handleCartGet(db: any, userId: string) {
       products:product_id (
         id, name, price_per_unit, is_weighted, unit_of_measure,
         image_url, tax_rate, category_id, min_order_value,
-        min_order_unit, is_active, shippable_nationwide,
-        categories:category_id ( shippable_nationwide )
+        min_order_unit, is_active, shippable_nationwide
       )
     `)
     .eq("cart_id", cartId);
 
   if (error) throw error;
 
+  // Collect unique category IDs to resolve shippable_nationwide inheritance
+  const categoryIds = [...new Set(
+    (items || []).map((item: any) => item.products?.category_id).filter(Boolean)
+  )];
+  let categoryShippableMap: Record<string, boolean> = {};
+  if (categoryIds.length > 0) {
+    const { data: cats } = await db
+      .from("categories")
+      .select("id, shippable_nationwide")
+      .in("id", categoryIds);
+    for (const cat of cats || []) {
+      categoryShippableMap[cat.id] = cat.shippable_nationwide ?? false;
+    }
+  }
+
   // Reshape to match frontend CartItem shape
   const shaped = (items || []).map((item: any) => {
     const product = item.products;
     // Resolve effective shippable_nationwide: product override ?? category default ?? false
     const effectiveShippable = product?.shippable_nationwide ??
-      product?.categories?.shippable_nationwide ?? false;
+      categoryShippableMap[product?.category_id] ?? false;
     return {
       id: item.id,
       product_id: item.product_id,
