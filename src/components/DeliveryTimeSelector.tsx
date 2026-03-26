@@ -33,11 +33,13 @@ interface TimeSlot {
 interface DeliveryTimeSelectorProps {
   required?: boolean;
   onValidationChange?: (isValid: boolean) => void;
+  minDaysAdvance?: number;
 }
 
-const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({ 
+const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({
   required = false,
-  onValidationChange 
+  onValidationChange,
+  minDaysAdvance = 0,
 }) => {
   const { data: deliverySettings } = useDeliverySettings();
   const { data: dbSlots, isLoading: slotsLoading, error: slotsError } = useDeliverySlots();
@@ -64,11 +66,12 @@ const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({
       try {
         const date = new Date(savedDate);
         const nowCentral = toZonedTime(new Date(), deliverySettings?.timezone || 'America/Chicago');
-        
+
         const savedDateFormatted = format(date, 'yyyy-MM-dd', { timeZone: deliverySettings?.timezone || 'America/Chicago' });
-        const todayFormatted = format(nowCentral, 'yyyy-MM-dd', { timeZone: deliverySettings?.timezone || 'America/Chicago' });
-        
-        if (savedDateFormatted >= todayFormatted) {
+        const minAllowedDate = addDays(nowCentral, minDaysAdvance);
+        const minDateFormatted = format(minAllowedDate, 'yyyy-MM-dd', { timeZone: deliverySettings?.timezone || 'America/Chicago' });
+
+        if (savedDateFormatted >= minDateFormatted) {
           return date;
         } else {
           localStorage.removeItem('selectedDeliveryDate');
@@ -88,13 +91,10 @@ const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({
 
   const findNextAvailableDate = (): Date => {
     const nowCentral = toZonedTime(new Date(), TIMEZONE);
-    
-    // console.log('🕒 Finding next available date...');
-    // console.log('Current CT time:', format(nowCentral, 'yyyy-MM-dd HH:mm:ss', { timeZone: TIMEZONE }));
-    // console.log('Min delivery hours:', MIN_DELIVERY_HOURS);
-    // console.log('Available slots:', TIME_SLOTS);
-    
-    for (let daysAhead = 0; daysAhead <= MAX_DAYS_ADVANCE; daysAhead++) {
+
+    const startDay = minDaysAdvance > 0 ? minDaysAdvance : 0;
+
+    for (let daysAhead = startDay; daysAhead <= MAX_DAYS_ADVANCE; daysAhead++) {
       const checkDate = new Date(nowCentral);
       checkDate.setDate(nowCentral.getDate() + daysAhead);
       
@@ -324,8 +324,9 @@ const DeliveryTimeSelector: React.FC<DeliveryTimeSelectorProps> = ({
                 disabled={(date) => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
+                  const minDate = minDaysAdvance > 0 ? addDays(today, minDaysAdvance) : today;
                   const maxDate = addDays(today, MAX_DAYS_ADVANCE);
-                  return date < today || date > maxDate;
+                  return date < minDate || date > maxDate;
                 }}
                 initialFocus
                 className="pointer-events-auto"

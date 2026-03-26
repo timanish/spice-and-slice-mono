@@ -1,13 +1,15 @@
-import { Package, Truck } from 'lucide-react';
+import { Globe, Package, Truck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface FulfillmentTypeSelectorProps {
-  selectedType: 'delivery' | 'pickup';
-  onTypeChange: (type: 'delivery' | 'pickup') => void;
+  selectedType: 'delivery' | 'pickup' | 'nationwide';
+  onTypeChange: (type: 'delivery' | 'pickup' | 'nationwide') => void;
   isPickupAvailable: boolean;
   pickupUnavailableMessage?: string;
   isDeliveryAvailable?: boolean;
   deliveryUnavailableMessage?: string;
+  isNationwideAvailable?: boolean;
+  nationwideUnavailableMessage?: string;
 }
 
 export function FulfillmentTypeSelector({
@@ -17,15 +19,21 @@ export function FulfillmentTypeSelector({
   pickupUnavailableMessage,
   isDeliveryAvailable = true,
   deliveryUnavailableMessage,
+  isNationwideAvailable = false,
+  nationwideUnavailableMessage,
 }: FulfillmentTypeSelectorProps) {
+  const gridCols = isNationwideAvailable
+    ? 'grid-cols-1 md:grid-cols-3'
+    : 'grid-cols-1 md:grid-cols-2';
+
   return (
     <Card className="shadow-lg border-2 mb-6">
       <CardContent className="p-4 md:p-6">
         <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
           Choose Fulfillment Method
         </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div className={`grid ${gridCols} gap-4`}>
           {/* Delivery Option */}
           <button
             onClick={() => isDeliveryAvailable && onTypeChange('delivery')}
@@ -40,13 +48,13 @@ export function FulfillmentTypeSelector({
           >
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-full ${
-                selectedType === 'delivery' 
-                  ? 'bg-food-red/10' 
+                selectedType === 'delivery'
+                  ? 'bg-food-red/10'
                   : 'bg-gray-100'
               }`}>
                 <Truck className={`h-6 w-6 ${
-                  selectedType === 'delivery' 
-                    ? 'text-food-red' 
+                  selectedType === 'delivery'
+                    ? 'text-food-red'
                     : 'text-gray-600'
                 }`} />
               </div>
@@ -60,8 +68,8 @@ export function FulfillmentTypeSelector({
                 </p>
               </div>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 ${
-                selectedType === 'delivery' 
-                  ? 'border-food-red' 
+                selectedType === 'delivery'
+                  ? 'border-food-red'
                   : 'border-gray-300'
               }`}>
                 {selectedType === 'delivery' && (
@@ -70,6 +78,47 @@ export function FulfillmentTypeSelector({
               </div>
             </div>
           </button>
+
+          {/* Nationwide Shipping Option */}
+          {isNationwideAvailable && (
+            <button
+              onClick={() => onTypeChange('nationwide')}
+              className={`p-4 md:p-6 rounded-xl border-2 transition-all text-left ${
+                selectedType === 'nationwide'
+                  ? 'border-blue-600 bg-blue-50 shadow-md'
+                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div className={`p-3 rounded-full ${
+                  selectedType === 'nationwide'
+                    ? 'bg-blue-100'
+                    : 'bg-gray-100'
+                }`}>
+                  <Globe className={`h-6 w-6 ${
+                    selectedType === 'nationwide'
+                      ? 'text-blue-600'
+                      : 'text-gray-600'
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-1">Nationwide Shipping</h3>
+                  <p className="text-sm text-gray-600">
+                    Ship eligible items anywhere in the US
+                  </p>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 ${
+                  selectedType === 'nationwide'
+                    ? 'border-blue-600'
+                    : 'border-gray-300'
+                }`}>
+                  {selectedType === 'nationwide' && (
+                    <div className="w-3 h-3 rounded-full bg-blue-600" />
+                  )}
+                </div>
+              </div>
+            </button>
+          )}
 
           {/* Pickup Option */}
           <button
@@ -85,28 +134,28 @@ export function FulfillmentTypeSelector({
           >
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-full ${
-                selectedType === 'pickup' 
-                  ? 'bg-food-red/10' 
+                selectedType === 'pickup'
+                  ? 'bg-food-red/10'
                   : 'bg-gray-100'
               }`}>
                 <Package className={`h-6 w-6 ${
-                  selectedType === 'pickup' 
-                    ? 'text-food-red' 
+                  selectedType === 'pickup'
+                    ? 'text-food-red'
                     : 'text-gray-600'
                 }`} />
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-lg mb-1">Pickup</h3>
                 <p className="text-sm text-gray-600">
-                  {isPickupAvailable 
+                  {isPickupAvailable
                     ? 'Pick up your order from our store'
                     : pickupUnavailableMessage || 'Currently unavailable'
                   }
                 </p>
               </div>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 ${
-                selectedType === 'pickup' 
-                  ? 'border-food-red' 
+                selectedType === 'pickup'
+                  ? 'border-food-red'
                   : 'border-gray-300'
               }`}>
                 {selectedType === 'pickup' && (

@@ -27,7 +27,9 @@ import {
   X,
   Check,
   Clock,
-  Truck
+  Truck,
+  Globe,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Dialog,
@@ -46,7 +48,7 @@ import { PickupInfo } from '@/components/checkout/PickupInfo';
 import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 import { usePickupSettings } from '@/hooks/usePickupSettings';
 import { calculatePickupReadyTime } from '@/utils/pickupUtils';
-import { validateMinimumOrders, formatMinimumOrderErrors } from '@/utils/cartValidation';
+import { validateMinimumOrders, formatMinimumOrderErrors, validateShippingEligibility } from '@/utils/cartValidation';
 import { format as formatDate } from 'date-fns';
 
 const CheckoutPage = () => {
@@ -57,7 +59,7 @@ const CheckoutPage = () => {
   const { toast } = useToast();
   const { trackCheckoutStarted, trackEvent } = usePostHogTracking();
   const { listAddresses } = useUserData();
-  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
+  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup' | 'nationwide'>('delivery');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [promoCode, setPromoCode] = useState('');
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -87,9 +89,9 @@ const CheckoutPage = () => {
     fetchCart();
   }, [fetchCart]);
 
-  // Auto-switch to card payment if delivery is selected and cash was chosen
+  // Auto-switch to card payment if delivery/nationwide is selected and cash was chosen
   useEffect(() => {
-    if (fulfillmentType === 'delivery' && paymentMethod === 'cash') {
+    if ((fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') && paymentMethod === 'cash') {
       setPaymentMethod('card');
     }
   }, [fulfillmentType, paymentMethod]);
@@ -184,38 +186,54 @@ const CheckoutPage = () => {
 
   const orderTotalBeforeDelivery = subtotal + totalTax;
   const deliveryFeeData = useDeliveryFee(orderTotalBeforeDelivery, userProfile?.distance_from_store || null);
-  const deliveryFee = fulfillmentType === 'pickup' ? 0 : deliveryFeeData.deliveryFee;
+  const deliveryFee = (fulfillmentType === 'pickup' || fulfillmentType === 'nationwide') ? 0 : deliveryFeeData.deliveryFee;
+
+  // Nationwide shipping eligibility
+  const nationwideItems = items.filter(item => item.product.shippable_nationwide);
+  const localOnlyItems = items.filter(item => !item.product.shippable_nationwide);
+  const hasNationwideItems = nationwideItems.length > 0;
+  const isOutsideDeliveryRange = !deliveryFeeData.isWithinDeliveryRange && (userProfile?.distance_from_store ?? 0) > 0;
+  const isNationwideAvailable = isOutsideDeliveryRange && hasNationwideItems;
+  const shippingValidation = validateShippingEligibility(items, fulfillmentType);
+  const NATIONWIDE_MIN_DAYS_ADVANCE = 3;
 
   const { settings: pickupSettings, isPickupAvailable, validation: pickupValidation, isLoading: isPickupLoading } = usePickupSettings();
   const pickupReadyAt = pickupSettings ? calculatePickupReadyTime(pickupSettings.preparation_time_minutes) : null;
 
   useEffect(() => {
-    // Only run this effect if:
-    // 1. We haven't shown the toast yet (prevent multiple toasts)
-    // 2. User profile is loaded (not loading anymore)
-    // 3. Pickup settings are loaded (not loading anymore)
-    // 4. Delivery zones are loaded (not loading anymore) - CRITICAL: prevents race condition
-    // 5. User has a calculated distance (profile is complete) and it's a valid positive number
-    // 6. User is outside delivery range
-    // 7. User currently has delivery selected
+    // Auto-switch fulfillment type when outside delivery range
     if (!hasShownDeliveryToast.current &&
-        !isLoadingProfile && 
+        !isLoadingProfile &&
         !isPickupLoading &&
         !deliveryFeeData.isLoading &&
-        userProfile?.distance_from_store !== undefined && 
+        userProfile?.distance_from_store !== undefined &&
         userProfile?.distance_from_store !== null &&
         userProfile?.distance_from_store > 0 &&
-        !deliveryFeeData.isWithinDeliveryRange && 
+        !deliveryFeeData.isWithinDeliveryRange &&
         fulfillmentType === 'delivery') {
-      
+
       hasShownDeliveryToast.current = true;
-      
-      if (isPickupAvailable) {
-        const prevType = fulfillmentType;
+
+      if (hasNationwideItems) {
+        // Cart has nationwide-shippable items — switch to nationwide
+        setFulfillmentType('nationwide');
+        trackEvent('fulfillment_type_selected', {
+          type: 'nationwide',
+          previous_type: 'delivery',
+          reason: 'outside_delivery_range_nationwide_available',
+        });
+        toast({
+          title: "Nationwide shipping available",
+          description: localOnlyItems.length > 0
+            ? `Switched to nationwide shipping. ${localOnlyItems.length} local-only item(s) will need to be removed to proceed.`
+            : "Your eligible items can be shipped nationwide!",
+          variant: "default",
+        });
+      } else if (isPickupAvailable) {
         setFulfillmentType('pickup');
         trackEvent('fulfillment_type_selected', {
           type: 'pickup',
-          previous_type: prevType,
+          previous_type: 'delivery',
         });
         toast({
           title: "Delivery unavailable",
@@ -334,14 +352,14 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (fulfillmentType === 'delivery') {
+    if (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') {
       const deliveryDate = localStorage.getItem('selectedDeliveryDate');
       const deliveryTime = localStorage.getItem('selectedDeliveryTime');
-      
+
       if (!deliveryDate || !deliveryTime) {
         setShowDeliveryError(true);
         toast({
-          title: "Delivery time required",
+          title: fulfillmentType === 'nationwide' ? "Shipping date required" : "Delivery time required",
           description: "Please select a delivery date and time to continue",
           variant: "destructive",
         });
@@ -350,9 +368,19 @@ const CheckoutPage = () => {
       }
     }
 
+    if (fulfillmentType === 'nationwide' && !shippingValidation.isValid) {
+      toast({
+        title: "Some items can't ship nationwide",
+        description: `Remove local-only items to proceed: ${shippingValidation.localOnlyItems.join(', ')}`,
+        variant: "destructive",
+        duration: 8000,
+      });
+      return;
+    }
+
     if (fulfillmentType === 'pickup') {
       const { pickupDate, pickupTime } = getPickupDateTime();
-      
+
       if (!pickupDate || !pickupTime) {
         setShowPickupError(true);
         toast({
@@ -368,7 +396,7 @@ const CheckoutPage = () => {
     setShowDeliveryError(false);
     setShowPickupError(false);
     setIsCheckingOut(true);
-    
+
     trackCheckoutStarted(subtotal, items.length, fulfillmentType);
 
     try {
@@ -398,8 +426,8 @@ const CheckoutPage = () => {
       });
 
       if (paymentMethod === 'cash') {
-        const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
-        const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
+        const deliveryDate = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryDate') : null;
+        const deliveryTime = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryTime') : null;
         const { pickupDate, pickupTime } = getPickupDateTime();
 
         const requestBody = {
@@ -409,7 +437,7 @@ const CheckoutPage = () => {
           promoCodeId: promoId,
           promoDiscount: promoDiscount,
           fulfillmentType: fulfillmentType,
-          addressId: fulfillmentType === 'delivery' ? selectedAddressId : null,
+          addressId: (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? selectedAddressId : null,
           deliveryDate: deliveryDate,
           deliveryTime: deliveryTime,
           pickupDate: fulfillmentType === 'pickup' ? pickupDate : null,
@@ -467,8 +495,8 @@ const CheckoutPage = () => {
         // Don't fetch cart here - OrderSuccessPage will force refresh it
       } else {
         // Credit card payment flow - use Stripe checkout
-        const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
-        const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
+        const deliveryDate = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryDate') : null;
+        const deliveryTime = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryTime') : null;
         const { pickupDate, pickupTime } = getPickupDateTime();
 
          console.log('CheckoutPage - Card payment:', {
@@ -490,7 +518,7 @@ const CheckoutPage = () => {
           promoCodeId: promoId,
           promoDiscount: promoDiscount,
           fulfillmentType: fulfillmentType,
-          addressId: fulfillmentType === 'delivery' ? selectedAddressId : null,
+          addressId: (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? selectedAddressId : null,
           deliveryDate: deliveryDate,
           deliveryTime: deliveryTime,
           pickupDate: fulfillmentType === 'pickup' ? pickupDate : null,
@@ -567,19 +595,29 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (fulfillmentType === 'delivery') {
+    if (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') {
       const deliveryDate = localStorage.getItem('selectedDeliveryDate');
       const deliveryTime = localStorage.getItem('selectedDeliveryTime');
       if (!deliveryDate || !deliveryTime) {
         setShowDeliveryError(true);
         toast({
-          title: "Delivery time required",
+          title: fulfillmentType === 'nationwide' ? "Shipping date required" : "Delivery time required",
           description: "Please select a delivery date and time to continue",
           variant: "destructive",
         });
         document.getElementById('delivery-time-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
+    }
+
+    if (fulfillmentType === 'nationwide' && !shippingValidation.isValid) {
+      toast({
+        title: "Some items can't ship nationwide",
+        description: `Remove local-only items to proceed: ${shippingValidation.localOnlyItems.join(', ')}`,
+        variant: "destructive",
+        duration: 8000,
+      });
+      return;
     }
 
     if (fulfillmentType === 'pickup') {
@@ -644,13 +682,16 @@ const CheckoutPage = () => {
         <div className="container mx-auto px-4 max-w-7xl">
           {/* Checkout Steps Indicator */}
           {(() => {
-            const isTimeSelected = fulfillmentType === 'delivery'
+            const isTimeSelected = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide')
               ? !!(localStorage.getItem('selectedDeliveryDate') && localStorage.getItem('selectedDeliveryTime'))
               : !!(localStorage.getItem('selectedPickupDate') && localStorage.getItem('selectedPickupTime'));
 
+            const stepLabel = fulfillmentType === 'nationwide' ? 'Shipping' : fulfillmentType === 'delivery' ? 'Delivery' : 'Pickup';
+            const stepIcon = fulfillmentType === 'nationwide' ? Globe : fulfillmentType === 'delivery' ? MapPin : Clock;
+
             const steps = [
               { label: 'Items', icon: Package, done: items.length > 0 },
-              { label: fulfillmentType === 'delivery' ? 'Delivery' : 'Pickup', icon: fulfillmentType === 'delivery' ? MapPin : Clock, done: isTimeSelected },
+              { label: stepLabel, icon: stepIcon, done: isTimeSelected },
               { label: 'Payment', icon: CreditCard, done: false },
             ];
 
@@ -694,12 +735,12 @@ const CheckoutPage = () => {
             );
           })()}
 
-          {/* Delivery Fee Banner - for delivery, or if out of range (even on pickup) */}
-          {(fulfillmentType === 'delivery' || (!deliveryFeeData.isWithinDeliveryRange && deliveryFeeData.distance !== null && deliveryFeeData.distance > 30)) && (
+          {/* Delivery Fee Banner - for delivery, nationwide, or if out of range */}
+          {(fulfillmentType === 'delivery' || fulfillmentType === 'nationwide' || (!deliveryFeeData.isWithinDeliveryRange && deliveryFeeData.distance !== null && deliveryFeeData.distance > 30)) && (
             <DeliveryFeeBanner
-              isFreeShipping={deliveryFeeData.isFreeShipping}
+              isFreeShipping={fulfillmentType === 'nationwide' ? true : deliveryFeeData.isFreeShipping}
               amountNeededForFreeShipping={deliveryFeeData.amountNeededForFreeShipping}
-              deliveryFee={deliveryFeeData.deliveryFee}
+              deliveryFee={fulfillmentType === 'nationwide' ? 0 : deliveryFeeData.deliveryFee}
               distance={deliveryFeeData.distance}
               zoneName={deliveryFeeData.zone?.zone_name || null}
               isWithinDeliveryRange={deliveryFeeData.isWithinDeliveryRange}
@@ -712,6 +753,9 @@ const CheckoutPage = () => {
                 state: userProfile.state,
                 postalCode: userProfile.postal_code,
               } : null}
+              hasNationwideItems={hasNationwideItems}
+              nationwideItemCount={nationwideItems.length}
+              localOnlyItemNames={localOnlyItems.map(i => i.product.name)}
             />
           )}
 
@@ -727,6 +771,7 @@ const CheckoutPage = () => {
                 ? `Delivery is not available for your location (${userProfile.distance_from_store.toFixed(1)} miles from store). Maximum delivery distance is 30 miles.`
                 : 'Delivery is not available for your location.'
             }
+            isNationwideAvailable={isNationwideAvailable}
           />
 
           <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
@@ -1017,7 +1062,7 @@ const CheckoutPage = () => {
                               </option>
                             ))}
                           </select>
-                          
+
                           {/* Display Selected Address */}
                           {userProfile && (
                             <div className="space-y-1 text-sm bg-gray-50 p-3 rounded-lg">
@@ -1054,9 +1099,115 @@ const CheckoutPage = () => {
                   {/* Delivery Time Selection */}
                   <Card id="delivery-time-section" className={`shadow-lg border-2 ${showDeliveryError && !isDeliveryTimeValid ? 'border-red-500' : ''}`}>
                     <CardContent className="p-6">
-                      <DeliveryTimeSelector 
+                      <DeliveryTimeSelector
                         required={true}
                         onValidationChange={setIsDeliveryTimeValid}
+                      />
+                    </CardContent>
+                  </Card>
+                </>
+              ) : fulfillmentType === 'nationwide' ? (
+                <>
+                  {/* Shipping Address */}
+                  <Card className="shadow-lg border-2">
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+                          <h3 className="text-base md:text-lg font-bold">Shipping Address</h3>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => navigate('/profile')}
+                          className="text-food-red hover:text-food-red"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Manage
+                        </Button>
+                      </div>
+
+                      {isLoadingProfile ? (
+                        <div className="animate-pulse space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                      ) : userAddresses.length > 0 ? (
+                        <div className="space-y-3">
+                          <select
+                            value={selectedAddressId || ''}
+                            onChange={(e) => {
+                              const addr = userAddresses.find(a => a.id === e.target.value);
+                              setSelectedAddressId(e.target.value);
+                              setUserProfile(addr || null);
+                            }}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            {userAddresses.map(addr => (
+                              <option key={addr.id} value={addr.id}>
+                                {addr.label} - {addr.address_line1}
+                              </option>
+                            ))}
+                          </select>
+                          {userProfile && (
+                            <div className="space-y-1 text-sm bg-blue-50 p-3 rounded-lg">
+                              <p className="font-semibold text-gray-900">{(userProfile as any).label || 'Address'}</p>
+                              <p className="text-gray-700">{userProfile.address_line1}</p>
+                              <p className="text-gray-600">
+                                {userProfile.city}, {userProfile.state} {userProfile.postal_code}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <p className="text-sm text-yellow-800 mb-2">
+                            No shipping address on file
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() => navigate('/profile?action=add')}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                          >
+                            Add Address
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Local-only items warning */}
+                  {!shippingValidation.isValid && shippingValidation.localOnlyItems.length > 0 && (
+                    <Card className="shadow-lg border-2 border-amber-300">
+                      <CardContent className="p-4 md:p-6">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-amber-900 mb-1">Some items can't ship nationwide</p>
+                            <p className="text-sm text-amber-700 mb-2">
+                              The following items are only available for local delivery or pickup:
+                            </p>
+                            <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
+                              {shippingValidation.localOnlyItems.map((name) => (
+                                <li key={name}>{name}</li>
+                              ))}
+                            </ul>
+                            <p className="text-xs text-amber-600 mt-2">
+                              Remove these items or switch to pickup to proceed.
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Nationwide Delivery Date Selection */}
+                  <Card id="delivery-time-section" className={`shadow-lg border-2 ${showDeliveryError && !isDeliveryTimeValid ? 'border-red-500' : ''}`}>
+                    <CardContent className="p-6">
+                      <DeliveryTimeSelector
+                        required={true}
+                        onValidationChange={setIsDeliveryTimeValid}
+                        minDaysAdvance={NATIONWIDE_MIN_DAYS_ADVANCE}
                       />
                     </CardContent>
                   </Card>
@@ -1066,7 +1217,7 @@ const CheckoutPage = () => {
                 <>
                   <Card id="pickup-time-section" className={`shadow-lg border-2 ${showPickupError && !isPickupTimeValid ? 'border-red-500' : ''}`}>
                     <CardContent className="p-6">
-                      <PickupTimeSelector 
+                      <PickupTimeSelector
                         required={true}
                         onValidationChange={setIsPickupTimeValid}
                       />
@@ -1218,11 +1369,13 @@ const CheckoutPage = () => {
                         Processing
                       </span>
                     ) : (
-                      paymentMethod === 'card' 
-                        ? 'Pay Now' 
-                        : fulfillmentType === 'pickup' 
-                          ? 'Place Pickup Order' 
-                          : 'Place Delivery Order'
+                      paymentMethod === 'card'
+                        ? 'Pay Now'
+                        : fulfillmentType === 'pickup'
+                          ? 'Place Pickup Order'
+                          : fulfillmentType === 'nationwide'
+                            ? 'Place Shipping Order'
+                            : 'Place Delivery Order'
                     )}
                   </Button>
                 </div>
@@ -1373,23 +1526,27 @@ const CheckoutPage = () => {
             {/* Fulfillment Details */}
             <div>
               <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                {fulfillmentType === 'delivery' ? 'Delivery' : 'Pickup'} Details
+                {fulfillmentType === 'nationwide' ? 'Shipping' : fulfillmentType === 'delivery' ? 'Delivery' : 'Pickup'} Details
               </h4>
               <div className="text-sm space-y-1">
                 <div className="flex items-center gap-2">
-                  {fulfillmentType === 'delivery' ? (
+                  {fulfillmentType === 'nationwide' ? (
+                    <Globe className="h-4 w-4 text-blue-600" />
+                  ) : fulfillmentType === 'delivery' ? (
                     <Truck className="h-4 w-4 text-blue-600" />
                   ) : (
                     <Package className="h-4 w-4 text-amber-600" />
                   )}
-                  <span className="font-medium capitalize">{fulfillmentType}</span>
+                  <span className="font-medium capitalize">
+                    {fulfillmentType === 'nationwide' ? 'Nationwide Shipping' : fulfillmentType}
+                  </span>
                 </div>
-                {fulfillmentType === 'delivery' && userProfile && (
+                {(fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') && userProfile && (
                   <p className="text-gray-600 ml-6">
                     {userProfile.address_line1}, {userProfile.city}, {userProfile.state} {userProfile.postal_code}
                   </p>
                 )}
-                {fulfillmentType === 'delivery' ? (
+                {(fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? (
                   <p className="text-gray-600 ml-6">
                     {localStorage.getItem('selectedDeliveryDate')} at {localStorage.getItem('selectedDeliveryTime')}
                   </p>

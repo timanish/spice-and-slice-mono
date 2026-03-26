@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, CheckCircle, AlertCircle, MapPin, Phone } from 'lucide-react';
+import { Truck, CheckCircle, AlertCircle, MapPin, Phone, Globe } from 'lucide-react';
 import { formatDistance } from '@/hooks/useDeliveryFee';
 import { DeliveryLocationModal } from './DeliveryLocationModal';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,9 @@ interface DeliveryFeeBannerProps {
     state: string;
     postalCode: string;
   } | null;
+  hasNationwideItems?: boolean;
+  nationwideItemCount?: number;
+  localOnlyItemNames?: string[];
 }
 
 const DeliveryFeeBanner = ({
@@ -32,6 +35,9 @@ const DeliveryFeeBanner = ({
   freeShippingThreshold,
   cartTotal,
   deliveryAddress,
+  hasNationwideItems = false,
+  nationwideItemCount = 0,
+  localOnlyItemNames = [],
 }: DeliveryFeeBannerProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -47,6 +53,36 @@ const DeliveryFeeBanner = ({
   }
 
   if (!isWithinDeliveryRange && distance > 30) {
+    if (hasNationwideItems) {
+      return (
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex flex-col md:flex-row items-start gap-3">
+            <Globe className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-blue-900 mb-1">
+                Nationwide Shipping Available
+              </p>
+              <p className="text-sm text-blue-700 mb-1">
+                Your location is {formatDistance(distance)} from our store — outside our local delivery range.
+                However, {nationwideItemCount} {nationwideItemCount === 1 ? 'item' : 'items'} in your cart {nationwideItemCount === 1 ? 'is' : 'are'} eligible for nationwide shipping!
+              </p>
+              {localOnlyItemNames.length > 0 && (
+                <div className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+                  <p className="font-medium">These items are local delivery only:</p>
+                  <ul className="list-disc list-inside mt-1">
+                    {localOnlyItemNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-1 text-xs">Remove them to proceed with nationwide shipping, or switch to pickup.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-4">
         <div className="flex flex-col md:flex-row items-start gap-3">
@@ -56,7 +92,7 @@ const DeliveryFeeBanner = ({
               Outside Delivery Range
             </p>
             <p className="text-sm text-red-700 mb-3">
-              Your location is {formatDistance(distance)} from our store. 
+              Your location is {formatDistance(distance)} from our store.
               We currently deliver within 30 miles. Please contact us to discuss delivery options.
             </p>
             <div className="flex flex-wrap gap-2">
