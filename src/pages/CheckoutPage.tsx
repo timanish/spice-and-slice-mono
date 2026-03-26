@@ -195,7 +195,6 @@ const CheckoutPage = () => {
   const isOutsideDeliveryRange = !deliveryFeeData.isWithinDeliveryRange && (userProfile?.distance_from_store ?? 0) > 0;
   const isNationwideAvailable = isOutsideDeliveryRange && hasNationwideItems;
   const shippingValidation = validateShippingEligibility(items, fulfillmentType);
-  const NATIONWIDE_MIN_DAYS_ADVANCE = 3;
 
   const { settings: pickupSettings, isPickupAvailable, validation: pickupValidation, isLoading: isPickupLoading } = usePickupSettings();
   const pickupReadyAt = pickupSettings ? calculatePickupReadyTime(pickupSettings.preparation_time_minutes) : null;
@@ -352,14 +351,14 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') {
+    if (fulfillmentType === 'delivery') {
       const deliveryDate = localStorage.getItem('selectedDeliveryDate');
       const deliveryTime = localStorage.getItem('selectedDeliveryTime');
 
       if (!deliveryDate || !deliveryTime) {
         setShowDeliveryError(true);
         toast({
-          title: fulfillmentType === 'nationwide' ? "Shipping date required" : "Delivery time required",
+          title: "Delivery time required",
           description: "Please select a delivery date and time to continue",
           variant: "destructive",
         });
@@ -426,8 +425,8 @@ const CheckoutPage = () => {
       });
 
       if (paymentMethod === 'cash') {
-        const deliveryDate = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryDate') : null;
-        const deliveryTime = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryTime') : null;
+        const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
+        const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
         const { pickupDate, pickupTime } = getPickupDateTime();
 
         const requestBody = {
@@ -495,8 +494,8 @@ const CheckoutPage = () => {
         // Don't fetch cart here - OrderSuccessPage will force refresh it
       } else {
         // Credit card payment flow - use Stripe checkout
-        const deliveryDate = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryDate') : null;
-        const deliveryTime = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? localStorage.getItem('selectedDeliveryTime') : null;
+        const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
+        const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
         const { pickupDate, pickupTime } = getPickupDateTime();
 
          console.log('CheckoutPage - Card payment:', {
@@ -595,13 +594,13 @@ const CheckoutPage = () => {
       return;
     }
 
-    if (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') {
+    if (fulfillmentType === 'delivery') {
       const deliveryDate = localStorage.getItem('selectedDeliveryDate');
       const deliveryTime = localStorage.getItem('selectedDeliveryTime');
       if (!deliveryDate || !deliveryTime) {
         setShowDeliveryError(true);
         toast({
-          title: fulfillmentType === 'nationwide' ? "Shipping date required" : "Delivery time required",
+          title: "Delivery time required",
           description: "Please select a delivery date and time to continue",
           variant: "destructive",
         });
@@ -682,9 +681,11 @@ const CheckoutPage = () => {
         <div className="container mx-auto px-4 max-w-7xl">
           {/* Checkout Steps Indicator */}
           {(() => {
-            const isTimeSelected = (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide')
-              ? !!(localStorage.getItem('selectedDeliveryDate') && localStorage.getItem('selectedDeliveryTime'))
-              : !!(localStorage.getItem('selectedPickupDate') && localStorage.getItem('selectedPickupTime'));
+            const isTimeSelected = fulfillmentType === 'nationwide'
+              ? true
+              : fulfillmentType === 'delivery'
+                ? !!(localStorage.getItem('selectedDeliveryDate') && localStorage.getItem('selectedDeliveryTime'))
+                : !!(localStorage.getItem('selectedPickupDate') && localStorage.getItem('selectedPickupTime'));
 
             const stepLabel = fulfillmentType === 'nationwide' ? 'Shipping' : fulfillmentType === 'delivery' ? 'Delivery' : 'Pickup';
             const stepIcon = fulfillmentType === 'nationwide' ? Globe : fulfillmentType === 'delivery' ? MapPin : Clock;
@@ -1201,14 +1202,19 @@ const CheckoutPage = () => {
                     </Card>
                   )}
 
-                  {/* Nationwide Delivery Date Selection */}
-                  <Card id="delivery-time-section" className={`shadow-lg border-2 ${showDeliveryError && !isDeliveryTimeValid ? 'border-red-500' : ''}`}>
-                    <CardContent className="p-6">
-                      <DeliveryTimeSelector
-                        required={true}
-                        onValidationChange={setIsDeliveryTimeValid}
-                        minDaysAdvance={NATIONWIDE_MIN_DAYS_ADVANCE}
-                      />
+                  {/* Nationwide Shipping Estimate */}
+                  <Card className="shadow-lg border-2">
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Truck className="h-5 w-5 text-blue-600" />
+                        <h3 className="text-base md:text-lg font-bold">Shipping Estimate</h3>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-sm font-medium text-blue-900">Estimated delivery: 3–5 business days</p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          You'll receive a shipping confirmation with tracking details once your order ships.
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 </>
@@ -1546,7 +1552,11 @@ const CheckoutPage = () => {
                     {userProfile.address_line1}, {userProfile.city}, {userProfile.state} {userProfile.postal_code}
                   </p>
                 )}
-                {(fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? (
+                {fulfillmentType === 'nationwide' ? (
+                  <p className="text-gray-600 ml-6">
+                    Estimated delivery: 3–5 business days
+                  </p>
+                ) : fulfillmentType === 'delivery' ? (
                   <p className="text-gray-600 ml-6">
                     {localStorage.getItem('selectedDeliveryDate')} at {localStorage.getItem('selectedDeliveryTime')}
                   </p>

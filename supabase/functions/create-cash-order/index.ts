@@ -147,8 +147,8 @@ function validateInput(
     return { valid: false, error: "Invalid cart items" };
   }
 
-  // Validate delivery date/time for delivery and nationwide orders
-  if ((fulfillmentType === "delivery" || fulfillmentType === "nationwide") && (!deliveryDate || !deliveryTime)) {
+  // Only validate delivery date/time for delivery orders (not nationwide)
+  if (fulfillmentType === "delivery" && (!deliveryDate || !deliveryTime)) {
     return { valid: false, error: "Missing delivery date or time" };
   }
 
