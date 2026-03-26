@@ -189,7 +189,7 @@ const CheckoutPage = () => {
   const deliveryFee = (fulfillmentType === 'pickup' || fulfillmentType === 'nationwide') ? 0 : deliveryFeeData.deliveryFee;
 
   // Nationwide shipping eligibility
-  const NATIONWIDE_MIN_ORDER = 50;
+  const NATIONWIDE_MIN_ORDER = 100;
   const nationwideItems = items.filter(item => item.product.shippable_nationwide);
   const localOnlyItems = items.filter(item => !item.product.shippable_nationwide);
   const hasNationwideItems = nationwideItems.length > 0;
@@ -1244,6 +1244,23 @@ const CheckoutPage = () => {
                           <p className="text-xs text-amber-700 mt-1">
                             Add {formatCurrency(nationwideAmountNeeded)} more to your cart to proceed with nationwide shipping.
                           </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              asChild
+                              className="bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                              <Link to="/products?nationwide=true">Browse Shippable Items</Link>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              asChild
+                              className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                            >
+                              <Link to="/products">View All Products</Link>
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </CardContent>
