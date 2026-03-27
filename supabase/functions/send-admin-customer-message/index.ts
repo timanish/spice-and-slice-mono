@@ -25,6 +25,7 @@ interface MessageData {
   messageBody: string;
   userId: string;
   templateId: string;
+  orderId?: string | null;
 }
 
 serve(async (req) => {
@@ -67,6 +68,7 @@ serve(async (req) => {
       .from("customer_messages")
       .insert({
         user_id: messageData.userId,
+        order_id: messageData.orderId || null,
         template_id: messageData.templateId,
         subject: messageData.subject,
         message_body: messageData.messageBody,
