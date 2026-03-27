@@ -28,6 +28,11 @@ interface MessageData {
   orderId?: string | null;
 }
 
+// Email validation helper
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders, status: 204 });
@@ -37,14 +42,32 @@ serve(async (req) => {
     const serviceClient = getServiceRoleClient();
 
     // Authenticate request (admin only)
-    const authHeader = req.headers.get("Authorization");
-    const adminUserId = await authenticateRequest(authHeader, serviceClient, true);
+    let adminUserId: string;
+    try {
+      const authHeader = req.headers.get("Authorization");
+      adminUserId = await authenticateRequest(authHeader, serviceClient, true);
+    } catch (authError) {
+      console.error("Authentication error:", authError);
+      const statusCode = authError instanceof Error && authError.message?.includes("Admin") ? 403 : 401;
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const messageData: MessageData = await req.json();
 
     if (!messageData.recipientEmail || !messageData.subject || !messageData.messageBody) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate email format
+    if (!isValidEmail(messageData.recipientEmail)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid recipient email address" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -60,7 +83,7 @@ serve(async (req) => {
 
     if (emailResponse.error) {
       console.error("Email send error:", emailResponse.error);
-      throw new Error(`Failed to send email: ${emailResponse.error.message}`);
+      throw new Error("Failed to send email");
     }
 
     // Log message to database
@@ -78,7 +101,7 @@ serve(async (req) => {
 
     if (logError) {
       console.error("Error logging message:", logError);
-      throw new Error("Message sent but failed to log");
+      throw new Error("Failed to log message to database");
     }
 
     return new Response(
@@ -87,8 +110,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in send-admin-customer-message:", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
