@@ -1678,6 +1678,69 @@ export type Database = {
           },
         ]
       }
+      admin_message_templates: {
+        Row: {
+          id: string
+          name: string
+          subject: string
+          body: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          subject: string
+          body: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          subject?: string
+          body?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      customer_messages: {
+        Row: {
+          id: string
+          user_id: string
+          order_id: string | null
+          template_id: string
+          subject: string
+          message_body: string
+          sent_at: string | null
+          sent_by_user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          order_id?: string | null
+          template_id: string
+          subject: string
+          message_body: string
+          sent_at?: string | null
+          sent_by_user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          order_id?: string | null
+          template_id?: string
+          subject?: string
+          message_body?: string
+          sent_at?: string | null
+          sent_by_user_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
