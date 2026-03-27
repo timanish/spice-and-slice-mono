@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,9 +13,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { renderTemplate } from '@/lib/renderMessageTemplate';
-import { useUser as useClerkUser } from '@clerk/clerk-react';
+import { renderTemplate, type TemplateVariables } from '@/lib/renderMessageTemplate';
 import { getClerkToken } from '@/lib/auth-token';
+
+interface Customer {
+  id: string;
+  email: string;
+  full_name: string;
+  phone_number: string;
+}
 
 interface Template {
   id: string;
@@ -39,12 +45,11 @@ interface Message {
 }
 
 const AdminCustomerMessagingPage = () => {
-  const { user } = useClerkUser();
   const { results: customerResults, search, isLoading: isSearching } = useCustomerSearch();
   const { toast } = useToast();
 
   // State
-  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -55,40 +60,67 @@ const AdminCustomerMessagingPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   // Load templates on mount
-  React.useEffect(() => {
+  useEffect(() => {
     loadTemplates();
   }, []);
 
   const loadTemplates = async () => {
-    const { data } = await supabase
-      .from('admin_message_templates')
-      .select('*')
-      .eq('is_active', true);
-    setTemplates(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('admin_message_templates')
+        .select('*')
+        .eq('is_active', true);
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (err) {
+      console.error('Error loading templates:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to load message templates',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleCustomerSelect = async (customer: any) => {
+  const handleCustomerSelect = async (customer: Customer) => {
     setSelectedCustomer(customer);
     setSelectedOrder('');
 
-    // Load customer's recent orders
-    const { data: orderData } = await supabase
-      .from('orders')
-      .select('id, total_amount, created_at')
-      .eq('user_id', customer.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    try {
+      // Load customer's recent orders and message history in parallel
+      const [orderResponse, messageResponse] = await Promise.allSettled([
+        supabase
+          .from('orders')
+          .select('id, total_amount, created_at')
+          .eq('user_id', customer.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('customer_messages')
+          .select('*')
+          .eq('user_id', customer.id)
+          .order('sent_at', { ascending: false }),
+      ]);
 
-    setOrders(orderData || []);
+      if (orderResponse.status === 'fulfilled' && orderResponse.value.data) {
+        setOrders(orderResponse.value.data || []);
+      } else if (orderResponse.status === 'rejected') {
+        console.error('Error loading orders:', orderResponse.reason);
+      }
 
-    // Load message history
-    const { data: messageData } = await supabase
-      .from('customer_messages')
-      .select('*')
-      .eq('user_id', customer.id)
-      .order('sent_at', { ascending: false });
-
-    setMessages(messageData || []);
+      if (messageResponse.status === 'fulfilled' && messageResponse.value.data) {
+        setMessages(messageResponse.value.data || []);
+      } else if (messageResponse.status === 'rejected') {
+        console.error('Error loading messages:', messageResponse.reason);
+      }
+    } catch (err) {
+      console.error('Error loading customer data:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to load customer data',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleTemplateSelect = (templateId: string) => {
@@ -96,7 +128,7 @@ const AdminCustomerMessagingPage = () => {
     const template = templates.find(t => t.id === templateId);
     if (template && template.name !== 'Custom Message') {
       // Pre-fill with template preview
-      const variables: any = {};
+      const variables: TemplateVariables = {};
       if (selectedCustomer) variables.customer_name = selectedCustomer.full_name;
       if (selectedOrder) {
         const order = orders.find(o => o.id === selectedOrder);
@@ -184,6 +216,7 @@ const AdminCustomerMessagingPage = () => {
             <Input
               placeholder="Email, name, or phone..."
               onChange={(e) => search(e.target.value)}
+              aria-label="Search customers by email, name, or phone"
               className="mb-4"
             />
 
@@ -222,9 +255,9 @@ const AdminCustomerMessagingPage = () => {
                   <div className="space-y-4">
                     {/* Order selector */}
                     <div>
-                      <label className="text-sm font-medium">Related Order (Optional)</label>
+                      <label htmlFor="order-select" className="text-sm font-medium">Related Order (Optional)</label>
                       <Select value={selectedOrder} onValueChange={setSelectedOrder}>
-                        <SelectTrigger>
+                        <SelectTrigger id="order-select">
                           <SelectValue placeholder="Select order..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -240,9 +273,9 @@ const AdminCustomerMessagingPage = () => {
 
                     {/* Template selector */}
                     <div>
-                      <label className="text-sm font-medium">Template</label>
+                      <label htmlFor="template-select" className="text-sm font-medium">Template</label>
                       <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
-                        <SelectTrigger>
+                        <SelectTrigger id="template-select">
                           <SelectValue placeholder="Select template..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -257,8 +290,9 @@ const AdminCustomerMessagingPage = () => {
 
                     {/* Subject input */}
                     <div>
-                      <label className="text-sm font-medium">Subject</label>
+                      <label htmlFor="subject-input" className="text-sm font-medium">Subject</label>
                       <Input
+                        id="subject-input"
                         value={customSubject}
                         onChange={(e) => setCustomSubject(e.target.value)}
                         placeholder="Email subject..."
@@ -267,8 +301,9 @@ const AdminCustomerMessagingPage = () => {
 
                     {/* Message input */}
                     <div>
-                      <label className="text-sm font-medium">Message</label>
+                      <label htmlFor="message-textarea" className="text-sm font-medium">Message</label>
                       <textarea
+                        id="message-textarea"
                         value={customMessage}
                         onChange={(e) => setCustomMessage(e.target.value)}
                         className="w-full h-32 p-2 border rounded"
@@ -298,7 +333,7 @@ const AdminCustomerMessagingPage = () => {
                         <div key={message.id} className="border rounded p-3 hover:bg-gray-50">
                           <div className="font-medium">{message.subject}</div>
                           <div className="text-sm text-gray-600">
-                            {new Date(message.sent_at || '').toLocaleString()}
+                            {new Date(message.sent_at ? message.sent_at : new Date()).toLocaleString()}
                           </div>
                         </div>
                       ))}

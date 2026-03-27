@@ -1,4 +1,4 @@
-interface TemplateVariables {
+export interface TemplateVariables {
   customer_name?: string;
   order_id?: string;
   order_total?: string;
