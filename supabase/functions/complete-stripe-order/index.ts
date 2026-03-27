@@ -305,7 +305,7 @@ serve(async (req) => {
       .insert({
         user_id: userId,
         total_amount: totalAmount,
-        status: "confirmed", // Already paid via Stripe
+        fulfillment_status: "confirmed", // Already paid via Stripe
         payment_method: "card",
         fulfillment_type: fulfillment_type || "delivery",
         address_id: address_id || null,
@@ -340,6 +340,34 @@ serve(async (req) => {
     if (orderError) {
       console.error("Error creating order:", orderError);
       throw new Error("Failed to create order");
+    }
+
+    // Send order confirmation email
+    try {
+      const emailResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderId: order.id,
+            newStatus: "confirmed",
+          }),
+        }
+      );
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.text();
+        console.error("Error sending confirmation email:", errorData);
+      } else {
+        console.log("Order confirmation email sent for order:", order.id);
+      }
+    } catch (emailError) {
+      console.error("Failed to send confirmation email:", emailError);
+      // Non-blocking - don't fail the order if email sending fails
     }
 
     // Create print job for store printer
