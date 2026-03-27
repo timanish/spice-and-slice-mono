@@ -35,6 +35,7 @@ import AdminOrdersManagementPage from "./pages/AdminOrdersManagementPage";
 import AdminTikTokPage from "./pages/AdminTikTokPage";
 import AdminTvMenuPage from "./pages/AdminTvMenuPage";
 import AdminBulkOperationsPage from "./pages/AdminBulkOperationsPage";
+import AdminCustomerMessagingPage from "./pages/AdminCustomerMessagingPage";
 import TvMenuDisplayPage from "./pages/TvMenuDisplayPage";
 import AdminStoreSettingsPage from "./pages/AdminStoreSettingsPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
@@ -214,6 +215,11 @@ function App() {
                   <Route path="/admin/bulk-operations" element={
                     <AdminGuard>
                       <AdminBulkOperationsPage />
+                    </AdminGuard>
+                  } />
+                  <Route path="/admin/customer-messages" element={
+                    <AdminGuard>
+                      <AdminCustomerMessagingPage />
                     </AdminGuard>
                   } />
                   <Route path="/tv-menu" element={<TvMenuDisplayPage />} />
