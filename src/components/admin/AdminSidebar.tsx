@@ -21,6 +21,7 @@ import {
   Upload,
   Home,
   ArrowLeft,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -81,6 +82,7 @@ const navSections: NavSection[] = [
       { label: "Flash Deals", path: "/admin/flash-deals", icon: Zap },
       { label: "Featured Products", path: "/admin/featured", icon: Star },
       { label: "Shop Combos", path: "/admin/shop-combos", icon: ShoppingBag },
+      { label: "Customer Messages", path: "/admin/customer-messages", icon: Mail },
     ],
   },
   {
