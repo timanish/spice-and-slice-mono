@@ -15,6 +15,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { renderTemplate, type TemplateVariables } from '@/lib/renderMessageTemplate';
 import { getClerkToken } from '@/lib/auth-token';
+import { Mail, Search, AlertCircle, CheckCircle2, MessageSquare, History, User, Calendar } from 'lucide-react';
 
 interface Customer {
   id: string;
@@ -34,21 +35,24 @@ interface Order {
   id: string;
   total_amount: number;
   created_at: string;
+  fulfillment_status: string;
 }
 
 interface Message {
   id: string;
   sent_at: string;
   subject: string;
+  message_body: string;
   template_id: string;
   sent_by_user_id: string;
 }
 
 const AdminCustomerMessagingPage = () => {
-  const { results: customerResults, search, isLoading: isSearching } = useCustomerSearch();
+  const { results: customerResults, search, isLoading: isSearching, error: searchError } = useCustomerSearch();
   const { toast } = useToast();
 
   // State
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
@@ -58,6 +62,7 @@ const AdminCustomerMessagingPage = () => {
   const [customMessage, setCustomMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
 
   // Load templates on mount
   useEffect(() => {
@@ -75,23 +80,31 @@ const AdminCustomerMessagingPage = () => {
     } catch (err) {
       console.error('Error loading templates:', err);
       toast({
-        title: 'Error',
+        title: 'Error loading templates',
         description: 'Failed to load message templates',
         variant: 'destructive',
       });
     }
   };
 
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    search(value);
+  };
+
   const handleCustomerSelect = async (customer: Customer) => {
     setSelectedCustomer(customer);
     setSelectedOrder('');
+    setCustomSubject('');
+    setCustomMessage('');
+    setSelectedTemplate('');
 
     try {
-      // Load customer's recent orders and message history in parallel
+      // Load customer's recent orders and message history
       const [orderResponse, messageResponse] = await Promise.allSettled([
         supabase
           .from('orders')
-          .select('id, total_amount, created_at')
+          .select('id, total_amount, created_at, fulfillment_status')
           .eq('user_id', customer.id)
           .order('created_at', { ascending: false })
           .limit(10),
@@ -103,23 +116,13 @@ const AdminCustomerMessagingPage = () => {
       ]);
 
       if (orderResponse.status === 'fulfilled' && orderResponse.value.data) {
-        setOrders(orderResponse.value.data || []);
-      } else if (orderResponse.status === 'rejected') {
-        console.error('Error loading orders:', orderResponse.reason);
+        setOrders(orderResponse.value.data);
       }
-
       if (messageResponse.status === 'fulfilled' && messageResponse.value.data) {
-        setMessages(messageResponse.value.data || []);
-      } else if (messageResponse.status === 'rejected') {
-        console.error('Error loading messages:', messageResponse.reason);
+        setMessages(messageResponse.value.data);
       }
     } catch (err) {
       console.error('Error loading customer data:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to load customer data',
-        variant: 'destructive',
-      });
     }
   };
 
@@ -127,7 +130,6 @@ const AdminCustomerMessagingPage = () => {
     setSelectedTemplate(templateId);
     const template = templates.find(t => t.id === templateId);
     if (template && template.name !== 'Custom Message') {
-      // Pre-fill with template preview
       const variables: TemplateVariables = {};
       if (selectedCustomer) variables.customer_name = selectedCustomer.full_name;
       if (selectedOrder) {
@@ -184,11 +186,10 @@ const AdminCustomerMessagingPage = () => {
       }
 
       toast({
-        title: 'Message sent',
+        title: 'Success',
         description: `Message sent to ${selectedCustomer.email}`,
       });
 
-      // Clear form and reload messages
       setCustomSubject('');
       setCustomMessage('');
       setSelectedTemplate('');
@@ -205,78 +206,128 @@ const AdminCustomerMessagingPage = () => {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-8">Customer Messaging</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Customer Search */}
-        <div className="lg:col-span-1">
-          <Card className="p-4">
-            <h2 className="font-semibold mb-4">Find Customer</h2>
-            <Input
-              placeholder="Email, name, or phone..."
-              onChange={(e) => search(e.target.value)}
-              aria-label="Search customers by email, name, or phone"
-              className="mb-4"
-            />
-
-            {isSearching && <p className="text-sm text-gray-500">Searching...</p>}
-
-            <div className="space-y-2">
-              {customerResults.map((customer) => (
-                <button
-                  key={customer.id}
-                  onClick={() => handleCustomerSelect(customer)}
-                  className={`w-full text-left p-2 rounded border ${
-                    selectedCustomer?.id === customer.id
-                      ? 'border-food-red bg-food-red/10'
-                      : 'border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="font-medium">{customer.full_name}</div>
-                  <div className="text-sm text-gray-600">{customer.email}</div>
-                </button>
-              ))}
-            </div>
-          </Card>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-slate-900 mb-2 flex items-center gap-3">
+            <Mail className="text-food-red w-8 h-8" />
+            Customer Messaging
+          </h1>
+          <p className="text-slate-600">Send templated messages to customers for order updates and support</p>
         </div>
 
-        {/* Right: Message Composer */}
-        {selectedCustomer && (
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="send" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="send">Send Message</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-              </TabsList>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left: Customer Search */}
+          <div className="lg:col-span-1">
+            <Card className="shadow-lg border-0 sticky top-6">
+              <div className="p-6">
+                <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5 text-food-red" />
+                  Find Customer
+                </h2>
 
-              <TabsContent value="send" className="space-y-4">
-                <Card className="p-4">
-                  <div className="space-y-4">
-                    {/* Order selector */}
+                {/* Search Input */}
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                  <Input
+                    placeholder="Email, name, or phone..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="pl-10 bg-slate-50 border-slate-200"
+                  />
+                  {isSearching && <div className="absolute right-3 top-3 animate-spin text-food-red">⟳</div>}
+                </div>
+
+                {/* Error Message */}
+                {searchError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                    <AlertCircle className="w-4 h-4 inline mr-2" />
+                    {searchError}
+                  </div>
+                )}
+
+                {/* Results */}
+                {searchQuery && customerResults.length === 0 && !isSearching && (
+                  <div className="text-center py-8 text-slate-500">
+                    <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No customers found</p>
+                  </div>
+                )}
+
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {customerResults.map((customer) => (
+                    <button
+                      key={customer.id}
+                      onClick={() => handleCustomerSelect(customer)}
+                      className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+                        selectedCustomer?.id === customer.id
+                          ? 'bg-food-red text-white shadow-md'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{customer.full_name}</div>
+                      <div className="text-xs opacity-75 truncate">{customer.email}</div>
+                      {customer.phone_number && (
+                        <div className="text-xs opacity-75">{customer.phone_number}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Right: Message Composer */}
+          {selectedCustomer ? (
+            <div className="lg:col-span-3">
+              {/* Customer Info Banner */}
+              <Card className="shadow-lg border-0 mb-6 bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="p-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label htmlFor="order-select" className="text-sm font-medium">Related Order (Optional)</label>
-                      <Select value={selectedOrder} onValueChange={setSelectedOrder}>
-                        <SelectTrigger id="order-select">
-                          <SelectValue placeholder="Select order..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">None</SelectItem>
-                          {orders.map((order) => (
-                            <SelectItem key={order.id} value={order.id}>
-                              Order {order.id.slice(0, 8)} (${order.total_amount})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <p className="text-xs text-slate-600 uppercase tracking-wide">Name</p>
+                      <p className="font-semibold text-slate-900">{selectedCustomer.full_name}</p>
                     </div>
-
-                    {/* Template selector */}
                     <div>
-                      <label htmlFor="template-select" className="text-sm font-medium">Template</label>
+                      <p className="text-xs text-slate-600 uppercase tracking-wide">Email</p>
+                      <p className="font-mono text-sm text-slate-900 truncate">{selectedCustomer.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600 uppercase tracking-wide">Phone</p>
+                      <p className="font-semibold text-slate-900">{selectedCustomer.phone_number || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600 uppercase tracking-wide">Orders</p>
+                      <p className="font-semibold text-slate-900">{orders.length}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Tabs defaultValue="send" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-100">
+                  <TabsTrigger value="send" className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Send Message
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="flex items-center gap-2">
+                    <History className="w-4 h-4" />
+                    History ({messages.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Send Message Tab */}
+                <TabsContent value="send" className="space-y-4">
+                  <Card className="shadow-lg border-0 p-6">
+                    {/* Template Selector */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Message Template
+                      </label>
                       <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
-                        <SelectTrigger id="template-select">
-                          <SelectValue placeholder="Select template..." />
+                        <SelectTrigger className="bg-slate-50 border-slate-200">
+                          <SelectValue placeholder="Choose a template..." />
                         </SelectTrigger>
                         <SelectContent>
                           {templates.map((template) => (
@@ -288,62 +339,141 @@ const AdminCustomerMessagingPage = () => {
                       </Select>
                     </div>
 
-                    {/* Subject input */}
-                    <div>
-                      <label htmlFor="subject-input" className="text-sm font-medium">Subject</label>
+                    {/* Order Selector */}
+                    {orders.length > 0 && (
+                      <div className="mb-6">
+                        <label className="block text-sm font-semibold text-slate-900 mb-2">
+                          Related Order (Optional)
+                        </label>
+                        <Select value={selectedOrder} onValueChange={setSelectedOrder}>
+                          <SelectTrigger className="bg-slate-50 border-slate-200">
+                            <SelectValue placeholder="Select an order..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">None</SelectItem>
+                            {orders.map((order) => (
+                              <SelectItem key={order.id} value={order.id}>
+                                Order {order.id.slice(0, 8).toUpperCase()} • ${order.total_amount} • {new Date(order.created_at).toLocaleDateString()}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Subject Input */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Subject
+                      </label>
                       <Input
-                        id="subject-input"
                         value={customSubject}
                         onChange={(e) => setCustomSubject(e.target.value)}
                         placeholder="Email subject..."
+                        className="bg-slate-50 border-slate-200"
                       />
                     </div>
 
-                    {/* Message input */}
-                    <div>
-                      <label htmlFor="message-textarea" className="text-sm font-medium">Message</label>
+                    {/* Message Input */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-slate-900 mb-2">
+                        Message
+                      </label>
                       <textarea
-                        id="message-textarea"
                         value={customMessage}
                         onChange={(e) => setCustomMessage(e.target.value)}
-                        className="w-full h-32 p-2 border rounded"
                         placeholder="Message body..."
+                        className="w-full h-40 p-3 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-food-red focus:border-transparent resize-none"
                       />
+                      <p className="text-xs text-slate-500 mt-2">
+                        {customMessage.length} characters
+                      </p>
                     </div>
 
-                    {/* Send button */}
+                    {/* Message Preview */}
+                    {customSubject && customMessage && (
+                      <Card className="bg-blue-50 border-blue-200 mb-6">
+                        <div className="p-4">
+                          <p className="text-xs text-blue-600 font-semibold mb-2">📧 Preview</p>
+                          <p className="text-sm font-semibold text-blue-900">{customSubject}</p>
+                          <p className="text-sm text-blue-800 mt-2 whitespace-pre-wrap">{customMessage}</p>
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Send Button */}
                     <Button
                       onClick={handleSendMessage}
-                      disabled={isSending}
-                      className="w-full bg-food-red hover:bg-food-red/90"
+                      disabled={isSending || !customSubject || !customMessage}
+                      className="w-full bg-food-red hover:bg-food-red/90 text-white font-semibold py-2 h-auto disabled:opacity-50"
                     >
-                      {isSending ? 'Sending...' : 'Send Message'}
-                    </Button>
-                  </div>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="history">
-                <Card className="p-4">
-                  {messages.length === 0 ? (
-                    <p className="text-gray-500">No messages sent yet</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {messages.map((message) => (
-                        <div key={message.id} className="border rounded p-3 hover:bg-gray-50">
-                          <div className="font-medium">{message.subject}</div>
-                          <div className="text-sm text-gray-600">
-                            {new Date(message.sent_at ? message.sent_at : new Date()).toLocaleString()}
-                          </div>
+                      {isSending ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin">⟳</div>
+                          Sending...
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Send Message
+                        </div>
+                      )}
+                    </Button>
+                  </Card>
+                </TabsContent>
+
+                {/* History Tab */}
+                <TabsContent value="history">
+                  <Card className="shadow-lg border-0 p-6">
+                    {messages.length === 0 ? (
+                      <div className="text-center py-12 text-slate-500">
+                        <History className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p className="text-sm">No messages sent yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {messages.map((message) => (
+                          <Card
+                            key={message.id}
+                            className="border-slate-200 hover:border-food-red/30 cursor-pointer transition-colors"
+                            onClick={() => setExpandedMessage(expandedMessage === message.id ? null : message.id)}
+                          >
+                            <div className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-slate-900 text-sm">{message.subject}</p>
+                                  <p className="text-xs text-slate-600 mt-1 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(message.sent_at || '').toLocaleString()}
+                                  </p>
+                                </div>
+                                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
+                              </div>
+                              {expandedMessage === message.id && (
+                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{message.message_body}</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          ) : (
+            <div className="lg:col-span-3">
+              <Card className="shadow-lg border-0 flex items-center justify-center h-96">
+                <div className="text-center">
+                  <Mail className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                  <p className="text-slate-500 text-lg">Select a customer to send a message</p>
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
