@@ -415,10 +415,10 @@ const CheckoutPage = () => {
         const basePrice = item.product.is_weighted && item.weight
           ? item.weight * item.product.price_per_unit
           : item.quantity * item.product.price_per_unit;
-        
+
         const discount = item.discount_percentage || 0;
         const priceAfterDiscount = basePrice * (1 - discount / 100);
-        
+
         const pricePerUnit = item.product.is_weighted && item.weight
           ? (priceAfterDiscount / item.weight)
           : (priceAfterDiscount / item.quantity);
@@ -429,149 +429,79 @@ const CheckoutPage = () => {
           item.product.tax_rate || null,
           typeof item.product.category === 'object' ? (item.product.category as any)?.name || null : item.product.category || null
         );
-        
+
         return {
           ...item,
           tax_amount: itemTaxResult.itemTaxAmount,
         };
       });
 
-      if (paymentMethod === 'cash') {
-        const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
-        const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
-        const { pickupDate, pickupTime } = getPickupDateTime();
+      // NEW FLOW: Both cash and card payment now create a pending order first
+      // Admin reviews the order, then customer confirms and pays
+      const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
+      const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
+      const { pickupDate, pickupTime } = getPickupDateTime();
 
-        const requestBody = {
-          userId: user.id,
-          cartItems: enrichedCartItems,
-          comboCartItems: comboItems,
-          promoCodeId: promoId,
-          promoDiscount: promoDiscount,
-          fulfillmentType: fulfillmentType,
-          addressId: (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? selectedAddressId : null,
-          deliveryDate: deliveryDate,
-          deliveryTime: deliveryTime,
-          pickupDate: fulfillmentType === 'pickup' ? pickupDate : null,
-          pickupTime: fulfillmentType === 'pickup' ? pickupTime : null,
-          deliveryFee: deliveryFee,
-          deliveryDistance: fulfillmentType === 'delivery' ? (userProfile?.distance_from_store || null) : null,
-          deliveryZone: fulfillmentType === 'delivery' ? (deliveryFeeData.zone?.zone_name || null) : null,
-          taxAmount: totalTax,
-          taxableAmount: taxableSubtotal,
-        };
+      const requestBody = {
+        cartItems: enrichedCartItems,
+        comboCartItems: comboItems,
+        paymentMethod: paymentMethod,
+        fulfillmentType: fulfillmentType,
+        addressId: (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? selectedAddressId : null,
+        deliveryDate: deliveryDate,
+        deliveryTime: deliveryTime,
+        pickupDate: fulfillmentType === 'pickup' ? pickupDate : null,
+        pickupTime: fulfillmentType === 'pickup' ? pickupTime : null,
+        promoCode: promoCode,
+      };
 
-        const token = await getToken();
-        if (!token) {
-          throw new Error('Authentication token not available');
-        }
-
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/create-cash-order`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          console.error("COD order error:", error);
-          throw new Error('Failed to create order');
-        }
-
-        const cashOrderResult = await response.json();
-
-        toast({
-          title: "Order placed successfully!",
-          description: "Your order has been placed with cash on delivery option.",
-        });
-        
-        trackEvent('checkout_completed', {
-          order_id: cashOrderResult?.orderId || 'unknown',
-          total_amount: subtotal + totalTax + deliveryFee - promoDiscount,
-          payment_method: 'cash',
-          fulfillment_type: fulfillmentType,
-          items_count: items.length,
-          had_promo_code: !!promoId,
-          discount_amount: promoDiscount,
-          delivery_fee: deliveryFee,
-          tax_amount: totalTax,
-        });
-
-        navigate("/order-success");
-        // Don't fetch cart here - OrderSuccessPage will force refresh it
-      } else {
-        // Credit card payment flow - use Stripe checkout
-        const deliveryDate = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryDate') : null;
-        const deliveryTime = fulfillmentType === 'delivery' ? localStorage.getItem('selectedDeliveryTime') : null;
-        const { pickupDate, pickupTime } = getPickupDateTime();
-
-         console.log('CheckoutPage - Card payment:', {
-           fulfillmentType,
-           pickupDate,
-           pickupTime,
-           deliveryDate,
-           deliveryTime,
-         });
-
-        const successUrl = `${window.location.origin}/order-success`;
-        const cancelUrl = `${window.location.origin}/checkout`;
-
-        const requestBody = {
-          cartItems: enrichedCartItems,
-          comboCartItems: comboItems,
-          successUrl,
-          cancelUrl,
-          promoCodeId: promoId,
-          promoDiscount: promoDiscount,
-          fulfillmentType: fulfillmentType,
-          addressId: (fulfillmentType === 'delivery' || fulfillmentType === 'nationwide') ? selectedAddressId : null,
-          deliveryDate: deliveryDate,
-          deliveryTime: deliveryTime,
-          pickupDate: fulfillmentType === 'pickup' ? pickupDate : null,
-          pickupTime: fulfillmentType === 'pickup' ? pickupTime : null,
-          deliveryFee: deliveryFee,
-          deliveryDistance: fulfillmentType === 'delivery' ? (userProfile?.distance_from_store || null) : null,
-          deliveryZone: fulfillmentType === 'delivery' ? (deliveryFeeData.zone?.zone_name || null) : null,
-          taxAmount: totalTax,
-          taxableAmount: taxableSubtotal,
-        };
-
-        const token = await getToken();
-        if (!token) {
-          throw new Error('Authentication token not available');
-        }
-
-        const response = await fetch(
-          `${(supabase as any).supabaseUrl}/functions/v1/create-checkout`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          console.error("Stripe checkout error:", error);
-          throw new Error('Failed to create checkout');
-        }
-
-        const checkoutData = await response.json();
-
-        if (checkoutData?.url) {
-          window.location.href = checkoutData.url;
-        } else {
-          throw new Error("No checkout URL returned");
-        }
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available');
       }
+
+      console.log('Creating pending order:', {
+        fulfillmentType,
+        paymentMethod,
+        itemCount: items.length,
+      });
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/create-pending-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Order creation error:", error);
+        throw new Error('Failed to create order');
+      }
+
+      const orderResult = await response.json();
+
+      toast({
+        title: "Order placed!",
+        description: "Your order has been received and is being reviewed by our team. We'll send you an email shortly.",
+      });
+
+      trackEvent('checkout_pending', {
+        order_id: orderResult?.orderId || 'unknown',
+        total_amount: subtotal + totalTax + deliveryFee - promoDiscount,
+        payment_method: paymentMethod,
+        fulfillment_type: fulfillmentType,
+        items_count: items.length,
+        had_promo_code: !!promoCode,
+      });
+
+      // Navigate to pending order status page (admin review page)
+      navigate(`/order-pending/${orderResult.orderId}`);
     } catch (error) {
       console.error("Checkout error:", error);
       toast({

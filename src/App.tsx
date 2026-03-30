@@ -39,6 +39,7 @@ import AdminCustomerMessagingPage from "./pages/AdminCustomerMessagingPage";
 import TvMenuDisplayPage from "./pages/TvMenuDisplayPage";
 import AdminStoreSettingsPage from "./pages/AdminStoreSettingsPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
+import OrderPendingPage from "./pages/OrderPendingPage";
 import OrderCanceledPage from "./pages/OrderCanceledPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import LunchBoxPage from "./pages/LunchBoxPage";
@@ -224,6 +225,7 @@ function App() {
                   } />
                   <Route path="/tv-menu" element={<TvMenuDisplayPage />} />
                   <Route path="/tv-menu/:slug" element={<TvMenuDisplayPage />} />
+                  <Route path="/order-pending/:orderId" element={<OrderPendingPage />} />
                   <Route path="/order-success" element={<OrderSuccessPage />} />
                   <Route path="/lunch-box-success" element={<LunchBoxSuccessPage />} />
                   <Route path="/order-canceled" element={<OrderCanceledPage />} />
