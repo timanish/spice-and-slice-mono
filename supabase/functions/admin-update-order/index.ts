@@ -70,7 +70,8 @@ serve(async (req) => {
 
     // Send status update email (fire and forget - don't block response)
     try {
-      await fetch(
+      console.log("Attempting to send order status email:", { orderId, status });
+      const emailResponse = await fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
         {
           method: "POST",
@@ -86,8 +87,15 @@ serve(async (req) => {
           }),
         },
       );
+
+      const emailData = await emailResponse.text();
+      if (!emailResponse.ok) {
+        console.error("Error sending status email - Status:", emailResponse.status, "Response:", emailData);
+      } else {
+        console.log("Order status email sent successfully:", emailData);
+      }
     } catch (emailError) {
-      console.error("Error sending status email:", emailError);
+      console.error("Failed to send status email - Network error:", emailError);
       // Don't fail the request if email fails
     }
 
