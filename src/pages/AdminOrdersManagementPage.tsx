@@ -96,6 +96,8 @@ const AdminOrdersManagementPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [fulfillmentTypeFilter, setFulfillmentTypeFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [estimatedTime, setEstimatedTime] = useState("");
   const [driverNotes, setDriverNotes] = useState("");
   const [newStatus, setNewStatus] = useState<FulfillmentStatus | "">("");
@@ -265,6 +267,11 @@ const AdminOrdersManagementPage = () => {
     setDriverNotes("");
   };
 
+  const handleViewOrderDetails = (order: Order) => {
+    setViewingOrder(order);
+    setOrderDetailsOpen(true);
+  };
+
   const handleUpdateStatus = () => {
     if (!selectedOrder || !newStatus) return;
 
@@ -394,7 +401,11 @@ const AdminOrdersManagementPage = () => {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => (
-                <Card key={order.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={order.id}
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleViewOrderDetails(order)}
+                >
                   <CardHeader>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div className="space-y-2">
@@ -560,6 +571,182 @@ const AdminOrdersManagementPage = () => {
               ))}
             </div>
           )}
+
+        {/* Order Details Dialog */}
+        <Dialog open={orderDetailsOpen} onOpenChange={setOrderDetailsOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Order Details</DialogTitle>
+              <DialogDescription>
+                Order #{viewingOrder?.id.substring(0, 8).toUpperCase()}
+              </DialogDescription>
+            </DialogHeader>
+            {viewingOrder && (
+              <div className="space-y-6">
+                {/* Customer Information */}
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Customer Information
+                  </h4>
+                  <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 w-24">Name:</span>
+                      <span className="font-medium">{viewingOrder.profiles?.full_name || "N/A"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 w-24">Email:</span>
+                      <span className="break-all">{viewingOrder.profiles?.email || "N/A"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 w-24">Phone:</span>
+                      <span>{viewingOrder.profiles?.phone_number || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fulfillment Information */}
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {viewingOrder.fulfillment_type === "nationwide" ? "Nationwide Shipping Details" : viewingOrder.fulfillment_type === "delivery" ? "Delivery Details" : "Pickup Details"}
+                  </h4>
+                  <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-600 w-24">Type:</span>
+                      <span className="capitalize font-medium">{viewingOrder.fulfillment_type}</span>
+                    </div>
+                    {(viewingOrder.fulfillment_type === "delivery" || viewingOrder.fulfillment_type === "nationwide") && (
+                      <>
+                        {viewingOrder.user_addresses && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-gray-600 w-24">Address:</span>
+                            <span>
+                              {viewingOrder.user_addresses.address_line1}<br />
+                              {viewingOrder.user_addresses.city}, {viewingOrder.user_addresses.state} {viewingOrder.user_addresses.postal_code}
+                            </span>
+                          </div>
+                        )}
+                        {viewingOrder.delivery_date && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600 w-24">Date:</span>
+                            <span>{viewingOrder.delivery_date} {viewingOrder.delivery_time}</span>
+                          </div>
+                        )}
+                        {viewingOrder.delivery_zone && viewingOrder.fulfillment_type !== "nationwide" && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600 w-24">Zone:</span>
+                            <span>{viewingOrder.delivery_zone}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {viewingOrder.fulfillment_type === "pickup" && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 w-24">Date:</span>
+                          <span>{viewingOrder.pickup_date || "Not scheduled"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 w-24">Time:</span>
+                          <span>{viewingOrder.pickup_time || "Not scheduled"}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Order Items ({viewingOrder.order_items?.length || 0})
+                  </h4>
+                  <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                    {(!viewingOrder.order_items || viewingOrder.order_items.length === 0) ? (
+                      <p className="text-gray-500 text-sm">No items in this order</p>
+                    ) : (
+                      viewingOrder.order_items.map((item) => (
+                        <div key={item.id} className="flex justify-between items-start border-b pb-3 last:border-b-0">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
+                            <p className="text-xs text-gray-600">
+                              Qty: {item.quantity} × ${item.price_per_unit.toFixed(2)}
+                            </p>
+                          </div>
+                          <p className="font-medium text-sm">${(item.quantity * item.price_per_unit).toFixed(2)}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Order Summary */}
+                <div>
+                  <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Order Summary
+                  </h4>
+                  <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-medium">
+                        ${viewingOrder.order_items?.reduce((sum, item) => sum + item.quantity * item.price_per_unit, 0).toFixed(2) || "0.00"}
+                      </span>
+                    </div>
+                    {viewingOrder.delivery_fee > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Delivery Fee:</span>
+                        <span className="font-medium">${viewingOrder.delivery_fee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-gray-700 font-semibold">Total:</span>
+                      <span className="text-lg font-bold text-food-red">${viewingOrder.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment:</span>
+                      <span className="font-medium">
+                        {viewingOrder.payment_method === 'card' && viewingOrder.card_last4 ? (
+                          <>
+                            <span className="capitalize">{viewingOrder.card_brand || 'Card'}</span>
+                            {' '}•••• {viewingOrder.card_last4}
+                          </>
+                        ) : (
+                          viewingOrder.payment_method.toUpperCase()
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Status:</span>
+                      <Badge className={getStatusColor(viewingOrder.fulfillment_status)}>
+                        <div className="flex items-center gap-1">
+                          {getStatusIcon(viewingOrder.fulfillment_status)}
+                          {formatStatusLabel(viewingOrder.fulfillment_status)}
+                        </div>
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Button
+                    onClick={() => {
+                      setOrderDetailsOpen(false);
+                      setSelectedOrder(viewingOrder);
+                      setNewStatus(viewingOrder.fulfillment_status);
+                      setEstimatedTime("");
+                      setDriverNotes("");
+                    }}
+                    className="w-full bg-food-red hover:bg-food-red/90"
+                  >
+                    Update Status
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Status Update Dialog */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
