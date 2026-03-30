@@ -27,6 +27,7 @@ interface RequestBody {
   newStatus: string;
   estimatedTime?: string;
   driverNotes?: string;
+  confirmationToken?: string;
 }
 
 const getEmailTemplate = (
@@ -34,12 +35,28 @@ const getEmailTemplate = (
   customerName: string,
   orderId: string,
   estimatedTime?: string,
-  driverNotes?: string
+  driverNotes?: string,
+  confirmationToken?: string,
+  orderItems?: any[]
 ) => {
   const statusTemplates: Record<
     string,
     { subject: string; heading: string; message: string; color: string }
   > = {
+    pending_review: {
+      subject: "Order Received - Being Reviewed",
+      heading: "We've Received Your Order! 📋",
+      message:
+        "Thank you for your order! Our team is currently reviewing your items to ensure we have the best quality products available. We'll send you an updated order with any adjustments shortly.",
+      color: "#f59e0b",
+    },
+    awaiting_customer_confirmation: {
+      subject: "Please Confirm Your Order",
+      heading: "Review & Confirm Your Order 👀",
+      message:
+        "We've reviewed your order and may have made some adjustments based on our available inventory. Please review the details below and confirm to proceed with payment.",
+      color: "#f59e0b",
+    },
     confirmed: {
       subject: "Order Confirmed",
       heading: "Your Order Has Been Confirmed! 🎉",
@@ -95,6 +112,44 @@ const getEmailTemplate = (
     `
     : "";
 
+  // For awaiting_customer_confirmation status, show order items with original vs adjusted quantities
+  const orderItemsHtml = status === "awaiting_customer_confirmation" && orderItems && orderItems.length > 0
+    ? `
+    <div style="margin: 24px 0;">
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #6b7280; font-weight: 600;">ORDER ITEMS:</p>
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+        ${orderItems.map((item, idx) => `
+          <tr style="${idx % 2 === 0 ? 'background-color: #f9fafb;' : ''}border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px; font-size: 14px; color: #111827; font-weight: 500;">${item.product_name || item.name}</td>
+            <td style="padding: 12px; text-align: center; font-size: 14px; color: #6b7280;">
+              ${item.original_quantity && item.original_quantity !== item.quantity
+                ? `<span style="text-decoration: line-through;">${item.original_quantity}</span> → <span style="color: #f59e0b; font-weight: 600;">${item.quantity}</span>`
+                : item.quantity}
+            </td>
+            <td style="padding: 12px; text-align: right; font-size: 14px; color: #111827; font-weight: 500;">$${(item.quantity * item.price_per_unit).toFixed(2)}</td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+    `
+    : "";
+
+  // For confirmation status, show confirmation link button instead of view details
+  const ctaButton = status === "awaiting_customer_confirmation" && confirmationToken
+    ? `
+      <a href="https://www.spiceandslice.shop/order-confirm/${orderId}?token=${confirmationToken}"
+         style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+        Review & Confirm Order
+      </a>
+      <p style="margin: 16px 0 0 0; font-size: 12px; color: #9ca3af;">This link expires in 48 hours</p>
+    `
+    : `
+      <a href="https://www.spiceandslice.shop/order/${orderId}"
+         style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+        View Order Details
+      </a>
+    `;
+
   return {
     subject: `${template.subject} - Order #${orderId
       .substring(0, 8)
@@ -122,7 +177,7 @@ const getEmailTemplate = (
                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Spice & Slice</h1>
                   </td>
                 </tr>
-                
+
                 <!-- Content -->
                 <tr>
                   <td style="padding: 40px 30px;">
@@ -133,7 +188,7 @@ const getEmailTemplate = (
                     <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">${
                       template.message
                     }</p>
-                    
+
                     <!-- Order ID -->
                     <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0;">
                       <p style="margin: 0; font-size: 14px; color: #6b7280;">Order Number:</p>
@@ -142,17 +197,13 @@ const getEmailTemplate = (
                         .toUpperCase()}</p>
                     </div>
 
+                    ${orderItemsHtml}
                     ${estimatedTimeHtml}
                     ${driverNotesHtml}
-                    
+
                     <!-- CTA Button -->
                     <div style="text-align: center; margin: 32px 0;">
-                      <a href="https://www.spiceandslice.shop/order/${orderId}" 
-                         style="display: inline-block; background-color: ${
-                           template.color
-                         }; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                        View Order Details
-                      </a>
+                      ${ctaButton}
                     </div>
                     
                     <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
@@ -206,7 +257,7 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body: RequestBody = await req.json();
-    const { orderId, newStatus, estimatedTime, driverNotes } = body;
+    const { orderId, newStatus, estimatedTime, driverNotes, confirmationToken } = body;
 
     console.log("Sending order status email:", { orderId, newStatus });
 
@@ -245,13 +296,35 @@ serve(async (req) => {
       throw new Error("Customer email not found");
     }
 
+    // Fetch order items for awaiting_customer_confirmation to show adjustments
+    let orderItems = undefined;
+    if (newStatus === "awaiting_customer_confirmation") {
+      const { data: items, error: itemsError } = await supabase
+        .from("order_items")
+        .select("*, product:products(name)")
+        .eq("order_id", orderId);
+
+      if (!itemsError && items) {
+        orderItems = items.map((item: any) => ({
+          product_name: item.product?.name,
+          name: item.product?.name,
+          quantity: item.quantity,
+          original_quantity: item.original_quantity,
+          price_per_unit: item.price_per_unit,
+        }));
+        console.log("Order items fetched:", orderItems);
+      }
+    }
+
     // Generate email content
     const emailContent = getEmailTemplate(
       newStatus,
       customerName,
       orderId,
       estimatedTime,
-      driverNotes
+      driverNotes,
+      confirmationToken,
+      orderItems
     );
 
     // Send email via Resend
