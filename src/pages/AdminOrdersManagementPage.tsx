@@ -41,10 +41,11 @@ import {
   ChefHat,
   FileText,
   Globe,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 
-type FulfillmentStatus = 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+type FulfillmentStatus = 'pending_review' | 'pending' | 'awaiting_customer_confirmation' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
 interface Order {
   id: string;
@@ -83,6 +84,7 @@ interface Order {
   order_items?: Array<{
     id: string;
     quantity: number;
+    original_quantity?: number;
     price_per_unit: number;
     products?: {
       name: string;
@@ -101,7 +103,10 @@ const AdminOrdersManagementPage = () => {
   const [estimatedTime, setEstimatedTime] = useState("");
   const [driverNotes, setDriverNotes] = useState("");
   const [newStatus, setNewStatus] = useState<FulfillmentStatus | "">("");
-  
+  const [adjustedQuantities, setAdjustedQuantities] = useState<Record<string, number>>({});
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isCheckingRole } = useAdminRole();
@@ -208,6 +213,113 @@ const AdminOrdersManagementPage = () => {
     },
   });
 
+  const sendForConfirmationMutation = useMutation({
+    mutationFn: async ({
+      orderId,
+      itemAdjustments,
+    }: {
+      orderId: string;
+      itemAdjustments?: Array<{ orderItemId: string; newQuantity: number }>;
+    }) => {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/admin-adjust-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'send_for_confirmation',
+            orderId,
+            itemAdjustments,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to send confirmation');
+      }
+
+      const result = await response.json();
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast({
+        title: "Sent for Confirmation",
+        description: "Customer will receive an email with the confirmation link",
+      });
+      setOrderDetailsOpen(false);
+      setViewingOrder(null);
+      setAdjustedQuantities({});
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to send confirmation: " + (error instanceof Error ? error.message : "Unknown error"),
+        variant: "destructive",
+      });
+      console.error(error);
+    },
+  });
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/admin-adjust-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'cancel',
+            orderId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to cancel order');
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast({
+        title: "Order Cancelled",
+        description: "Customer has been notified",
+      });
+      setOrderDetailsOpen(false);
+      setViewingOrder(null);
+      setOrderToCancel(null);
+      setIsCancelConfirmOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to cancel order",
+        variant: "destructive",
+      });
+      console.error(error);
+    },
+  });
+
   // Filter orders by search query
   const filteredOrders = orders.filter((order) => {
     const searchLower = searchQuery.toLowerCase();
@@ -220,8 +332,12 @@ const AdminOrdersManagementPage = () => {
 
   const getStatusIcon = (status: FulfillmentStatus) => {
     switch (status) {
+      case "pending_review":
+        return <AlertTriangle className="h-4 w-4" />;
       case "pending":
         return <Clock className="h-4 w-4" />;
+      case "awaiting_customer_confirmation":
+        return <Mail className="h-4 w-4" />;
       case "confirmed":
         return <CheckCircle className="h-4 w-4" />;
       case "preparing":
@@ -239,8 +355,12 @@ const AdminOrdersManagementPage = () => {
 
   const getStatusColor = (status: FulfillmentStatus) => {
     switch (status) {
+      case "pending_review":
+        return "bg-orange-100 text-orange-800 border-orange-200";
       case "pending":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "awaiting_customer_confirmation":
+        return "bg-amber-100 text-amber-800 border-amber-200";
       case "confirmed":
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "preparing":
@@ -269,6 +389,7 @@ const AdminOrdersManagementPage = () => {
 
   const handleViewOrderDetails = (order: Order) => {
     setViewingOrder(order);
+    setAdjustedQuantities({});
     setOrderDetailsOpen(true);
   };
 
@@ -286,6 +407,7 @@ const AdminOrdersManagementPage = () => {
   // Statistics
   const stats = {
     total: filteredOrders.length,
+    pendingReview: filteredOrders.filter((o) => o.fulfillment_status === "pending_review").length,
     pending: filteredOrders.filter((o) => o.fulfillment_status === "pending").length,
     preparing: filteredOrders.filter((o) => o.fulfillment_status === "preparing").length,
     outForDelivery: filteredOrders.filter((o) => o.fulfillment_status === "out_for_delivery").length,
@@ -305,11 +427,17 @@ const AdminOrdersManagementPage = () => {
         </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold">{stats.total}</div>
                 <div className="text-sm text-gray-600">Total Orders</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-orange-600">{stats.pendingReview}</div>
+                <div className="text-sm text-gray-600">Pending Review</div>
               </CardContent>
             </Card>
             <Card>
@@ -362,7 +490,9 @@ const AdminOrdersManagementPage = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="awaiting_customer_confirmation">Awaiting Confirmation</SelectItem>
                       <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="preparing">Preparing</SelectItem>
                       <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
@@ -435,11 +565,11 @@ const AdminOrdersManagementPage = () => {
                         </div>
                       </div>
                       <Button
-                        onClick={() => handleStatusChange(order)}
-                        variant="outline"
+                        onClick={() => handleViewOrderDetails(order)}
+                        variant={order.fulfillment_status === "pending_review" ? "default" : "outline"}
                         disabled={order.fulfillment_status === "delivered" || order.fulfillment_status === "cancelled"}
                       >
-                        Update Status
+                        {order.fulfillment_status === "pending_review" ? "Review Order" : "Update Status"}
                       </Button>
                     </div>
                   </CardHeader>
@@ -583,6 +713,26 @@ const AdminOrdersManagementPage = () => {
             </DialogHeader>
             {viewingOrder && (
               <div className="space-y-6">
+                {/* Status Banner */}
+                {viewingOrder.fulfillment_status === "pending_review" && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-orange-900">Order Awaiting Review</p>
+                      <p className="text-sm text-orange-800">Review items and adjust quantities before sending to customer for confirmation</p>
+                    </div>
+                  </div>
+                )}
+                {viewingOrder.fulfillment_status === "awaiting_customer_confirmation" && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
+                    <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900">Waiting for Customer Confirmation</p>
+                      <p className="text-sm text-blue-800">Customer has been emailed a confirmation link. They have 48 hours to confirm and complete payment.</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Customer Information */}
                 <div>
                   <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
@@ -666,17 +816,56 @@ const AdminOrdersManagementPage = () => {
                     {(!viewingOrder.order_items || viewingOrder.order_items.length === 0) ? (
                       <p className="text-gray-500 text-sm">No items in this order</p>
                     ) : (
-                      viewingOrder.order_items.map((item) => (
-                        <div key={item.id} className="flex justify-between items-start border-b pb-3 last:border-b-0">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
-                            <p className="text-xs text-gray-600">
-                              Qty: {item.quantity} × ${item.price_per_unit.toFixed(2)}
-                            </p>
+                      viewingOrder.order_items.map((item) => {
+                        const displayQuantity = adjustedQuantities[item.id] ?? item.quantity;
+                        const isAdjusted = adjustedQuantities[item.id] !== undefined && adjustedQuantities[item.id] !== item.quantity;
+                        const showOriginalQuantity = item.original_quantity && item.original_quantity !== item.quantity;
+
+                        return (
+                          <div key={item.id} className="border-b pb-3 last:border-b-0">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
+                                {viewingOrder.fulfillment_status === "pending_review" ? (
+                                  <div className="mt-2 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <label className="text-xs text-gray-600">Quantity:</label>
+                                      <Input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        value={displayQuantity}
+                                        onChange={(e) => setAdjustedQuantities(prev => ({
+                                          ...prev,
+                                          [item.id]: parseFloat(e.target.value) || 0
+                                        }))}
+                                        className="w-24 h-8 text-sm"
+                                      />
+                                      <span className="text-xs text-gray-500">@ ${item.price_per_unit.toFixed(2)}</span>
+                                    </div>
+                                    {isAdjusted && (
+                                      <p className="text-xs text-orange-600">
+                                        Original: {item.quantity}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : showOriginalQuantity ? (
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Original: <span className="line-through">{item.original_quantity}</span> → Adjusted: <span className="font-medium text-orange-600">{item.quantity}</span>
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Qty: {item.quantity} × ${item.price_per_unit.toFixed(2)}
+                                  </p>
+                                )}
+                              </div>
+                              <p className="font-medium text-sm whitespace-nowrap ml-4">
+                                ${(displayQuantity * item.price_per_unit).toFixed(2)}
+                              </p>
+                            </div>
                           </div>
-                          <p className="font-medium text-sm">${(item.quantity * item.price_per_unit).toFixed(2)}</p>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -729,22 +918,126 @@ const AdminOrdersManagementPage = () => {
                   </div>
                 </div>
 
-                <div>
-                  <Button
-                    onClick={() => {
-                      setOrderDetailsOpen(false);
-                      setSelectedOrder(viewingOrder);
-                      setNewStatus(viewingOrder.fulfillment_status);
-                      setEstimatedTime("");
-                      setDriverNotes("");
-                    }}
-                    className="w-full bg-food-red hover:bg-food-red/90"
-                  >
-                    Update Status
-                  </Button>
+                <div className="space-y-3">
+                  {viewingOrder.fulfillment_status === "pending_review" && (
+                    <>
+                      <Button
+                        onClick={() => {
+                          const changedItems = Object.entries(adjustedQuantities)
+                            .filter(([itemId, newQty]) => {
+                              const item = viewingOrder.order_items?.find(i => i.id === itemId);
+                              return item && newQty !== item.quantity;
+                            })
+                            .map(([itemId, newQuantity]) => ({
+                              orderItemId: itemId,
+                              newQuantity,
+                            }));
+
+                          sendForConfirmationMutation.mutate({
+                            orderId: viewingOrder.id,
+                            itemAdjustments: changedItems.length > 0 ? changedItems : undefined,
+                          });
+                        }}
+                        disabled={sendForConfirmationMutation.isPending}
+                        className="w-full bg-food-red hover:bg-food-red/90"
+                      >
+                        {sendForConfirmationMutation.isPending ? "Sending..." : "Send for Confirmation"}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setOrderToCancel(viewingOrder);
+                          setIsCancelConfirmOpen(true);
+                        }}
+                        variant="destructive"
+                        className="w-full"
+                        disabled={sendForConfirmationMutation.isPending}
+                      >
+                        Cancel Order
+                      </Button>
+                    </>
+                  )}
+                  {viewingOrder.fulfillment_status === "awaiting_customer_confirmation" && (
+                    <>
+                      <Button
+                        onClick={() => {
+                          sendForConfirmationMutation.mutate({
+                            orderId: viewingOrder.id,
+                          });
+                        }}
+                        disabled={sendForConfirmationMutation.isPending}
+                        className="w-full bg-food-red hover:bg-food-red/90"
+                      >
+                        {sendForConfirmationMutation.isPending ? "Sending..." : "Resend Confirmation Email"}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setOrderToCancel(viewingOrder);
+                          setIsCancelConfirmOpen(true);
+                        }}
+                        variant="destructive"
+                        className="w-full"
+                        disabled={sendForConfirmationMutation.isPending}
+                      >
+                        Cancel Order
+                      </Button>
+                    </>
+                  )}
+                  {viewingOrder.fulfillment_status !== "pending_review" && viewingOrder.fulfillment_status !== "awaiting_customer_confirmation" && (
+                    <Button
+                      onClick={() => {
+                        setOrderDetailsOpen(false);
+                        setSelectedOrder(viewingOrder);
+                        setNewStatus(viewingOrder.fulfillment_status);
+                        setEstimatedTime("");
+                        setDriverNotes("");
+                      }}
+                      className="w-full bg-food-red hover:bg-food-red/90"
+                    >
+                      Update Status
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Confirmation Dialog */}
+        <Dialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Cancel Order</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel this order? The customer will be notified via email.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Order #{orderToCancel?.id.substring(0, 8).toUpperCase()}
+              </p>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={() => {
+                    if (orderToCancel) {
+                      cancelOrderMutation.mutate(orderToCancel.id);
+                    }
+                  }}
+                  disabled={cancelOrderMutation.isPending}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  {cancelOrderMutation.isPending ? "Cancelling..." : "Yes, Cancel Order"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCancelConfirmOpen(false)}
+                  disabled={cancelOrderMutation.isPending}
+                  className="flex-1"
+                >
+                  Keep Order
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
