@@ -58,10 +58,19 @@ async function sendEmail(
       bcc: isAdminEmail ? undefined : ADMIN_EMAIL,
     });
 
-    console.log(`Email send attempt result for ${to}:`, response);
+    console.log(`Email send attempt result for ${to}:`, JSON.stringify(response));
+
+    if (response.error) {
+      console.error(`Email send failed for ${to}:`, response.error);
+      return {
+        success: false,
+        error: response.error.message || JSON.stringify(response.error),
+        response,
+      };
+    }
 
     return {
-      success: !response.error,
+      success: true,
       response,
     };
   } catch (error) {
@@ -952,6 +961,7 @@ serve(async (req) => {
         : "";
 
     let customerEmailResult = { success: false };
+    console.log("User email check - userEmail:", userEmail, "empty?", !userEmail);
     if (userEmail) {
       console.log("Sending confirmation email to customer:", userEmail);
       const customerEmailContent = `
@@ -1054,7 +1064,10 @@ serve(async (req) => {
         customerEmailContent,
       );
 
-      console.log("Customer email sending result:", customerEmailResult);
+      console.log("Customer email sending result:", JSON.stringify(customerEmailResult));
+      if (!customerEmailResult.success) {
+        console.error("Failed to send customer email:", customerEmailResult.error);
+      }
     } else {
       console.warn("No user email found, skipping customer confirmation email");
     }
