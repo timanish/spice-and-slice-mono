@@ -344,6 +344,7 @@ serve(async (req) => {
 
     // Send order confirmation email
     try {
+      console.log("Attempting to send order confirmation email for order:", order.id);
       const emailResponse = await fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
         {
@@ -359,14 +360,14 @@ serve(async (req) => {
         }
       );
 
+      const emailData = await emailResponse.text();
       if (!emailResponse.ok) {
-        const errorData = await emailResponse.text();
-        console.error("Error sending confirmation email:", errorData);
+        console.error("Error sending confirmation email - Status:", emailResponse.status, "Response:", emailData);
       } else {
-        console.log("Order confirmation email sent for order:", order.id);
+        console.log("Order confirmation email sent successfully for order:", order.id, "Response:", emailData);
       }
     } catch (emailError) {
-      console.error("Failed to send confirmation email:", emailError);
+      console.error("Failed to send confirmation email - Network/Connection error:", emailError);
       // Non-blocking - don't fail the order if email sending fails
     }
 

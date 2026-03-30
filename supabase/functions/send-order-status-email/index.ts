@@ -187,6 +187,21 @@ serve(async (req) => {
   }
 
   try {
+    // Validate RESEND_API_KEY is configured
+    if (!RESEND_API_KEY) {
+      console.error("RESEND_API_KEY is not set in environment variables");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Email service not configured - RESEND_API_KEY missing",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
     verifyServiceRoleKey(req);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
