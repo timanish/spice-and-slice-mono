@@ -1033,7 +1033,8 @@ serve(async (req) => {
             <p><strong>Pickup Time:</strong> ${
               pickupTime || "Not specified"
             }</p>
-            <p><strong>Pickup Location:</strong> Spice & Slice Restaurant</p>
+            <p><strong>Pickup Location:</strong></p>
+            <p>Spice & Slice Bazaar<br>7451 N Beach St #172<br>Fort Worth, TX 76137</p>
             `
             }
           </div>
