@@ -210,18 +210,10 @@ serve(async (req) => {
 
     console.log("Sending order status email:", { orderId, newStatus });
 
-    // Fetch order and customer details
+    // Fetch order details
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select(
-        `
-        *,
-        profiles:user_id (
-          full_name,
-          email
-        )
-      `
-      )
+      .select("*")
       .eq("id", orderId)
       .single();
 
@@ -234,8 +226,20 @@ serve(async (req) => {
       throw new Error("Order not found");
     }
 
-    const customerEmail = order.profiles?.email;
-    const customerName = order.profiles?.full_name || "Customer";
+    // Fetch customer profile separately
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", order.user_id)
+      .single();
+
+    if (profileError) {
+      console.error("Error fetching profile:", profileError);
+      throw new Error(`Failed to fetch customer profile: ${profileError.message}`);
+    }
+
+    const customerEmail = profileData?.email;
+    const customerName = profileData?.full_name || "Customer";
 
     if (!customerEmail) {
       throw new Error("Customer email not found");
