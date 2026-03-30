@@ -109,6 +109,7 @@ serve(async (req) => {
       id: session.id,
       payment_status: session.payment_status,
       status: session.status,
+      metadata: session.metadata,
     });
 
     if (session.payment_status !== "paid") {
@@ -139,6 +140,198 @@ serve(async (req) => {
       );
     }
 
+    // --- NEW FLOW: Admin review before payment (order_id in metadata) ---
+    if (session.metadata?.order_id) {
+      console.log("Processing order from admin review flow:", session.metadata.order_id);
+
+      const orderId = session.metadata.order_id;
+      const metadataUserId = session.metadata.user_id;
+
+      if (metadataUserId !== userId) {
+        return new Response(JSON.stringify({ error: "User ID mismatch" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fetch existing order
+      const { data: order, error: orderError } = await serviceClient
+        .from("orders")
+        .select("*")
+        .eq("id", orderId)
+        .single();
+
+      if (orderError || !order) {
+        console.error("Order not found:", orderError);
+        return new Response(
+          JSON.stringify({ error: "Order not found" }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Verify order is in awaiting_customer_confirmation status
+      if (order.fulfillment_status !== "awaiting_customer_confirmation") {
+        console.error("Order not in correct status for payment:", order.fulfillment_status);
+        return new Response(
+          JSON.stringify({
+            error: "Order is not awaiting customer confirmation",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Verify payment amount matches (within $0.01 for rounding)
+      const sessionAmount = session.amount_total ? session.amount_total / 100 : 0;
+      const amountDiff = Math.abs(sessionAmount - order.total_amount);
+      if (amountDiff > 0.01) {
+        console.error("Amount mismatch:", { sessionAmount, orderTotal: order.total_amount, diff: amountDiff });
+        return new Response(
+          JSON.stringify({
+            error: "Payment amount does not match order total",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Retrieve card details from Stripe
+      let cardDetails = {
+        card_last4: null,
+        card_brand: null,
+        card_exp_month: null,
+        card_exp_year: null,
+      };
+
+      if (session.payment_intent) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(
+            session.payment_intent as string,
+          );
+
+          if (paymentIntent.payment_method) {
+            const paymentMethod = await stripe.paymentMethods.retrieve(
+              paymentIntent.payment_method as string,
+            );
+
+            if (paymentMethod.card) {
+              cardDetails = {
+                card_last4: paymentMethod.card.last4,
+                card_brand: paymentMethod.card.brand,
+                card_exp_month: paymentMethod.card.exp_month,
+                card_exp_year: paymentMethod.card.exp_year,
+              };
+              console.log("Card details retrieved:", cardDetails);
+            }
+          }
+        } catch (error) {
+          console.error("Error retrieving payment method details:", error);
+          // Continue without card details - non-critical
+        }
+      }
+
+      // Update order to confirmed status
+      const { error: updateError } = await serviceClient
+        .from("orders")
+        .update({
+          fulfillment_status: "confirmed",
+          payment_status: "completed",
+          stripe_session_id: session.id,
+          card_last4: cardDetails.card_last4,
+          card_brand: cardDetails.card_brand,
+          card_exp_month: cardDetails.card_exp_month,
+          card_exp_year: cardDetails.card_exp_year,
+          confirmation_token: null,
+          confirmation_token_expires_at: null,
+        })
+        .eq("id", orderId);
+
+      if (updateError) {
+        console.error("Error updating order:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to confirm order" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Create print job
+      const { error: printJobError } = await serviceClient
+        .from("print_jobs")
+        .insert({ order_id: orderId });
+
+      if (printJobError) {
+        console.error("Error creating print job:", printJobError);
+        // Non-blocking
+      } else {
+        console.log("Print job created for order:", orderId);
+      }
+
+      // Send confirmation email
+      try {
+        const emailResponse = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              orderId,
+              newStatus: "confirmed",
+            }),
+          }
+        );
+
+        if (!emailResponse.ok) {
+          const errorBody = await emailResponse.text();
+          console.error("Error sending confirmation email - Status:", emailResponse.status, "Response:", errorBody);
+        } else {
+          console.log("Order confirmation email sent successfully for order:", orderId);
+        }
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Non-blocking
+      }
+
+      // Clear cart
+      const { data: userCart } = await serviceClient
+        .from("carts")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
+
+      if (userCart) {
+        await serviceClient
+          .from("cart_items")
+          .delete()
+          .eq("cart_id", userCart.id);
+
+        await serviceClient
+          .from("cart_combo_items")
+          .delete()
+          .eq("cart_id", userCart.id);
+
+        console.log("Cart cleared for user");
+      }
+
+      return new Response(JSON.stringify({ success: true, orderId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // --- LEGACY FLOW: Direct Stripe checkout (no admin review) ---
     const {
       user_id,
       fulfillment_type,
