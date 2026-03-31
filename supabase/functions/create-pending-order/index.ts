@@ -175,7 +175,7 @@ serve(async (req) => {
         console.log("Fetching combo:", comboItem.combo_id);
         const { data: combo, error: comboFetchError } = await serviceClient
           .from("product_combos")
-          .select("id, name, price, items:product_combo_items(product_id)")
+          .select("id, name, combo_price, items:combo_items(product_id)")
           .eq("id", comboItem.combo_id)
           .single();
 
@@ -187,19 +187,19 @@ serve(async (req) => {
           combo_id: comboItem.combo_id,
           found: !!combo,
           combo_name: combo?.name,
-          combo_price: combo?.price,
+          combo_price: combo?.combo_price,
           has_items_array: !!combo?.items,
           items_count: combo?.items?.length || 0,
         });
 
         if (combo) {
-          comboSubtotal += combo.price || 0;
+          comboSubtotal += combo.combo_price || 0;
           enrichedComboItems.push({
             ...comboItem,
             combo: {
               ...combo,
               name: combo.name,
-              price: combo.price,
+              price: combo.combo_price,
             },
           });
         }
