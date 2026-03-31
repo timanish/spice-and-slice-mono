@@ -526,6 +526,31 @@ serve(async (req) => {
       console.log("Cart cleared for user");
     }
 
+    // --- SEND PENDING REVIEW EMAIL (non-blocking) ---
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-order-status-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({
+        orderId: order.id,
+        newStatus: "pending_review",
+      }),
+    }).catch((error) => {
+      console.error("Failed to send pending review email:", error);
+      // Non-blocking - order is created successfully, email can be retried
+      return null;
+    });
+
+    if (emailResponse && !emailResponse.ok) {
+      const errorBody = await emailResponse.text();
+      console.error("Email send failed:", emailResponse.status, errorBody);
+    } else if (emailResponse) {
+      console.log("Pending review email sent successfully");
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
