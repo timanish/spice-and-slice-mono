@@ -154,6 +154,14 @@ serve(async (req) => {
       userId,
     } = requestData;
 
+    console.log("Destructured request data:", {
+      rawCartItemsLength: rawCartItems?.length || 0,
+      comboCartItemsLength: comboCartItems?.length || 0,
+      comboCartItemsSample: comboCartItems?.slice(0, 1),
+      fulfillmentType,
+      paymentMethod,
+    });
+
     // --- SERVER-SIDE PRICE VALIDATION ---
     let cartItems: any[] = [];
     let subtotal = 0;
@@ -332,6 +340,14 @@ serve(async (req) => {
       );
     }
 
+    console.log("Pre-insert state:", {
+      cartItemsCount: cartItems.length,
+      enrichedComboItemsCount: enrichedComboItems.length,
+      totalAmount,
+      subtotal,
+      comboSubtotal,
+    });
+
     console.log("Creating order with total:", totalAmount);
 
     // --- INSERT ORDER WITH pending_review STATUS ---
@@ -381,6 +397,11 @@ serve(async (req) => {
     }
 
     console.log("Order created successfully:", order.id);
+
+    console.log("About to insert order items:", {
+      cartItemsToInsert: cartItems.length,
+      enrichedComboItemsCount: enrichedComboItems.length,
+    });
 
     // --- INSERT ORDER ITEMS ---
     const orderItems = cartItems.map((item: any) => ({
