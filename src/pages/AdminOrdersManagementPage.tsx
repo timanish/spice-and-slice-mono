@@ -815,58 +815,131 @@ const AdminOrdersManagementPage = () => {
                   <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
                     {(!viewingOrder.order_items || viewingOrder.order_items.length === 0) ? (
                       <p className="text-gray-500 text-sm">No items in this order</p>
-                    ) : (
-                      viewingOrder.order_items.map((item) => {
-                        const displayQuantity = adjustedQuantities[item.id] ?? item.quantity;
-                        const isAdjusted = adjustedQuantities[item.id] !== undefined && adjustedQuantities[item.id] !== item.quantity;
-                        const showOriginalQuantity = item.original_quantity && item.original_quantity !== item.quantity;
+                    ) : (() => {
+                      // Group items by combo_id
+                      const comboMap = new Map<string | null, any[]>();
+                      const processedIds = new Set<string>();
 
-                        return (
-                          <div key={item.id} className="border-b pb-3 last:border-b-0">
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="flex-1">
-                                <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
-                                {viewingOrder.fulfillment_status === "pending_review" ? (
-                                  <div className="mt-2 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                      <label className="text-xs text-gray-600">Quantity:</label>
-                                      <Input
-                                        type="number"
-                                        min="0.01"
-                                        step="0.01"
-                                        value={displayQuantity}
-                                        onChange={(e) => setAdjustedQuantities(prev => ({
-                                          ...prev,
-                                          [item.id]: parseFloat(e.target.value) || 0
-                                        }))}
-                                        className="w-24 h-8 text-sm"
-                                      />
-                                      <span className="text-xs text-gray-500">@ ${item.price_per_unit.toFixed(2)}</span>
+                      viewingOrder.order_items.forEach(item => {
+                        const key = item.combo_id || `regular-${item.id}`;
+                        if (!comboMap.has(key)) {
+                          comboMap.set(key, []);
+                        }
+                        comboMap.get(key)!.push(item);
+                        processedIds.add(item.id);
+                      });
+
+                      const elements: JSX.Element[] = [];
+                      comboMap.forEach((items, key) => {
+                        const isCombo = key.startsWith('combo-') || items[0].combo_id;
+
+                        if (isCombo && items[0].combo_id) {
+                          // Render as combo group
+                          const comboItem = items[0]; // First item has the price
+                          const displayQuantity = adjustedQuantities[comboItem.id] ?? comboItem.quantity;
+                          const isAdjusted = adjustedQuantities[comboItem.id] !== undefined && adjustedQuantities[comboItem.id] !== comboItem.quantity;
+
+                          elements.push(
+                            <div key={key} className="border-b pb-3 last:border-b-0">
+                              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-semibold text-sm text-blue-900">{comboItem.combo_name || "Combo"}</p>
+                                    <p className="text-xs text-blue-700 mt-1">{items.length} items included</p>
+                                    <div className="mt-1 space-y-1">
+                                      {items.map(i => (
+                                        <p key={i.id} className="text-xs text-blue-600">• {i.products?.name || "Unknown"}</p>
+                                      ))}
                                     </div>
-                                    {isAdjusted && (
-                                      <p className="text-xs text-orange-600">
-                                        Original: {item.quantity}
-                                      </p>
+
+                                    {viewingOrder.fulfillment_status === "pending_review" && (
+                                      <div className="mt-2 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <label className="text-xs text-gray-600">Combos:</label>
+                                          <Input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            value={displayQuantity}
+                                            onChange={(e) => setAdjustedQuantities(prev => ({
+                                              ...prev,
+                                              [comboItem.id]: parseFloat(e.target.value) || 0
+                                            }))}
+                                            className="w-24 h-8 text-sm"
+                                          />
+                                          <span className="text-xs text-gray-500">@ ${comboItem.price_per_unit.toFixed(2)}</span>
+                                        </div>
+                                        {isAdjusted && (
+                                          <p className="text-xs text-orange-600">
+                                            Original: {comboItem.quantity}
+                                          </p>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
-                                ) : showOriginalQuantity ? (
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    Original: <span className="line-through">{item.original_quantity}</span> → Adjusted: <span className="font-medium text-orange-600">{item.quantity}</span>
+                                  <p className="font-medium text-sm whitespace-nowrap ml-4 text-blue-900">
+                                    ${(displayQuantity * comboItem.price_per_unit).toFixed(2)}
                                   </p>
-                                ) : (
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    Qty: {item.quantity} × ${item.price_per_unit.toFixed(2)}
-                                  </p>
-                                )}
+                                </div>
                               </div>
-                              <p className="font-medium text-sm whitespace-nowrap ml-4">
-                                ${(displayQuantity * item.price_per_unit).toFixed(2)}
-                              </p>
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
+                          );
+                        } else {
+                          // Render as regular item
+                          const item = items[0];
+                          const displayQuantity = adjustedQuantities[item.id] ?? item.quantity;
+                          const isAdjusted = adjustedQuantities[item.id] !== undefined && adjustedQuantities[item.id] !== item.quantity;
+                          const showOriginalQuantity = item.original_quantity && item.original_quantity !== item.quantity;
+
+                          elements.push(
+                            <div key={item.id} className="border-b pb-3 last:border-b-0">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
+                                  {viewingOrder.fulfillment_status === "pending_review" ? (
+                                    <div className="mt-2 space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <label className="text-xs text-gray-600">Quantity:</label>
+                                        <Input
+                                          type="number"
+                                          min="0.01"
+                                          step="0.01"
+                                          value={displayQuantity}
+                                          onChange={(e) => setAdjustedQuantities(prev => ({
+                                            ...prev,
+                                            [item.id]: parseFloat(e.target.value) || 0
+                                          }))}
+                                          className="w-24 h-8 text-sm"
+                                        />
+                                        <span className="text-xs text-gray-500">@ ${item.price_per_unit.toFixed(2)}</span>
+                                      </div>
+                                      {isAdjusted && (
+                                        <p className="text-xs text-orange-600">
+                                          Original: {item.quantity}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : showOriginalQuantity ? (
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      Original: <span className="line-through">{item.original_quantity}</span> → Adjusted: <span className="font-medium text-orange-600">{item.quantity}</span>
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      Qty: {item.quantity} × ${item.price_per_unit.toFixed(2)}
+                                    </p>
+                                  )}
+                                </div>
+                                <p className="font-medium text-sm whitespace-nowrap ml-4">
+                                  ${(displayQuantity * item.price_per_unit).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                      });
+
+                      return elements;
+                    })()}
                   </div>
                 </div>
 
