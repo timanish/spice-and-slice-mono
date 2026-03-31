@@ -20,15 +20,31 @@ const OrderPendingPage = () => {
 
       try {
         setIsLoading(true);
+        console.log('Fetching order:', orderId);
+
+        if (typeof getOrder !== 'function') {
+          console.error('getOrder is not a function:', typeof getOrder, getOrder);
+          throw new Error('getOrder is not available');
+        }
+
         const result = await getOrder(orderId);
+        console.log('Order fetch result:', result);
+
         if (result?.data) {
           setOrder(result.data);
         } else {
+          console.error('No data in result:', result);
           setError('Order not found');
         }
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
         console.error('Error fetching order:', err);
-        setError('Failed to load order details');
+        console.error('Error details:', {
+          message: errorMsg,
+          type: typeof err,
+          stack: err instanceof Error ? err.stack : 'N/A'
+        });
+        setError(`Failed to load order details: ${errorMsg}`);
       } finally {
         setIsLoading(false);
       }
