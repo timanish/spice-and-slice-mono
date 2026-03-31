@@ -178,6 +178,12 @@ serve(async (req) => {
     let comboSubtotal = 0;
     let enrichedComboItems: any[] = [];
 
+    console.log("About to process combo items:", {
+      hasComboCartItems: !!comboCartItems,
+      comboCartItemsLength: comboCartItems?.length || 0,
+      willProcess: !!comboCartItems && comboCartItems.length > 0,
+    });
+
     if (comboCartItems && comboCartItems.length > 0) {
       console.log("Processing combo cart items, length:", comboCartItems.length);
       for (const comboItem of comboCartItems) {
