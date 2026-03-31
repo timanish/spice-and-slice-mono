@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Package, ChevronRight } from 'lucide-react';
+import { Truck, Package, ChevronRight, AlertTriangle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ interface Order {
   delivery_time?: string;
   pickup_date?: string;
   pickup_time?: string;
+  confirmation_token?: string | null;
   order_items: Array<any>;
 }
 
@@ -47,6 +48,10 @@ const OrderHistory = ({ orders }: OrderHistoryProps) => {
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'pending_review':
+        return 'bg-orange-100 text-orange-800';
+      case 'awaiting_customer_confirmation':
+        return 'bg-amber-100 text-amber-800';
       case 'delivered':
         return 'bg-green-100 text-green-800';
       case 'out_for_delivery':
@@ -130,7 +135,7 @@ const OrderHistory = ({ orders }: OrderHistoryProps) => {
               </div>
 
               {/* Middle row: Fulfillment type + Status */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Badge
                   variant="outline"
                   className={`text-xs ${
@@ -154,6 +159,12 @@ const OrderHistory = ({ orders }: OrderHistoryProps) => {
                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClass(deliveryStatus)}`}>
                   {formatStatusLabel(deliveryStatus)}
                 </span>
+                {deliveryStatus === 'awaiting_customer_confirmation' && (
+                  <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Action Required
+                  </Badge>
+                )}
               </div>
 
               {/* Scheduled time */}
@@ -266,14 +277,33 @@ const OrderHistory = ({ orders }: OrderHistoryProps) => {
                       )
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/order/${order.id}`)}
-                    >
-                      View Details
-                    </Button>
+                  <TableCell className="flex gap-2">
+                    {deliveryStatus === 'awaiting_customer_confirmation' && order.confirmation_token ? (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate(`/order-confirm/${order.id}?token=${order.confirmation_token}`)}
+                          className="bg-amber-600 hover:bg-amber-700"
+                        >
+                          Confirm Order
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/order/${order.id}`)}
+                        >
+                          Details
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/order/${order.id}`)}
+                      >
+                        View Details
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               );

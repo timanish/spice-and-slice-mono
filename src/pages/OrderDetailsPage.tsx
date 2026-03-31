@@ -6,7 +6,7 @@ import { useUserData } from '@/hooks/useUserData';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Mail, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePostHogTracking } from '@/hooks/usePostHogTracking';
 
@@ -43,6 +43,8 @@ interface Order {
   card_brand?: string;
   card_exp_month?: number;
   card_exp_year?: number;
+  confirmation_token?: string | null;
+  confirmation_token_expires_at?: string | null;
   order_items: OrderItem[];
   profiles: {
     full_name: string;
@@ -120,17 +122,32 @@ const OrderDetailsPage = () => {
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'pending_review':
+        return 'bg-orange-100 text-orange-800';
+      case 'awaiting_customer_confirmation':
+        return 'bg-amber-100 text-amber-800';
+      case 'confirmed':
+        return 'bg-teal-100 text-teal-800';
+      case 'preparing':
+        return 'bg-purple-100 text-purple-800';
+      case 'out_for_delivery':
+        return 'bg-blue-100 text-blue-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const formatStatusLabel = (status: string) => {
+    return status
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
   };
 
   if (loading) {
@@ -202,10 +219,10 @@ const OrderDetailsPage = () => {
             </div>
             <span
               className={`px-3 py-1 text-sm rounded-full ${getStatusBadgeClass(
-                order.status
+                order.fulfillment_status || order.status
               )}`}
             >
-              {order.status}
+              {formatStatusLabel(order.fulfillment_status || order.status)}
             </span>
           </div>
 
@@ -269,6 +286,59 @@ const OrderDetailsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Status-specific action banners */}
+        {order.fulfillment_status === 'pending_review' && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+            <div className="flex gap-4">
+              <AlertTriangle className="h-6 w-6 text-orange-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900 mb-2">Your Order is Being Reviewed</h3>
+                <p className="text-orange-800 text-sm mb-3">
+                  Our team is checking our inventory to ensure the items you ordered are available. Some items may come in different pre-packaged weights, so we verify the best match for you.
+                </p>
+                <div className="flex items-center gap-2 text-sm text-orange-700">
+                  <Clock className="h-4 w-4" />
+                  <span>Typical review time: 1–3 hours during business hours</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {order.fulfillment_status === 'awaiting_customer_confirmation' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+            <div className="flex gap-4">
+              <Mail className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 mb-2">Action Required: Confirm Your Order</h3>
+                <p className="text-amber-800 text-sm mb-3">
+                  We've reviewed your order and may have made some adjustments based on our available inventory. Please review the details below and confirm to proceed with payment.
+                </p>
+                {order.confirmation_token && (
+                  <>
+                    {order.confirmation_token_expires_at && (
+                      <p className="text-amber-700 text-xs mb-4">
+                        Confirmation link expires: {format(new Date(order.confirmation_token_expires_at), 'MMMM dd, yyyy h:mm a')}
+                      </p>
+                    )}
+                    <Button
+                      onClick={() => navigate(`/order-confirm/${order.id}?token=${order.confirmation_token}`)}
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      Confirm {order.payment_method === 'card' ? '& Pay' : 'Order'}
+                    </Button>
+                  </>
+                )}
+                {!order.confirmation_token && (
+                  <p className="text-amber-700 text-sm">
+                    Please check your email for the confirmation link. The link works for 48 hours.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="font-semibold text-lg mb-4">Order Items</h3>
