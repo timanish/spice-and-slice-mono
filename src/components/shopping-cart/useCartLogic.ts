@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/stores/cart";
+import { clearCartStorage } from "@/stores/cart/store";
 import { useUser as useClerkUser, useAuth } from "@clerk/clerk-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -139,8 +140,11 @@ export const useCartLogic = (
         description: "Your order is being reviewed. We'll email you shortly.",
       });
 
+      // Clear cart items from store and localStorage
+      useCartStore.setState({ items: [], comboItems: [] });
+      clearCartStorage();
+
       setIsOpen(false);
-      fetchCart();
       navigate(`/order-pending/${orderResult.orderId}`);
     } catch (error) {
       const errorMessage =
