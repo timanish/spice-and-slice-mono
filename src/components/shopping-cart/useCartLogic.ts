@@ -76,22 +76,30 @@ export const useCartLogic = (
       }
       setIsCheckingOut(true);
 
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Authentication token not available");
+      }
+
+      // Determine fulfillment type and get corresponding dates
       const deliveryDate = localStorage.getItem("selectedDeliveryDate");
       const deliveryTime = localStorage.getItem("selectedDeliveryTime");
+      const pickupDate = localStorage.getItem("selectedPickupDate");
+      const pickupTime = localStorage.getItem("selectedPickupTime");
 
-      if (!deliveryDate || !deliveryTime) {
+      let fulfillmentType: "delivery" | "pickup" | "nationwide" = "delivery";
+
+      // Check what dates are actually available
+      if (pickupDate && pickupTime) {
+        fulfillmentType = "pickup";
+      } else if (!deliveryDate || !deliveryTime) {
         toast({
-          title: "Delivery information missing",
-          description: "Please select a delivery date and time",
+          title: "Schedule information missing",
+          description: "Please select a delivery or pickup time",
           variant: "destructive",
         });
         setIsCheckingOut(false);
         return;
-      }
-
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Authentication token not available");
       }
 
       // Phase 7 unified checkout: all orders go through admin review first
@@ -99,9 +107,11 @@ export const useCartLogic = (
         cartItems: items,
         comboCartItems: comboItems,
         paymentMethod: paymentMethod,
-        fulfillmentType: "delivery",
-        deliveryDate,
-        deliveryTime,
+        fulfillmentType,
+        ...(fulfillmentType === "pickup"
+          ? { pickupDate, pickupTime }
+          : { deliveryDate, deliveryTime }
+        ),
         promoCode: null,
       };
 
