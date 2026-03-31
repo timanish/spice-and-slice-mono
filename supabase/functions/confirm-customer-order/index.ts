@@ -57,7 +57,7 @@ serve(async (req) => {
       );
     }
 
-    const { orderId, token } = requestData;
+    const { orderId, token, action } = requestData;
 
     if (!orderId || !token) {
       return new Response(
@@ -126,6 +126,40 @@ serve(async (req) => {
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // --- GET ORDER DETAILS (no confirmation) ---
+    if (action === "get") {
+      console.log("Fetching order details for:", orderId);
+
+      // Fetch order items
+      const { data: orderItems, error: itemsError } = await serviceClient
+        .from("order_items")
+        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, products(name)")
+        .eq("order_id", orderId);
+
+      if (itemsError) {
+        console.error("Error fetching order items:", itemsError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch order items" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          order,
+          orderItems: orderItems || [],
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
         },
       );
     }

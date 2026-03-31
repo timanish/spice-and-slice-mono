@@ -77,7 +77,7 @@ const OrderConfirmPage = () => {
 
       try {
         setIsLoading(true);
-        // Fetch order details - this endpoint should validate token
+        // Fetch order details - validates token and returns order
         const response = await fetch(
           `${SUPABASE_URL}/functions/v1/confirm-customer-order`,
           {
@@ -93,24 +93,33 @@ const OrderConfirmPage = () => {
           }
         );
 
-        // For now, we'll fetch order details directly
-        // In a real scenario, you'd have an endpoint that validates token and returns order
-        // For MVP, we're displaying the order details that would be shown
-        setOrder({
-          id: orderId,
-          payment_method: 'card',
-          fulfillment_type: 'delivery',
-          total_amount: 0,
-          delivery_fee: 0,
-          discount_amount: 0,
-          tax_amount: 0,
-          taxable_amount: 0,
-        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to load order details');
+        }
 
-        setOrderItems([]);
+        const result = await response.json();
+
+        if (result.success && result.order) {
+          setOrder(result.order);
+
+          // Format order items for display
+          const formatted = result.orderItems.map((item: any) => ({
+            id: item.id,
+            product_name: item.products?.name || 'Product',
+            quantity: item.quantity,
+            original_quantity: item.original_quantity,
+            price_per_unit: item.price_per_unit,
+            tax_amount: item.tax_amount,
+          }));
+
+          setOrderItems(formatted);
+        } else {
+          throw new Error('Invalid response format');
+        }
       } catch (err) {
         console.error('Error fetching order:', err);
-        setError('Failed to load order details');
+        setError(err instanceof Error ? err.message : 'Failed to load order details');
       } finally {
         setIsLoading(false);
       }
