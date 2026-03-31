@@ -71,7 +71,7 @@ const CheckoutPage = () => {
   const [isPickupTimeValid, setIsPickupTimeValid] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [userAddresses, setUserAddresses] = useState<any[]>([]);
-  const hasShownDeliveryToast = useRef(false);
+  const autoSwitchAttemptedRef = useRef<{ distance?: number; switched: boolean }>({ switched: false });
   const [showDeliveryError, setShowDeliveryError] = useState(false);
   const [showPickupError, setShowPickupError] = useState(false);
   const [showOrderReview, setShowOrderReview] = useState(false);
@@ -204,17 +204,26 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     // Auto-switch fulfillment type when outside delivery range
-    if (!hasShownDeliveryToast.current &&
-        !isLoadingProfile &&
-        !isPickupLoading &&
-        !deliveryFeeData.isLoading &&
-        userProfile?.distance_from_store !== undefined &&
-        userProfile?.distance_from_store !== null &&
-        userProfile?.distance_from_store > 0 &&
-        !deliveryFeeData.isWithinDeliveryRange &&
-        fulfillmentType === 'delivery') {
+    // Only prevent re-switching if distance hasn't changed (user may add new address)
+    const shouldAttemptSwitch =
+      !isLoadingProfile &&
+      !isPickupLoading &&
+      !deliveryFeeData.isLoading &&
+      userProfile?.distance_from_store !== undefined &&
+      userProfile?.distance_from_store !== null &&
+      userProfile?.distance_from_store > 0 &&
+      !deliveryFeeData.isWithinDeliveryRange &&
+      fulfillmentType === 'delivery';
 
-      hasShownDeliveryToast.current = true;
+    // Allow retry if distance has changed
+    const distanceChanged =
+      autoSwitchAttemptedRef.current.distance !== userProfile?.distance_from_store;
+
+    if (shouldAttemptSwitch && (!autoSwitchAttemptedRef.current.switched || distanceChanged)) {
+      autoSwitchAttemptedRef.current = {
+        switched: true,
+        distance: userProfile?.distance_from_store,
+      };
 
       if (hasNationwideItems) {
         // Cart has nationwide-shippable items — switch to nationwide
@@ -366,6 +375,18 @@ const CheckoutPage = () => {
           variant: "destructive",
         });
         document.getElementById('delivery-time-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      // Safety check: verify user is within delivery range
+      if (!deliveryFeeData.isWithinDeliveryRange) {
+        toast({
+          title: "Delivery unavailable",
+          description: userProfile?.distance_from_store
+            ? `Your location (${userProfile.distance_from_store.toFixed(1)} miles) is outside our delivery range. Please select pickup or nationwide shipping.`
+            : "Delivery is not available for your location. Please select pickup or nationwide shipping.",
+          variant: "destructive",
+        });
         return;
       }
     }

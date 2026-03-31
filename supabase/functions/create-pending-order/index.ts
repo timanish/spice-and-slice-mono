@@ -262,6 +262,25 @@ serve(async (req) => {
         deliveryFee = feeData.fee;
         deliveryDistance = feeData.distance;
         deliveryZone = feeData.zone;
+
+        // CRITICAL: Reject delivery orders where user is outside all delivery zones
+        if (deliveryZone === null && feeData.distance !== null) {
+          console.error(
+            `Delivery zone validation failed: User is ${feeData.distance} miles away, outside all delivery zones`,
+          );
+          return new Response(
+            JSON.stringify({
+              error: "Delivery unavailable",
+              details: `Your location (${feeData.distance.toFixed(
+                1,
+              )} miles) is outside our delivery range. Please select pickup or nationwide shipping.`,
+            }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
       } catch (error) {
         console.error("Delivery fee lookup error:", error);
         // Continue without delivery fee rather than fail
