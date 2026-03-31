@@ -9,7 +9,7 @@ import { CheckCircle, Clock, Mail, ArrowRight } from 'lucide-react';
 const OrderPendingPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const { getOrderDetails } = useUserData();
+  const { getOrder } = useUserData();
   const [order, setOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +20,9 @@ const OrderPendingPage = () => {
 
       try {
         setIsLoading(true);
-        const result = await getOrderDetails(orderId);
-        if (result?.data) {
-          setOrder(result.data);
+        const result = await getOrder(orderId);
+        if (result) {
+          setOrder(result);
         } else {
           setError('Order not found');
         }
@@ -35,7 +35,7 @@ const OrderPendingPage = () => {
     };
 
     fetchOrder();
-  }, [orderId, getOrderDetails]);
+  }, [orderId, getOrder]);
 
   if (isLoading) {
     return (
