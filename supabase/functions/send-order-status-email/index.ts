@@ -28,6 +28,7 @@ interface RequestBody {
   estimatedTime?: string;
   driverNotes?: string;
   confirmationToken?: string;
+  isAdminEmail?: boolean;
 }
 
 const getEmailTemplate = (
@@ -37,18 +38,24 @@ const getEmailTemplate = (
   estimatedTime?: string,
   driverNotes?: string,
   confirmationToken?: string,
-  orderItems?: any[]
+  orderItems?: any[],
+  isAdminEmail?: boolean
 ) => {
   const statusTemplates: Record<
     string,
     { subject: string; heading: string; message: string; color: string }
   > = {
     pending_review: {
-      subject: "Order Received - Being Reviewed",
-      heading: "We've Received Your Order! 📋",
-      message:
-        "Thank you for your order! Our team is currently reviewing your items to ensure we have the best quality products available. We'll send you an updated order with any adjustments shortly.",
-      color: "#f59e0b",
+      subject: isAdminEmail
+        ? `⚡ New Order Pending Review - #${orderId.slice(-8).toUpperCase()}`
+        : "Order Received - Being Reviewed",
+      heading: isAdminEmail
+        ? "New Order Awaiting Review 📋"
+        : "We've Received Your Order! 📋",
+      message: isAdminEmail
+        ? `A new order has been submitted and requires your review. Please check the order details, verify item availability, and make any necessary adjustments before sending to the customer for confirmation.`
+        : "Thank you for your order! Our team is currently reviewing your items to ensure we have the best quality products available. We'll send you an updated order with any adjustments shortly.",
+      color: isAdminEmail ? "#dc2626" : "#f59e0b",
     },
     awaiting_customer_confirmation: {
       subject: "Please Confirm Your Order",
@@ -134,21 +141,35 @@ const getEmailTemplate = (
     `
     : "";
 
-  // For confirmation status, show confirmation link button instead of view details
-  const ctaButton = status === "awaiting_customer_confirmation" && confirmationToken
-    ? `
+  // Determine CTA button based on status and recipient type
+  let ctaButton = "";
+
+  if (isAdminEmail && status === "pending_review") {
+    // Admin gets direct link to review order
+    ctaButton = `
+      <a href="https://www.spiceandslice.shop/admin/orders"
+         style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+        Go to Admin Dashboard
+      </a>
+    `;
+  } else if (status === "awaiting_customer_confirmation" && confirmationToken) {
+    // Customer confirms order
+    ctaButton = `
       <a href="https://www.spiceandslice.shop/order-confirm/${orderId}?token=${confirmationToken}"
          style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
         Review & Confirm Order
       </a>
       <p style="margin: 16px 0 0 0; font-size: 12px; color: #9ca3af;">This link expires in 48 hours</p>
-    `
-    : `
+    `;
+  } else {
+    // Default: view order details
+    ctaButton = `
       <a href="https://www.spiceandslice.shop/order/${orderId}"
          style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
         View Order Details
       </a>
     `;
+  }
 
   return {
     subject: `${template.subject} - Order #${orderId
@@ -184,7 +205,7 @@ const getEmailTemplate = (
                     <h2 style="margin: 0 0 16px 0; color: #111827; font-size: 24px; font-weight: 600;">${
                       template.heading
                     }</h2>
-                    <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">Hi ${customerName},</p>
+                    <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">Hi ${isAdminEmail ? "Team" : customerName},</p>
                     <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">${
                       template.message
                     }</p>
@@ -257,9 +278,9 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body: RequestBody = await req.json();
-    const { orderId, newStatus, estimatedTime, driverNotes, confirmationToken } = body;
+    const { orderId, newStatus, estimatedTime, driverNotes, confirmationToken, isAdminEmail } = body;
 
-    console.log("Sending order status email:", { orderId, newStatus });
+    console.log("Sending order status email:", { orderId, newStatus, isAdminEmail });
 
     // Fetch order details
     const { data: order, error: orderError } = await supabase
@@ -324,8 +345,12 @@ serve(async (req) => {
       estimatedTime,
       driverNotes,
       confirmationToken,
-      orderItems
+      orderItems,
+      isAdminEmail
     );
+
+    // Determine recipient
+    const recipientEmail = isAdminEmail ? "spiceandslicedfw@gmail.com" : customerEmail;
 
     // Send email via Resend
     const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -336,8 +361,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: "SpiceAndSlice <orders@management.spiceandslice.shop>",
-        to: [customerEmail],
-        bcc: ["spiceandslicedfw@gmail.com"],
+        to: [recipientEmail],
+        // Only add BCC for customer emails (to notify admin of customer messages)
+        ...(isAdminEmail ? {} : { bcc: ["spiceandslicedfw@gmail.com"] }),
         subject: emailContent.subject,
         html: emailContent.html,
       }),

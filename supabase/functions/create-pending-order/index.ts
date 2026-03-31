@@ -526,9 +526,11 @@ serve(async (req) => {
       console.log("Cart cleared for user");
     }
 
-    // --- SEND PENDING REVIEW EMAIL (non-blocking) ---
+    // --- SEND PENDING REVIEW EMAILS (non-blocking) ---
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-order-status-email`, {
+
+    // Send customer email
+    const customerEmailResponse = await fetch(`${supabaseUrl}/functions/v1/send-order-status-email`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -537,18 +539,42 @@ serve(async (req) => {
       body: JSON.stringify({
         orderId: order.id,
         newStatus: "pending_review",
+        isAdminEmail: false,
       }),
     }).catch((error) => {
-      console.error("Failed to send pending review email:", error);
-      // Non-blocking - order is created successfully, email can be retried
+      console.error("Failed to send customer pending review email:", error);
       return null;
     });
 
-    if (emailResponse && !emailResponse.ok) {
-      const errorBody = await emailResponse.text();
-      console.error("Email send failed:", emailResponse.status, errorBody);
-    } else if (emailResponse) {
-      console.log("Pending review email sent successfully");
+    if (customerEmailResponse && !customerEmailResponse.ok) {
+      const errorBody = await customerEmailResponse.text();
+      console.error("Customer email send failed:", customerEmailResponse.status, errorBody);
+    } else if (customerEmailResponse) {
+      console.log("Customer pending review email sent successfully");
+    }
+
+    // Send admin notification email
+    const adminEmailResponse = await fetch(`${supabaseUrl}/functions/v1/send-order-status-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({
+        orderId: order.id,
+        newStatus: "pending_review",
+        isAdminEmail: true,
+      }),
+    }).catch((error) => {
+      console.error("Failed to send admin notification email:", error);
+      return null;
+    });
+
+    if (adminEmailResponse && !adminEmailResponse.ok) {
+      const errorBody = await adminEmailResponse.text();
+      console.error("Admin notification email send failed:", adminEmailResponse.status, errorBody);
+    } else if (adminEmailResponse) {
+      console.log("Admin notification email sent successfully");
     }
 
     return new Response(
