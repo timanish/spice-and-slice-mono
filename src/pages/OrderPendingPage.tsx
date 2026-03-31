@@ -21,8 +21,8 @@ const OrderPendingPage = () => {
       try {
         setIsLoading(true);
         const result = await getOrder(orderId);
-        if (result) {
-          setOrder(result);
+        if (result?.data) {
+          setOrder(result.data);
         } else {
           setError('Order not found');
         }
