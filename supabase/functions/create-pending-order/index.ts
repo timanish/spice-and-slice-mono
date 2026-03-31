@@ -196,7 +196,11 @@ serve(async (req) => {
 
         if (comboFetchError) {
           console.error("Error fetching combo:", comboFetchError);
-          continue;
+          throw new Error(`Failed to fetch combo ${comboItem.combo_id}: ${comboFetchError.message}`);
+        }
+
+        if (!combo) {
+          throw new Error(`Combo not found: ${comboItem.combo_id}`);
         }
 
         // Fetch combo items separately (products included in the combo)
@@ -207,6 +211,11 @@ serve(async (req) => {
 
         if (comboItemsError) {
           console.error("Error fetching combo items:", comboItemsError);
+          throw new Error(`Failed to fetch combo items for ${comboItem.combo_id}: ${comboItemsError.message}`);
+        }
+
+        if (!comboItemsData || comboItemsData.length === 0) {
+          throw new Error(`Combo has no items: ${comboItem.combo_id}`);
         }
 
         console.log("Combo fetched:", {
