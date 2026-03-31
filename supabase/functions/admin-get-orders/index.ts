@@ -72,7 +72,10 @@ serve(async (req) => {
         order_items (
           id,
           quantity,
+          original_quantity,
           price_per_unit,
+          combo_id,
+          combo_name,
           products (
             name,
             image_url
@@ -96,6 +99,17 @@ serve(async (req) => {
     if (error) {
       console.error("Error fetching orders:", error);
       throw error;
+    }
+
+    // Debug logging for first order (if exists)
+    if (orders && orders.length > 0) {
+      const firstOrder = orders[0];
+      console.log("First order fetched:", {
+        orderId: firstOrder.id,
+        fulfillment_status: firstOrder.fulfillment_status,
+        itemsCount: firstOrder.order_items?.length || 0,
+        itemsSample: firstOrder.order_items?.slice(0, 2),
+      });
     }
 
     return new Response(
