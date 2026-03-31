@@ -59,6 +59,7 @@ export async function verifyClerkToken(token: string): Promise<string> {
   const jwks = getJWKS();
 
   const issuerUrl = Deno.env.get("CLERK_ISSUER_URL");
+  console.log("verifyClerkToken: CLERK_ISSUER_URL env var:", issuerUrl ? "SET" : "NOT SET");
 
   const verifyOptions: {
     issuer?: string;
@@ -68,19 +69,27 @@ export async function verifyClerkToken(token: string): Promise<string> {
     verifyOptions.issuer = issuerUrl;
   }
 
-  const { payload } = await jwtVerify(token, jwks, verifyOptions);
+  try {
+    const { payload } = await jwtVerify(token, jwks, verifyOptions);
 
-  const clerkPayload = payload as ClerkJWTPayload;
+    const clerkPayload = payload as ClerkJWTPayload;
+    console.log("verifyClerkToken: JWT verified successfully. User ID:", clerkPayload.sub);
 
-  // Extract user ID — Clerk uses `sub` as the canonical user ID
-  const userId =
-    clerkPayload.sub || clerkPayload.user_id || clerkPayload.clerk_user_id;
+    // Extract user ID — Clerk uses `sub` as the canonical user ID
+    const userId =
+      clerkPayload.sub || clerkPayload.user_id || clerkPayload.clerk_user_id;
 
-  if (!userId) {
-    throw new Error("No user ID in token");
+    if (!userId) {
+      throw new Error("No user ID in token");
+    }
+
+    return userId;
+  } catch (error) {
+    console.error("verifyClerkToken: JWT verification failed");
+    console.error("verifyClerkToken: Error name:", error instanceof Error ? error.name : typeof error);
+    console.error("verifyClerkToken: Error message:", error instanceof Error ? error.message : String(error));
+    throw error;
   }
-
-  return userId;
 }
 
 /**
@@ -99,7 +108,22 @@ export function extractToken(authHeader: string | null): string {
     throw new Error("Invalid authorization header format");
   }
 
-  return authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "");
+
+  // Decode and log JWT claims (without verifying signature)
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      console.log("extractToken: JWT payload issuer (iss):", payload.iss);
+      console.log("extractToken: JWT subject (sub):", payload.sub);
+      console.log("extractToken: JWT audience (aud):", payload.aud);
+    }
+  } catch (e) {
+    console.log("extractToken: Could not decode JWT payload for logging");
+  }
+
+  return token;
 }
 
 /**
