@@ -175,12 +175,23 @@ serve(async (req) => {
         console.log("Fetching combo:", comboItem.combo_id);
         const { data: combo, error: comboFetchError } = await serviceClient
           .from("product_combos")
-          .select("id, name, combo_price, items:combo_items(product_id)")
+          .select("id, name, combo_price")
           .eq("id", comboItem.combo_id)
           .single();
 
         if (comboFetchError) {
           console.error("Error fetching combo:", comboFetchError);
+          continue;
+        }
+
+        // Fetch combo items separately (products included in the combo)
+        const { data: comboItemsData, error: comboItemsError } = await serviceClient
+          .from("combo_items")
+          .select("product_id")
+          .eq("combo_id", comboItem.combo_id);
+
+        if (comboItemsError) {
+          console.error("Error fetching combo items:", comboItemsError);
         }
 
         console.log("Combo fetched:", {
@@ -188,11 +199,11 @@ serve(async (req) => {
           found: !!combo,
           combo_name: combo?.name,
           combo_price: combo?.combo_price,
-          has_items_array: !!combo?.items,
-          items_count: combo?.items?.length || 0,
+          items_count: comboItemsData?.length || 0,
+          items: comboItemsData,
         });
 
-        if (combo) {
+        if (combo && comboItemsData) {
           comboSubtotal += combo.combo_price || 0;
           enrichedComboItems.push({
             ...comboItem,
@@ -200,6 +211,7 @@ serve(async (req) => {
               ...combo,
               name: combo.name,
               price: combo.combo_price,
+              items: comboItemsData, // Store the items array
             },
           });
         }
