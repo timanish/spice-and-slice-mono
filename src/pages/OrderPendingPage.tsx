@@ -19,9 +19,6 @@ const OrderPendingPage = () => {
       if (!orderId) return;
 
       try {
-        setIsLoading(true);
-        console.log('Fetching order:', orderId);
-
         if (typeof getOrder !== 'function') {
           console.error('getOrder is not a function:', typeof getOrder, getOrder);
           throw new Error('getOrder is not available');
@@ -32,6 +29,7 @@ const OrderPendingPage = () => {
 
         if (result?.data) {
           setOrder(result.data);
+          setError(null);
         } else {
           console.error('No data in result:', result);
           setError('Order not found');
@@ -39,19 +37,28 @@ const OrderPendingPage = () => {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error('Error fetching order:', err);
-        console.error('Error details:', {
-          message: errorMsg,
-          type: typeof err,
-          stack: err instanceof Error ? err.stack : 'N/A'
-        });
         setError(`Failed to load order details: ${errorMsg}`);
       } finally {
         setIsLoading(false);
       }
     };
 
+    // Initial fetch
     fetchOrder();
-  }, [orderId, getOrder]);
+
+    // Set up polling interval - check for status changes every 5 seconds
+    // Only poll while order is in pending_review status
+    const pollInterval = setInterval(() => {
+      if (!order || order.fulfillment_status !== 'pending_review') {
+        clearInterval(pollInterval);
+        return;
+      }
+      fetchOrder();
+    }, 5000);
+
+    // Clean up interval on unmount
+    return () => clearInterval(pollInterval);
+  }, [orderId, getOrder, order?.fulfillment_status]);
 
   if (isLoading) {
     return (
@@ -87,6 +94,45 @@ const OrderPendingPage = () => {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if order was cancelled
+  if (order?.fulfillment_status === 'cancelled') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <Navigation />
+        <div className="container max-w-2xl mx-auto px-4 py-16">
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="text-red-900">Order Cancelled</CardTitle>
+              <CardDescription className="text-red-700">
+                Your order has been cancelled by our team
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-red-800">
+                Order #{orderId?.substring(0, 8).toUpperCase()}
+              </p>
+              <p className="text-sm text-gray-600">
+                If you have any questions about the cancellation, please contact us at spiceandslicedfw@gmail.com
+              </p>
+              <div className="space-y-2 pt-4">
+                <Link to="/profile?tab=orders" className="block">
+                  <Button className="w-full" variant="outline">
+                    View All Orders
+                  </Button>
+                </Link>
+                <Link to="/" className="block">
+                  <Button className="w-full">
+                    Continue Shopping
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>
