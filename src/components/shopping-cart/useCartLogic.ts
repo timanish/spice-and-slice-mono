@@ -65,10 +65,6 @@ export const useCartLogic = (
       }
 
       if (!user || !user.id) {
-        console.error("User not authenticated or missing ID:", {
-          user,
-          userId: user?.id,
-        });
         toast({
           title: "Please log in",
           description: "You need to be logged in to checkout",
@@ -93,92 +89,49 @@ export const useCartLogic = (
         return;
       }
 
-      const paymentMethodValue = paymentMethod;
-
-      if (paymentMethodValue === "cash") {
-        const requestBody = {
-          cartItems: items,
-          deliveryDate,
-          deliveryTime,
-        };
-
-        const token = await getToken();
-        if (!token) {
-          throw new Error("Authentication token not available");
-        }
-
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/create-cash-order`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestBody),
-          },
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.details || "Failed to create order");
-        }
-
-        const order = await response.json();
-
-        toast({
-          title: "Order placed successfully!",
-          description:
-            "Your order has been placed with cash on delivery option.",
-        });
-
-        navigate("/order-success");
-        fetchCart();
-      } else {
-        const successUrl = `${window.location.origin}/order-success`;
-        const cancelUrl = `${window.location.origin}/order-canceled`;
-
-        const requestBody = {
-          cartItems: items,
-          successUrl,
-          cancelUrl,
-          deliveryDate,
-          deliveryTime,
-        };
-
-        const token = await getToken();
-        if (!token) {
-          throw new Error("Authentication token not available");
-        }
-
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/create-checkout`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestBody),
-          },
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(
-            error.details || error.error || "Failed to create checkout",
-          );
-        }
-
-        const data = await response.json();
-
-        if (data?.url) {
-          window.location.href = data.url;
-        } else {
-          console.error("Missing URL in checkout response:", data);
-          throw new Error("No checkout URL returned");
-        }
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Authentication token not available");
       }
+
+      // Phase 7 unified checkout: all orders go through admin review first
+      const requestBody = {
+        cartItems: items,
+        comboCartItems: comboItems,
+        paymentMethod: paymentMethod,
+        fulfillmentType: "delivery",
+        deliveryDate,
+        deliveryTime,
+        promoCode: null,
+      };
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/create-pending-order`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        },
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || "Failed to create order");
+      }
+
+      const orderResult = await response.json();
+
+      toast({
+        title: "Order submitted!",
+        description: "Your order is being reviewed. We'll email you shortly.",
+      });
+
+      setIsOpen(false);
+      fetchCart();
+      navigate(`/order-pending/${orderResult.orderId}`);
     } catch (error) {
       const errorMessage =
         error instanceof Error
