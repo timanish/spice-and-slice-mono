@@ -93,6 +93,15 @@ serve(async (req) => {
       requestData.userId = verifiedUserId;
       console.log("Using verified user ID:", verifiedUserId);
 
+      console.log("Request payload received:", {
+        hasCartItems: !!requestData.cartItems,
+        cartItemsLength: requestData.cartItems?.length || 0,
+        hasComboCartItems: !!requestData.comboCartItems,
+        comboCartItemsLength: requestData.comboCartItems?.length || 0,
+        fulfillmentType: requestData.fulfillmentType,
+        paymentMethod: requestData.paymentMethod,
+      });
+
       const validation = validateInput(
         requestData.cartItems,
         requestData.deliveryDate,
