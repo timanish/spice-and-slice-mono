@@ -1354,7 +1354,7 @@ const CheckoutPage = () => {
                       </span>
                     ) : (
                       paymentMethod === 'card'
-                        ? 'Pay Now'
+                        ? 'Place Order'
                         : fulfillmentType === 'pickup'
                           ? 'Place Pickup Order'
                           : fulfillmentType === 'nationwide'
@@ -1440,10 +1440,10 @@ const CheckoutPage = () => {
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
                     </span>
                   ) : (
-                    paymentMethod === 'card' 
-                      ? 'Pay Now' 
-                      : fulfillmentType === 'pickup' 
-                        ? 'Place Pickup Order' 
+                    paymentMethod === 'card'
+                      ? 'Place Order'
+                      : fulfillmentType === 'pickup'
+                        ? 'Place Pickup Order'
                         : 'Place Delivery Order'
                   )}
                 </Button>
