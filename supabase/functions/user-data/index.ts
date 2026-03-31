@@ -581,7 +581,7 @@ serve(async (req: Request) => {
     const db = getServiceClient();
 
     // Authenticate
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     let userId: string;
 
     try {

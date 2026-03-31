@@ -200,19 +200,76 @@ vector_port = 54328
 # See: https://supabase.com/docs/guides/getting-started/local-development#enabling-local-logging
 
 [functions]
+# Public/webhook functions (no auth required)
 [functions.clerk-webhook]
 verify_jwt = false
 [functions.send-contact-email]
-verify_jwt = false
-[functions.create-checkout]
-verify_jwt = false
-[functions.create-cash-order]
 verify_jwt = false
 [functions.api-rate-limiter]
 verify_jwt = false
 [functions.send-password-reset]
 verify_jwt = false
+[functions.fetch-tiktok-videos]
+verify_jwt = false
+[functions.printer-get-jobs]
+verify_jwt = false
+[functions.printer-ack-job]
+verify_jwt = false
+[functions.printer-claim-job]
+verify_jwt = false
+[functions.refresh-tiktok-video]
+verify_jwt = false
+
+# Clerk JWT authenticated functions (custom verification in code)
 [functions.user-data]
+verify_jwt = false
+[functions.get-user-role]
+verify_jwt = false
+[functions.create-checkout]
+verify_jwt = false
+[functions.create-cash-order]
+verify_jwt = false
+[functions.create-pending-order]
+verify_jwt = false
+[functions.create-lunchbox-checkout]
+verify_jwt = false
+[functions.complete-stripe-order]
+verify_jwt = false
+[functions.complete-lunchbox-subscription]
+verify_jwt = false
+[functions.confirm-customer-order]
+verify_jwt = false
+[functions.upload-image]
+verify_jwt = false
+[functions.ai-chat]
+verify_jwt = false
+[functions.generate-menu-descriptions]
+verify_jwt = false
+[functions.fetch-menu-images]
+verify_jwt = false
+[functions.admin-crud]
+verify_jwt = false
+[functions.admin-get-orders]
+verify_jwt = false
+[functions.admin-get-subscriptions]
+verify_jwt = false
+[functions.admin-update-order]
+verify_jwt = false
+[functions.admin-adjust-order]
+verify_jwt = false
+[functions.calculate-delivery-distance]
+verify_jwt = false
+[functions.check-pickup-reminders]
+verify_jwt = false
+[functions.printer-create-job]
+verify_jwt = false
+[functions.send-order-status-email]
+verify_jwt = false
+[functions.send-pickup-reminder]
+verify_jwt = false
+[functions.send-lunchbox-subscription-email]
+verify_jwt = false
+[functions.send-admin-customer-message]
 verify_jwt = false
 
 [inbucket]

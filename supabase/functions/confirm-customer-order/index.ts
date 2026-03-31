@@ -42,6 +42,7 @@ serve(async (req) => {
 
     const serviceClient = getServiceRoleClient();
 
+    // Note: confirm-customer-order does NOT use authHeader - token-based validation only
     let requestData;
     try {
       requestData = await req.json();

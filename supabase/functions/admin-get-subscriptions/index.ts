@@ -24,7 +24,7 @@ serve(async (req) => {
     const serviceClient = getServiceRoleClient();
 
     // SECURITY: Authenticate and verify admin role
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
 
     try {
       // requireAdmin = true for server-side admin verification

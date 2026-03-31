@@ -250,7 +250,7 @@ serve(async (req: Request) => {
 
     // 3. Authenticate — optional (anonymous users allowed with stricter limits)
     const db = getServiceClient();
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     let userId: string | null = null;
     let isAnonymous = true;
 

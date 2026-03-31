@@ -78,7 +78,7 @@ serve(async (req: Request) => {
     );
 
     // Admin auth
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     try {
       await authenticateRequest(authHeader, db, true);
     } catch (authErr: any) {

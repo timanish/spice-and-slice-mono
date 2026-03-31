@@ -26,7 +26,7 @@ function verifyCronAuth(req: Request): void {
   }
 
   // Fallback: check service role key in Authorization header
-  const authHeader = req.headers.get("Authorization");
+  const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
     if (token === SUPABASE_SERVICE_ROLE_KEY) {

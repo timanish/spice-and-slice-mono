@@ -94,7 +94,7 @@ serve(async (req) => {
     const serviceClient = getServiceRoleClient();
 
     // SECURITY: Authenticate request and get verified userId from JWT
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     const userId = await authenticateRequest(authHeader, serviceClient, false);
 
     // Initialize Stripe

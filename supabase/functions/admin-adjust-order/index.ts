@@ -48,7 +48,7 @@ serve(async (req) => {
 
     const serviceClient = getServiceRoleClient();
 
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     let verifiedUserId: string;
 
     try {

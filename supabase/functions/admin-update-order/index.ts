@@ -22,7 +22,7 @@ serve(async (req) => {
   try {
     const serviceClient = getServiceRoleClient();
 
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     await authenticateRequest(authHeader, serviceClient, true);
 
     const { orderId, status, estimatedTime, notes } = await req.json();

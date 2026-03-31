@@ -88,8 +88,12 @@ export async function verifyClerkToken(token: string): Promise<string> {
  */
 export function extractToken(authHeader: string | null): string {
   if (!authHeader) {
+    console.error("extractToken: No authorization header provided");
     throw new Error("Missing authorization header");
   }
+
+  console.log("extractToken: Auth header length:", authHeader.length);
+  console.log("extractToken: Auth header starts with 'Bearer':", authHeader.startsWith("Bearer "));
 
   if (!authHeader.startsWith("Bearer ")) {
     throw new Error("Invalid authorization header format");

@@ -44,7 +44,7 @@ serve(async (req: Request) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     try {
       await authenticateRequest(authHeader, db, true);
     } catch (authErr: any) {

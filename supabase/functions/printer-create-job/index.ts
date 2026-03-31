@@ -23,7 +23,7 @@ serve(async (req) => {
     const serviceClient = getServiceRoleClient();
 
     // Require admin authentication
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
     try {
       await authenticateRequest(authHeader, serviceClient, true);
     } catch (authError) {

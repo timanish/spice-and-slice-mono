@@ -44,7 +44,7 @@ serve(async (req) => {
     // Authenticate request (admin only)
     let adminUserId: string;
     try {
-      const authHeader = req.headers.get("Authorization");
+      const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
       adminUserId = await authenticateRequest(authHeader, serviceClient, true);
     } catch (authError) {
       console.error("Authentication error:", authError);
