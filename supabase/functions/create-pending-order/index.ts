@@ -170,12 +170,27 @@ serve(async (req) => {
     let enrichedComboItems: any[] = [];
 
     if (comboCartItems && comboCartItems.length > 0) {
+      console.log("Processing combo cart items, length:", comboCartItems.length);
       for (const comboItem of comboCartItems) {
-        const { data: combo } = await serviceClient
+        console.log("Fetching combo:", comboItem.combo_id);
+        const { data: combo, error: comboFetchError } = await serviceClient
           .from("product_combos")
           .select("id, name, price, items:product_combo_items(product_id)")
           .eq("id", comboItem.combo_id)
           .single();
+
+        if (comboFetchError) {
+          console.error("Error fetching combo:", comboFetchError);
+        }
+
+        console.log("Combo fetched:", {
+          combo_id: comboItem.combo_id,
+          found: !!combo,
+          combo_name: combo?.name,
+          combo_price: combo?.price,
+          has_items_array: !!combo?.items,
+          items_count: combo?.items?.length || 0,
+        });
 
         if (combo) {
           comboSubtotal += combo.price || 0;
@@ -189,6 +204,7 @@ serve(async (req) => {
           });
         }
       }
+      console.log("Enriched combo items total:", enrichedComboItems.length);
     }
 
     // --- DELIVERY FEE & ZONE ---
@@ -356,11 +372,25 @@ serve(async (req) => {
 
     // --- INSERT COMBO ITEMS ---
     if (enrichedComboItems && enrichedComboItems.length > 0) {
+      console.log("Processing combo items, enrichedComboItems.length:", enrichedComboItems.length);
       const comboOrderItems: any[] = [];
 
       for (const comboItem of enrichedComboItems) {
+        console.log("Processing combo item:", {
+          combo_id: comboItem.combo_id,
+          combo_name: comboItem.combo?.name,
+          has_items: !!comboItem.combo?.items,
+          items_length: comboItem.combo?.items?.length || 0,
+          items_preview: comboItem.combo?.items?.slice(0, 2),
+        });
+
         const comboProducts = comboItem.combo?.items || [];
         const comboName = comboItem.combo?.name || "Combo";
+
+        console.log("Combo products to insert:", {
+          length: comboProducts.length,
+          products: comboProducts,
+        });
 
         for (let index = 0; index < comboProducts.length; index++) {
           comboOrderItems.push({
@@ -377,6 +407,9 @@ serve(async (req) => {
         }
       }
 
+      console.log("Total combo order items to insert:", comboOrderItems.length);
+      console.log("Combo order items structure:", comboOrderItems.slice(0, 2));
+
       if (comboOrderItems.length > 0) {
         const { error: comboError } = await serviceClient
           .from("order_items")
@@ -384,10 +417,15 @@ serve(async (req) => {
 
         if (comboError) {
           console.error("Error creating combo items:", comboError);
+          console.error("Failed items sample:", comboOrderItems.slice(0, 1));
         } else {
-          console.log("Combo items created successfully");
+          console.log("Combo items created successfully, count:", comboOrderItems.length);
         }
+      } else {
+        console.warn("No combo order items to insert (comboProducts was empty or null for all combos)");
       }
+    } else {
+      console.log("No enriched combo items to process");
     }
 
     // --- CLEAR CART ---
