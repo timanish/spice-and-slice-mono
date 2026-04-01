@@ -191,9 +191,9 @@ const AdminDashboardPage = () => {
                     <div
                       key={order.id}
                       onClick={() => navigate(`/admin/orders`)}
-                      className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
                         <span className="font-medium text-sm text-gray-900">
                           #{order.id.substring(0, 8).toUpperCase()}
                         </span>
