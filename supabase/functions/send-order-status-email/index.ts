@@ -327,13 +327,13 @@ serve(async (req) => {
     if (newStatus === "awaiting_customer_confirmation") {
       const { data: items, error: itemsError } = await supabase
         .from("order_items")
-        .select("*, product:products(name)")
+        .select("*, products!product_id(name)")
         .eq("order_id", orderId);
 
       if (!itemsError && items) {
         orderItems = items.map((item: any) => ({
-          product_name: item.product?.name,
-          name: item.product?.name,
+          product_name: item.products?.name,
+          name: item.products?.name,
           quantity: item.quantity,
           original_quantity: item.original_quantity,
           original_product_name: item.original_product_name,
