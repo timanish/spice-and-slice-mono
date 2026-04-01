@@ -137,7 +137,7 @@ serve(async (req) => {
       // Fetch order items
       const { data: orderItems, error: itemsError } = await serviceClient
         .from("order_items")
-        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, products(name)")
+        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, products!product_id(name)")
         .eq("order_id", orderId);
 
       if (itemsError) {
@@ -252,7 +252,7 @@ serve(async (req) => {
       // Fetch order items
       const { data: orderItems, error: itemsError } = await serviceClient
         .from("order_items")
-        .select("*, product:products(name, is_weighted, unit_of_measure)")
+        .select("*, products!product_id(name, is_weighted, unit_of_measure)")
         .eq("order_id", orderId);
 
       if (itemsError) {
@@ -274,9 +274,9 @@ serve(async (req) => {
         if (itemSet.has(item.product_id)) continue;
         itemSet.add(item.product_id);
 
-        const name = item.product?.name || "Product";
-        const unitOfMeasure = item.product?.unit_of_measure || "unit";
-        const isWeighted = item.product?.is_weighted;
+        const name = item.products?.name || "Product";
+        const unitOfMeasure = item.products?.unit_of_measure || "unit";
+        const isWeighted = item.products?.is_weighted;
 
         const displayName = isWeighted
           ? `${name} (${item.quantity}${unitOfMeasure})`
