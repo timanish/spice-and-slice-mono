@@ -202,8 +202,10 @@ serve(async (req) => {
         console.log("Print job created for order:", orderId);
       }
 
-      // Trigger confirmation email
+      // Trigger confirmation emails (customer + admin)
       const origin = Deno.env.get("SUPABASE_URL") || "";
+
+      // Customer confirmation email
       await fetch(`${origin}/functions/v1/send-order-status-email`, {
         method: "POST",
         headers: {
@@ -213,6 +215,20 @@ serve(async (req) => {
         body: JSON.stringify({
           orderId,
           newStatus: "confirmed",
+        }),
+      });
+
+      // Admin notification email
+      await fetch(`${origin}/functions/v1/send-order-status-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({
+          orderId,
+          newStatus: "confirmed",
+          isAdminEmail: true,
         }),
       });
 
@@ -323,6 +339,26 @@ serve(async (req) => {
         }
 
         console.log("Stripe session created:", session.id);
+
+        // Notify admin that customer confirmed and is proceeding to payment
+        const origin = Deno.env.get("SUPABASE_URL") || "";
+        try {
+          await fetch(`${origin}/functions/v1/send-order-status-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              orderId,
+              newStatus: "confirmed",
+              isAdminEmail: true,
+            }),
+          });
+        } catch (emailError) {
+          console.error("Failed to send admin notification:", emailError);
+          // Non-blocking
+        }
 
         return new Response(
           JSON.stringify({

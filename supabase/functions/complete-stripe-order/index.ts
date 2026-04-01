@@ -276,7 +276,7 @@ serve(async (req) => {
         console.log("Print job created for order:", orderId);
       }
 
-      // Send confirmation email
+      // Send confirmation emails (customer + admin)
       try {
         const emailResponse = await fetch(
           `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
@@ -301,6 +301,35 @@ serve(async (req) => {
         }
       } catch (emailError) {
         console.error("Failed to send confirmation email:", emailError);
+        // Non-blocking
+      }
+
+      // Admin notification email
+      try {
+        const adminEmailResponse = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              orderId,
+              newStatus: "confirmed",
+              isAdminEmail: true,
+            }),
+          }
+        );
+
+        if (!adminEmailResponse.ok) {
+          const errorBody = await adminEmailResponse.text();
+          console.error("Error sending admin notification - Status:", adminEmailResponse.status, "Response:", errorBody);
+        } else {
+          console.log("Admin notification sent successfully for order:", orderId);
+        }
+      } catch (adminEmailError) {
+        console.error("Failed to send admin notification:", adminEmailError);
         // Non-blocking
       }
 
@@ -561,6 +590,36 @@ serve(async (req) => {
       }
     } catch (emailError) {
       console.error("Failed to send confirmation email - Network/Connection error:", emailError);
+      // Non-blocking - don't fail the order if email sending fails
+    }
+
+    // Send admin notification email
+    try {
+      console.log("Attempting to send admin notification for order:", order.id);
+      const adminEmailResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-order-status-email`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderId: order.id,
+            newStatus: "confirmed",
+            isAdminEmail: true,
+          }),
+        }
+      );
+
+      const adminEmailData = await adminEmailResponse.text();
+      if (!adminEmailResponse.ok) {
+        console.error("Error sending admin notification - Status:", adminEmailResponse.status, "Response:", adminEmailData);
+      } else {
+        console.log("Admin notification sent successfully for order:", order.id, "Response:", adminEmailData);
+      }
+    } catch (adminEmailError) {
+      console.error("Failed to send admin notification - Network/Connection error:", adminEmailError);
       // Non-blocking - don't fail the order if email sending fails
     }
 
