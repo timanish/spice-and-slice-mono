@@ -73,6 +73,8 @@ serve(async (req) => {
           id,
           quantity,
           original_quantity,
+          original_product_id,
+          original_product_name,
           price_per_unit,
           combo_id,
           combo_name,
