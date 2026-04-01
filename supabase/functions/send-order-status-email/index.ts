@@ -119,15 +119,20 @@ const getEmailTemplate = (
     `
     : "";
 
-  // For awaiting_customer_confirmation status, show order items with original vs adjusted quantities
+  // For awaiting_customer_confirmation status, show order items with original vs adjusted quantities and product substitutions
   const orderItemsHtml = status === "awaiting_customer_confirmation" && orderItems && orderItems.length > 0
     ? `
     <div style="margin: 24px 0;">
       <p style="margin: 0 0 16px 0; font-size: 14px; color: #6b7280; font-weight: 600;">ORDER ITEMS:</p>
       <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
-        ${orderItems.map((item, idx) => `
+        ${orderItems.map((item, idx) => {
+          const showProductSubstitution = item.original_product_name && item.original_product_name !== item.product_name;
+          const productDisplay = showProductSubstitution
+            ? `<span style="text-decoration: line-through; color: #9ca3af;">${item.original_product_name}</span> → <span style="color: #f59e0b; font-weight: 600;">${item.product_name}</span>`
+            : item.product_name || item.name;
+          return `
           <tr style="${idx % 2 === 0 ? 'background-color: #f9fafb;' : ''}border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 12px; font-size: 14px; color: #111827; font-weight: 500;">${item.product_name || item.name}</td>
+            <td style="padding: 12px; font-size: 14px; color: #111827; font-weight: 500;">${productDisplay}</td>
             <td style="padding: 12px; text-align: center; font-size: 14px; color: #6b7280;">
               ${item.original_quantity && item.original_quantity !== item.quantity
                 ? `<span style="text-decoration: line-through;">${item.original_quantity}</span> → <span style="color: #f59e0b; font-weight: 600;">${item.quantity}</span>`
@@ -135,7 +140,7 @@ const getEmailTemplate = (
             </td>
             <td style="padding: 12px; text-align: right; font-size: 14px; color: #111827; font-weight: 500;">$${(item.quantity * item.price_per_unit).toFixed(2)}</td>
           </tr>
-        `).join('')}
+        `}).join('')}
       </table>
     </div>
     `
@@ -331,6 +336,7 @@ serve(async (req) => {
           name: item.product?.name,
           quantity: item.quantity,
           original_quantity: item.original_quantity,
+          original_product_name: item.original_product_name,
           price_per_unit: item.price_per_unit,
         }));
         console.log("Order items fetched:", orderItems);

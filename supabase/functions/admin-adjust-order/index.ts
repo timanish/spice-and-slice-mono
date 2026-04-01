@@ -86,7 +86,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, orderId, itemAdjustments, adminNotes } = requestData;
+    const { action, orderId, itemAdjustments, adminNotes, newDeliveryFee } = requestData;
 
     if (!action || !orderId) {
       return new Response(
@@ -142,28 +142,41 @@ serve(async (req) => {
 
       // Apply adjustments to order_items
       for (const adj of itemAdjustments) {
-        const { orderItemId, newQuantity, newPricePerUnit } = adj;
+        const { orderItemId, newQuantity, newPricePerUnit, newProductId, originalProductName } = adj;
 
         // Fetch the order item to check if original_quantity is already set
         const { data: item } = await serviceClient
           .from("order_items")
-          .select("original_quantity, quantity")
+          .select("original_quantity, quantity, product_id, original_product_id")
           .eq("id", orderItemId)
           .single();
 
         // Set original_quantity if this is the first adjustment
         const originalQty = item?.original_quantity || item?.quantity;
+        const originalProdId = item?.original_product_id || (newProductId ? item?.product_id : undefined);
 
-        const updateData: any = {
-          quantity: newQuantity,
-        };
+        const updateData: any = {};
 
-        if (item && !item.original_quantity) {
-          updateData.original_quantity = originalQty;
+        if (newQuantity !== undefined) {
+          updateData.quantity = newQuantity;
+          if (item && !item.original_quantity) {
+            updateData.original_quantity = originalQty;
+          }
         }
 
         if (newPricePerUnit !== undefined) {
           updateData.price_per_unit = newPricePerUnit;
+        }
+
+        if (newProductId !== undefined) {
+          updateData.product_id = newProductId;
+          // Store the original product ID and name for tracking
+          if (originalProdId) {
+            updateData.original_product_id = originalProdId;
+          }
+          if (originalProductName) {
+            updateData.original_product_name = originalProductName;
+          }
         }
 
         const { error: updateError } = await serviceClient
@@ -247,25 +260,57 @@ serve(async (req) => {
         );
       }
 
+      // Update delivery fee if provided
+      let effectiveDeliveryFee = order.delivery_fee;
+      if (newDeliveryFee !== undefined) {
+        const { error: feeError } = await serviceClient
+          .from("orders")
+          .update({ delivery_fee: newDeliveryFee })
+          .eq("id", orderId);
+
+        if (feeError) {
+          console.error("Error updating delivery fee:", feeError);
+        } else {
+          effectiveDeliveryFee = newDeliveryFee;
+          console.log("Delivery fee updated to:", newDeliveryFee);
+        }
+      }
+
       // Apply any adjustments first if provided
       if (itemAdjustments && itemAdjustments.length > 0) {
         for (const adj of itemAdjustments) {
-          const { orderItemId, newQuantity, newPricePerUnit } = adj;
+          const { orderItemId, newQuantity, newPricePerUnit, newProductId, originalProductName } = adj;
 
           const { data: item } = await serviceClient
             .from("order_items")
-            .select("original_quantity, quantity")
+            .select("original_quantity, quantity, product_id, original_product_id")
             .eq("id", orderItemId)
             .single();
 
           const originalQty = item?.original_quantity || item?.quantity;
+          const originalProdId = item?.original_product_id || (newProductId ? item?.product_id : undefined);
 
-          const updateData: any = { quantity: newQuantity };
-          if (item && !item.original_quantity) {
-            updateData.original_quantity = originalQty;
+          const updateData: any = {};
+
+          if (newQuantity !== undefined) {
+            updateData.quantity = newQuantity;
+            if (item && !item.original_quantity) {
+              updateData.original_quantity = originalQty;
+            }
           }
+
           if (newPricePerUnit !== undefined) {
             updateData.price_per_unit = newPricePerUnit;
+          }
+
+          if (newProductId !== undefined) {
+            updateData.product_id = newProductId;
+            if (originalProdId) {
+              updateData.original_product_id = originalProdId;
+            }
+            if (originalProductName) {
+              updateData.original_product_name = originalProductName;
+            }
           }
 
           await serviceClient
@@ -290,7 +335,7 @@ serve(async (req) => {
             0,
           );
           const newTotal = Math.max(
-            newSubtotal + newTax + order.delivery_fee - order.discount_amount,
+            newSubtotal + newTax + effectiveDeliveryFee - order.discount_amount,
             0,
           );
 
@@ -299,6 +344,34 @@ serve(async (req) => {
             .update({
               total_amount: newTotal,
               taxable_amount: newSubtotal,
+            })
+            .eq("id", orderId);
+        }
+      } else if (newDeliveryFee !== undefined) {
+        // If only delivery fee changed (no item adjustments), still need to recalculate total
+        const { data: items } = await serviceClient
+          .from("order_items")
+          .select("quantity, price_per_unit, tax_amount")
+          .eq("order_id", orderId);
+
+        if (items && items.length > 0) {
+          const newSubtotal = items.reduce(
+            (sum: number, item: any) => sum + item.quantity * item.price_per_unit,
+            0,
+          );
+          const newTax = items.reduce(
+            (sum: number, item: any) => sum + (item.tax_amount || 0),
+            0,
+          );
+          const newTotal = Math.max(
+            newSubtotal + newTax + effectiveDeliveryFee - order.discount_amount,
+            0,
+          );
+
+          await serviceClient
+            .from("orders")
+            .update({
+              total_amount: newTotal,
             })
             .eq("id", orderId);
         }

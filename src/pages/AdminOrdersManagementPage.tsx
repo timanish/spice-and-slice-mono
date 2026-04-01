@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAuth } from '@clerk/clerk-react';
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { useProductFetcher } from "@/hooks/products/useProductFetcher";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -106,11 +107,16 @@ const AdminOrdersManagementPage = () => {
   const [adjustedQuantities, setAdjustedQuantities] = useState<Record<string, number>>({});
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
+  const [adjustedDeliveryFee, setAdjustedDeliveryFee] = useState<number | undefined>(undefined);
+  const [alternativeItems, setAlternativeItems] = useState<Record<string, { productId: string; productName: string; pricePerUnit: number }>>({});
+  const [showAlternativeFor, setShowAlternativeFor] = useState<string | null>(null);
+  const [alternativeSearchQuery, setAlternativeSearchQuery] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isCheckingRole } = useAdminRole();
   const { getToken } = useAuth();
+  const { data: allProducts = [] } = useProductFetcher();
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["admin-orders", statusFilter, fulfillmentTypeFilter],
@@ -217,9 +223,11 @@ const AdminOrdersManagementPage = () => {
     mutationFn: async ({
       orderId,
       itemAdjustments,
+      newDeliveryFee,
     }: {
       orderId: string;
-      itemAdjustments?: Array<{ orderItemId: string; newQuantity: number }>;
+      itemAdjustments?: Array<{ orderItemId: string; newQuantity?: number; newProductId?: string; newPricePerUnit?: number; originalProductName?: string }>;
+      newDeliveryFee?: number;
     }) => {
       const token = await getToken();
       if (!token) {
@@ -238,6 +246,7 @@ const AdminOrdersManagementPage = () => {
             action: 'send_for_confirmation',
             orderId,
             itemAdjustments,
+            newDeliveryFee,
           }),
         }
       );
@@ -259,6 +268,10 @@ const AdminOrdersManagementPage = () => {
       setOrderDetailsOpen(false);
       setViewingOrder(null);
       setAdjustedQuantities({});
+      setAlternativeItems({});
+      setAdjustedDeliveryFee(undefined);
+      setShowAlternativeFor(null);
+      setAlternativeSearchQuery("");
     },
     onError: (error) => {
       toast({
@@ -330,6 +343,17 @@ const AdminOrdersManagementPage = () => {
     );
   });
 
+  // Filter products for alternative picker
+  const filteredAlternativeProducts = useMemo(() => {
+    if (!alternativeSearchQuery.trim()) return [];
+    const query = alternativeSearchQuery.toLowerCase();
+    return allProducts.filter(product =>
+      product.name?.toLowerCase().includes(query) ||
+      product.category?.name?.toLowerCase().includes(query) ||
+      (product.tags && product.tags.some((tag: string) => tag.toLowerCase().includes(query)))
+    );
+  }, [alternativeSearchQuery, allProducts]);
+
   const getStatusIcon = (status: FulfillmentStatus) => {
     switch (status) {
       case "pending_review":
@@ -390,6 +414,10 @@ const AdminOrdersManagementPage = () => {
   const handleViewOrderDetails = (order: Order) => {
     setViewingOrder(order);
     setAdjustedQuantities({});
+    setAlternativeItems({});
+    setAdjustedDeliveryFee(undefined);
+    setShowAlternativeFor(null);
+    setAlternativeSearchQuery("");
     setOrderDetailsOpen(true);
   };
 
@@ -890,12 +918,21 @@ const AdminOrdersManagementPage = () => {
                           const displayQuantity = adjustedQuantities[item.id] ?? item.quantity;
                           const isAdjusted = adjustedQuantities[item.id] !== undefined && adjustedQuantities[item.id] !== item.quantity;
                           const showOriginalQuantity = item.original_quantity && item.original_quantity !== item.quantity;
+                          const hasAlternative = alternativeItems[item.id];
 
                           elements.push(
                             <div key={item.id} className="border-b pb-3 last:border-b-0">
                               <div className="flex justify-between items-start mb-2">
                                 <div className="flex-1">
-                                  <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
+                                  {hasAlternative ? (
+                                    <p className="font-medium text-sm">
+                                      <span className="line-through text-gray-400">{item.products?.name || "Unknown Product"}</span>
+                                      <br />
+                                      <span className="text-food-orange">→ {hasAlternative.productName}</span>
+                                    </p>
+                                  ) : (
+                                    <p className="font-medium text-sm">{item.products?.name || "Unknown Product"}</p>
+                                  )}
                                   {viewingOrder.fulfillment_status === "pending_review" ? (
                                     <div className="mt-2 space-y-2">
                                       <div className="flex items-center gap-2">
@@ -911,12 +948,74 @@ const AdminOrdersManagementPage = () => {
                                           }))}
                                           className="w-24 h-8 text-sm"
                                         />
-                                        <span className="text-xs text-gray-500">@ ${item.price_per_unit.toFixed(2)}</span>
+                                        <span className="text-xs text-gray-500">@ ${(hasAlternative?.pricePerUnit ?? item.price_per_unit).toFixed(2)}</span>
                                       </div>
                                       {isAdjusted && (
                                         <p className="text-xs text-orange-600">
                                           Original: {item.quantity}
                                         </p>
+                                      )}
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setShowAlternativeFor(showAlternativeFor === item.id ? null : item.id)}
+                                          className="text-xs h-7"
+                                        >
+                                          {hasAlternative ? "Change Alternative" : "Suggest Alternative"}
+                                        </Button>
+                                        {hasAlternative && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setAlternativeItems(prev => {
+                                              const next = { ...prev };
+                                              delete next[item.id];
+                                              return next;
+                                            })}
+                                            className="text-xs h-7 text-red-600 hover:text-red-700"
+                                          >
+                                            Remove
+                                          </Button>
+                                        )}
+                                      </div>
+                                      {showAlternativeFor === item.id && (
+                                        <div className="mt-2 p-2 bg-gray-100 rounded border border-gray-200">
+                                          <input
+                                            type="text"
+                                            placeholder="Search products..."
+                                            value={alternativeSearchQuery}
+                                            onChange={(e) => setAlternativeSearchQuery(e.target.value)}
+                                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded mb-2"
+                                          />
+                                          <div className="max-h-40 overflow-y-auto space-y-1">
+                                            {filteredAlternativeProducts.length > 0 ? (
+                                              filteredAlternativeProducts.map(product => (
+                                                <button
+                                                  key={product.id}
+                                                  onClick={() => {
+                                                    setAlternativeItems(prev => ({
+                                                      ...prev,
+                                                      [item.id]: {
+                                                        productId: product.id,
+                                                        productName: product.name,
+                                                        pricePerUnit: product.price_per_unit,
+                                                      }
+                                                    }));
+                                                    setShowAlternativeFor(null);
+                                                    setAlternativeSearchQuery("");
+                                                  }}
+                                                  className="w-full text-left text-sm px-2 py-1 hover:bg-gray-200 rounded text-gray-700"
+                                                >
+                                                  {product.name}
+                                                  <span className="text-gray-500 text-xs ml-1">${product.price_per_unit.toFixed(2)}</span>
+                                                </button>
+                                              ))
+                                            ) : (
+                                              <p className="text-xs text-gray-500 px-2 py-1">No products found</p>
+                                            )}
+                                          </div>
+                                        </div>
                                       )}
                                     </div>
                                   ) : showOriginalQuantity ? (
@@ -930,7 +1029,7 @@ const AdminOrdersManagementPage = () => {
                                   )}
                                 </div>
                                 <p className="font-medium text-sm whitespace-nowrap ml-4">
-                                  ${(displayQuantity * item.price_per_unit).toFixed(2)}
+                                  ${(displayQuantity * (hasAlternative?.pricePerUnit ?? item.price_per_unit)).toFixed(2)}
                                 </p>
                               </div>
                             </div>
@@ -956,10 +1055,23 @@ const AdminOrdersManagementPage = () => {
                         ${viewingOrder.order_items?.reduce((sum, item) => sum + item.quantity * item.price_per_unit, 0).toFixed(2) || "0.00"}
                       </span>
                     </div>
-                    {viewingOrder.delivery_fee > 0 && (
-                      <div className="flex justify-between">
+                    {(viewingOrder.delivery_fee > 0 || viewingOrder.fulfillment_type === "delivery") && (
+                      <div className="flex justify-between items-center">
                         <span className="text-gray-600">Delivery Fee:</span>
-                        <span className="font-medium">${viewingOrder.delivery_fee.toFixed(2)}</span>
+                        {viewingOrder.fulfillment_status === "pending_review" && viewingOrder.fulfillment_type === "delivery" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0}
+                              onChange={(e) => setAdjustedDeliveryFee(parseFloat(e.target.value) || 0)}
+                              className="w-20 h-8 text-sm"
+                            />
+                          </div>
+                        ) : (
+                          <span className="font-medium">${(adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0).toFixed(2)}</span>
+                        )}
                       </div>
                     )}
                     <div className="flex justify-between border-t pt-2">
@@ -1006,9 +1118,26 @@ const AdminOrdersManagementPage = () => {
                               newQuantity,
                             }));
 
+                          // Merge in alternative product swaps
+                          const alternativeAdjustments = Object.entries(alternativeItems).map(([itemId, alt]) => ({
+                            orderItemId: itemId,
+                            newProductId: alt.productId,
+                            newPricePerUnit: alt.pricePerUnit,
+                            originalProductName: viewingOrder.order_items?.find(i => i.id === itemId)?.products?.name,
+                            // keep existing quantity unless also changed
+                            newQuantity: adjustedQuantities[itemId] ?? viewingOrder.order_items?.find(i => i.id === itemId)?.quantity,
+                          }));
+
+                          // Deduplicate: alternativeAdjustments take precedence
+                          const mergedAdjustments = [
+                            ...changedItems.filter(ci => !alternativeItems[ci.orderItemId]),
+                            ...alternativeAdjustments,
+                          ];
+
                           sendForConfirmationMutation.mutate({
                             orderId: viewingOrder.id,
-                            itemAdjustments: changedItems.length > 0 ? changedItems : undefined,
+                            itemAdjustments: mergedAdjustments.length > 0 ? mergedAdjustments : undefined,
+                            newDeliveryFee: adjustedDeliveryFee,
                           });
                         }}
                         disabled={sendForConfirmationMutation.isPending}
