@@ -77,7 +77,8 @@ serve(async (req) => {
           price_per_unit,
           combo_id,
           combo_name,
-          product:products (
+          product_id,
+          products!product_id (
             name,
             image_url
           )
