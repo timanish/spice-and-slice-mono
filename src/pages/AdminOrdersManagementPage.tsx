@@ -116,7 +116,8 @@ const AdminOrdersManagementPage = () => {
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isCheckingRole } = useAdminRole();
   const { getToken } = useAuth();
-  const { data: allProducts = [] } = useProductFetcher();
+  const productsQuery = useProductFetcher();
+  const allProducts = productsQuery?.data || [];
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["admin-orders", statusFilter, fulfillmentTypeFilter],
