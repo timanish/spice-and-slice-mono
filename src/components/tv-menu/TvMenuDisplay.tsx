@@ -44,21 +44,21 @@ export function TvMenuDisplay() {
   const displayData = useMemo(() => {
     if (!data) return null;
 
-    const config = data.board.config;
-    const screens = totalScreens > 0 ? totalScreens : (config.total_screens ?? 1);
-    const screen = screenNumber > 0 ? screenNumber : 1;
+    // Only split categories when BOTH ?screen= and ?of= params are present in the URL.
+    // Falling back to config.total_screens caused truncation when visiting the plain
+    // /tv-menu/[slug] URL on boards configured for multi-screen deployment.
+    const isMultiScreenUrl = screenNumber > 0 && totalScreens > 1;
+    if (!isMultiScreenUrl) return data.itemsByCategory;
 
-    if (screens <= 1) return data.itemsByCategory;
-
-    // Flatten all items to split evenly across screens
+    // Split evenly across screens
     const allEntries = Array.from(data.itemsByCategory.entries());
-    const totalCategories = allEntries.length;
-    const perScreen = Math.ceil(totalCategories / screens);
-    const start = (screen - 1) * perScreen;
-    const end = Math.min(start + perScreen, totalCategories);
-    const slice = allEntries.slice(start, end);
+    const perScreen = Math.ceil(allEntries.length / totalScreens);
+    const start = (screenNumber - 1) * perScreen;
+    const end = Math.min(start + perScreen, allEntries.length);
 
-    return new Map<string, { categoryName: string; items: MenuItem[] }>(slice);
+    return new Map<string, { categoryName: string; items: MenuItem[] }>(
+      allEntries.slice(start, end),
+    );
   }, [data, screenNumber, totalScreens]);
 
   if (isLoading) {
@@ -88,8 +88,8 @@ export function TvMenuDisplay() {
 
   const content = <LayoutComponent itemsByCategory={displayData} config={config} />;
 
-  const isMultiScreenStatic =
-    (totalScreens > 1) || ((config.total_screens ?? 1) > 1 && screenNumber > 0);
+  // Force static (no auto-scroll/paging) only when viewing a specific split screen
+  const isMultiScreenStatic = screenNumber > 0 && totalScreens > 1;
 
   return (
     <div
