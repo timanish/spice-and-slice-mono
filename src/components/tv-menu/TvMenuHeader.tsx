@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 
 interface Props {
   text: string;
@@ -22,71 +23,126 @@ export function TvMenuHeader({ text, accentColor, textColor, backgroundColor }: 
 
   return (
     <div className="relative shrink-0 overflow-hidden">
-      {/* Decorative gradient bar */}
+      {/* Animated gradient top bar */}
       <div
-        className="h-1.5"
+        className="h-1"
         style={{
-          background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor}40 20%, ${accentColor} 50%, ${accentColor}40 80%, transparent 100%)`,
+          animation: "headerShimmer 4s ease-in-out infinite",
         }}
       />
 
-      <div className="relative flex items-center justify-center px-10 py-3">
-        {/* Subtle glow behind title */}
+      <style>{`
+        @keyframes headerShimmer {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+        @keyframes headerGlow {
+          0%, 100% { opacity: 0.08; transform: scale(1); }
+          50% { opacity: 0.15; transform: scale(1.05); }
+        }
+      `}</style>
+
+      <div className="relative flex items-center justify-between px-10 py-5">
+        {/* Ambient glow behind title */}
         <div
-          className="absolute inset-0 opacity-10 blur-3xl"
+          className="absolute inset-0 blur-[80px]"
           style={{
-            background: `radial-gradient(ellipse at center, ${accentColor}, transparent 70%)`,
+            background: `radial-gradient(ellipse 60% 100% at center, ${accentColor}, transparent 70%)`,
+            animation: "headerGlow 6s ease-in-out infinite",
           }}
         />
 
-        {/* Decorative left ornament */}
-        <div className="hidden md:flex items-center gap-2 absolute left-10">
+        {/* Left ornament — decorative line + diamond cluster */}
+        <div className="hidden md:flex items-center gap-3 z-10">
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-1.5 h-1.5 rotate-45"
+              style={{ backgroundColor: `${accentColor}30` }}
+            />
+            <div
+              className="w-2 h-2 rotate-45"
+              style={{ backgroundColor: `${accentColor}60` }}
+            />
+            <div
+              className="w-1.5 h-1.5 rotate-45"
+              style={{ backgroundColor: `${accentColor}30` }}
+            />
+          </div>
           <div
-            className="w-16 h-px"
-            style={{ backgroundColor: `${accentColor}40` }}
-          />
-          <div
-            className="w-2 h-2 rotate-45"
-            style={{ backgroundColor: `${accentColor}60` }}
+            className="w-24 h-px"
+            style={{
+              background: `linear-gradient(90deg, ${accentColor}60, transparent)`,
+            }}
           />
         </div>
 
-        <h1
-          className="text-3xl font-serif font-bold text-center tracking-wide relative"
-          style={{
-            color: accentColor,
-            textShadow: `0 0 40px ${accentColor}30, 0 2px 4px ${backgroundColor}80`,
-          }}
-        >
-          {text || "Our Menu"}
-        </h1>
+        {/* Center title */}
+        <div className="flex items-center gap-3 z-10 mx-auto">
+          <Sparkles
+            className="w-5 h-5 hidden md:block"
+            style={{
+              color: `${accentColor}80`,
+              filter: `drop-shadow(0 0 6px ${accentColor}40)`,
+            }}
+          />
+          <h1
+            className="text-4xl font-serif font-bold text-center tracking-wider relative"
+            style={{
+              color: accentColor,
+              textShadow: `0 0 60px ${accentColor}50, 0 0 120px ${accentColor}20, 0 2px 4px ${backgroundColor}90`,
+              letterSpacing: "0.08em",
+            }}
+          >
+            {text || "Our Menu"}
+          </h1>
+          <Sparkles
+            className="w-5 h-5 hidden md:block"
+            style={{
+              color: `${accentColor}80`,
+              filter: `drop-shadow(0 0 6px ${accentColor}40)`,
+            }}
+          />
+        </div>
 
-        {/* Decorative right ornament + time */}
-        <div className="hidden md:flex items-center gap-3 absolute right-10">
-          <span
-            className="text-lg font-mono opacity-50 tracking-wider"
-            style={{ color: textColor }}
+        {/* Right ornament — time + decorative line + diamond cluster */}
+        <div className="hidden md:flex items-center gap-3 z-10">
+          <div
+            className="w-24 h-px"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${accentColor}60)`,
+            }}
+          />
+          <div
+            className="px-3 py-1 rounded-full font-mono tracking-widest"
+            style={{
+              fontSize: "0.85rem",
+              color: `${textColor}90`,
+              backgroundColor: `${accentColor}10`,
+              border: `1px solid ${accentColor}20`,
+              textShadow: `0 0 20px ${accentColor}30`,
+            }}
           >
             {formattedTime}
-          </span>
-          <div
-            className="w-2 h-2 rotate-45"
-            style={{ backgroundColor: `${accentColor}60` }}
-          />
-          <div
-            className="w-16 h-px"
-            style={{ backgroundColor: `${accentColor}40` }}
-          />
+          </div>
         </div>
       </div>
 
-      {/* Bottom decorative line */}
-      <div
-        className="h-px mx-10"
-        style={{
-          background: `linear-gradient(90deg, transparent, ${accentColor}50, transparent)`,
-        }}
-      />
+      {/* Bottom decorative double-line */}
+      <div className="mx-8 flex flex-col gap-px">
+        <div
+          className="h-px"
+          style={{
+            background: `linear-gradient(90deg, transparent 5%, ${accentColor}50 30%, ${accentColor}80 50%, ${accentColor}50 70%, transparent 95%)`,
+          }}
+        />
+        <div
+          className="h-px"
+          style={{
+            background: `linear-gradient(90deg, transparent 15%, ${accentColor}25 35%, ${accentColor}40 50%, ${accentColor}25 65%, transparent 85%)`,
+          }}
+        />
+      </div>
     </div>
   );
 }

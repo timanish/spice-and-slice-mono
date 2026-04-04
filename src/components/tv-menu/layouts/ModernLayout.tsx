@@ -1,6 +1,7 @@
 import { TvMenuBoardConfig } from "@/types/tv-menu";
 import { MenuItem } from "@/hooks/products/types";
 import { groupBySubcategory } from "./groupBySubcategory";
+import { Flame, Leaf } from "lucide-react";
 
 interface Props {
   itemsByCategory: Map<string, { categoryName: string; items: MenuItem[] }>;
@@ -13,7 +14,7 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
   const cats = Array.from(itemsByCategory.entries());
 
   return (
-    <div className="px-6 py-4 space-y-6">
+    <div className="px-8 py-6 space-y-8">
       {cats.map(([catId, { categoryName, items }]) => {
         const sections = useSubcategories
           ? groupBySubcategory(items)
@@ -21,47 +22,51 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
 
         return (
           <div key={catId}>
-            {/* Category Header */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3">
+            {/* Category Header — bold accent bar with gradient background */}
+            <div className="mb-5">
+              <div className="flex items-center gap-4">
                 <div
-                  className="w-1 h-7 rounded-full"
+                  className="w-1.5 h-9 rounded-full"
                   style={{
-                    background: `linear-gradient(180deg, ${theme.category_header_color}, ${theme.accent_color})`,
+                    background: `linear-gradient(180deg, ${theme.category_header_color}, ${theme.accent_color}80)`,
+                    boxShadow: `0 0 15px ${theme.category_header_color}30`,
                   }}
                 />
                 <h2
-                  className="text-xl font-serif font-bold tracking-wide"
+                  className="text-2xl font-serif font-bold tracking-wider"
                   style={{
                     color: theme.category_header_color,
-                    textShadow: `0 0 30px ${theme.category_header_color}20`,
+                    textShadow: `0 0 40px ${theme.category_header_color}25`,
                   }}
                 >
                   {categoryName}
                 </h2>
               </div>
               <div
-                className="mt-2 h-px ml-4"
+                className="mt-2.5 h-px ml-6"
                 style={{
-                  background: `linear-gradient(90deg, ${theme.category_header_color}40, transparent 80%)`,
+                  background: `linear-gradient(90deg, ${theme.category_header_color}50, ${theme.accent_color}20 40%, transparent 80%)`,
                 }}
               />
             </div>
 
             {sections.map((section, si) => (
-              <div key={section.subCategory ?? si} className="mb-4">
+              <div key={section.subCategory ?? si} className="mb-5">
                 {section.subCategory && (
-                  <div className="flex items-center gap-2 mb-2 ml-4">
+                  <div className="flex items-center gap-2.5 mb-3 ml-6">
                     <div
-                      className="w-4 h-0.5 rounded-full"
-                      style={{ backgroundColor: theme.accent_color }}
+                      className="w-5 h-0.5 rounded-full"
+                      style={{
+                        backgroundColor: theme.accent_color,
+                        boxShadow: `0 0 8px ${theme.accent_color}40`,
+                      }}
                     />
                     <h3
-                      className="font-semibold tracking-wider uppercase"
+                      className="font-semibold tracking-[0.18em] uppercase"
                       style={{
                         color: theme.accent_color,
                         fontSize: "0.7rem",
-                        letterSpacing: "0.15em",
+                        textShadow: `0 0 15px ${theme.accent_color}20`,
                       }}
                     >
                       {section.subCategory}
@@ -70,7 +75,7 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                 )}
 
                 <div
-                  className="gap-3"
+                  className="gap-4"
                   style={{
                     display: "grid",
                     gridTemplateColumns: `repeat(${columns}, 1fr)`,
@@ -79,73 +84,127 @@ export function ModernLayout({ itemsByCategory, config }: Props) {
                   {section.items.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-xl overflow-hidden relative"
+                      className="rounded-2xl overflow-hidden relative"
                       style={{
-                        backgroundColor: `${theme.text_color}06`,
-                        border: `1px solid ${theme.text_color}12`,
-                        boxShadow: `0 2px 12px ${theme.background_color}40`,
+                        backgroundColor: `${theme.text_color}08`,
+                        border: `1px solid ${theme.text_color}10`,
+                        boxShadow: `0 4px 20px ${theme.background_color}60, inset 0 1px 0 ${theme.text_color}05`,
+                        backdropFilter: "blur(10px)",
                       }}
                     >
-                      {show_images && item.image_url && (
-                        <div className="relative h-20 overflow-hidden">
+                      {show_images && item.image_url ? (
+                        <div className="relative h-28 overflow-hidden">
                           <img
                             src={item.image_url}
                             alt={item.name}
                             className="w-full h-full object-cover"
+                            style={{ filter: "brightness(0.85) saturate(1.1)" }}
                           />
+                          {/* Gradient overlay for text readability */}
                           <div
                             className="absolute inset-0"
                             style={{
-                              background: `linear-gradient(0deg, ${theme.background_color} 0%, transparent 60%)`,
+                              background: `linear-gradient(0deg, ${theme.background_color} 0%, ${theme.background_color}90 20%, transparent 55%)`,
                             }}
                           />
+                          {/* Price badge on image */}
                           {show_prices && (
                             <div
-                              className="absolute top-2 right-2 px-2 py-0.5 rounded-full font-bold"
+                              className="absolute top-3 right-3 px-3 py-1 rounded-full font-bold"
                               style={{
-                                fontSize: "0.75rem",
-                                backgroundColor: `${theme.price_color}20`,
+                                fontSize: "0.85rem",
+                                backgroundColor: `${theme.background_color}CC`,
                                 color: theme.price_color,
-                                backdropFilter: "blur(8px)",
-                                border: `1px solid ${theme.price_color}30`,
+                                backdropFilter: "blur(12px)",
+                                border: `1px solid ${theme.price_color}25`,
+                                boxShadow: `0 2px 10px ${theme.background_color}80, 0 0 20px ${theme.price_color}10`,
                               }}
                             >
                               ${item.price.toFixed(2)}
                             </div>
                           )}
+                          {/* Dietary badges */}
+                          <div className="absolute top-3 left-3 flex gap-1.5">
+                            {item.is_vegetarian && (
+                              <div
+                                className="p-1 rounded-full"
+                                style={{
+                                  backgroundColor: `${theme.background_color}CC`,
+                                  backdropFilter: "blur(8px)",
+                                }}
+                              >
+                                <Leaf className="w-3.5 h-3.5" style={{ color: "#4ade80" }} />
+                              </div>
+                            )}
+                            {item.is_spicy && (
+                              <div
+                                className="p-1 rounded-full"
+                                style={{
+                                  backgroundColor: `${theme.background_color}CC`,
+                                  backdropFilter: "blur(8px)",
+                                }}
+                              >
+                                <Flame className="w-3.5 h-3.5" style={{ color: "#f87171" }} />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      ) : null}
 
-                      <div className="p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3
-                            className="font-bold leading-tight"
-                            style={{ color: theme.text_color, fontSize: "0.9rem" }}
-                          >
-                            {item.name}
-                          </h3>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3
+                                className="font-bold leading-tight"
+                                style={{ color: theme.text_color, fontSize: "0.95rem" }}
+                              >
+                                {item.name}
+                              </h3>
+                              {/* Dietary icons (when no image) */}
+                              {!(show_images && item.image_url) && (
+                                <>
+                                  {item.is_vegetarian && (
+                                    <Leaf className="w-3.5 h-3.5 shrink-0" style={{ color: "#4ade80" }} />
+                                  )}
+                                  {item.is_spicy && (
+                                    <Flame className="w-3.5 h-3.5 shrink-0" style={{ color: "#f87171" }} />
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {show_descriptions && item.description && (
+                              <p
+                                className="mt-1.5 opacity-45 line-clamp-2 leading-relaxed"
+                                style={{ color: theme.text_color, fontSize: "0.72rem" }}
+                              >
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
                           {show_prices && !(show_images && item.image_url) && (
                             <span
-                              className="font-bold tabular-nums shrink-0"
+                              className="font-bold tabular-nums shrink-0 px-2.5 py-1 rounded-lg"
                               style={{
                                 color: theme.price_color,
-                                fontSize: "0.95rem",
-                                textShadow: `0 0 15px ${theme.price_color}20`,
+                                fontSize: "1rem",
+                                backgroundColor: `${theme.price_color}10`,
+                                textShadow: `0 0 20px ${theme.price_color}20`,
                               }}
                             >
                               ${item.price.toFixed(2)}
                             </span>
                           )}
                         </div>
-                        {show_descriptions && item.description && (
-                          <p
-                            className="mt-1 opacity-50 line-clamp-1 leading-snug"
-                            style={{ color: theme.text_color, fontSize: "0.7rem" }}
-                          >
-                            {item.description}
-                          </p>
-                        )}
                       </div>
+
+                      {/* Bottom accent line */}
+                      <div
+                        className="h-0.5"
+                        style={{
+                          background: `linear-gradient(90deg, ${theme.accent_color}30, ${theme.category_header_color}20, transparent)`,
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
