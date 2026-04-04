@@ -1,7 +1,6 @@
 import { TvMenuBoardConfig } from "@/types/tv-menu";
 import { MenuItem } from "@/hooks/products/types";
 import { groupBySubcategory } from "./groupBySubcategory";
-import { Flame, Leaf } from "lucide-react";
 
 interface Props {
   itemsByCategory: Map<string, { categoryName: string; items: MenuItem[] }>;
@@ -12,10 +11,10 @@ export function GridLayout({ itemsByCategory, config }: Props) {
   const { theme, columns, show_descriptions, show_prices, show_images } = config;
   const useSubcategories = config.group_by_subcategory ?? false;
   const cats = Array.from(itemsByCategory.entries());
-  const gridCols = Math.min(columns + 1, 4);
+  const gridCols = Math.min(columns + 1, 5);
 
   return (
-    <div className="px-6 py-5 space-y-6">
+    <div className="px-8 py-5 space-y-6">
       {cats.map(([catId, { categoryName, items }]) => {
         const sections = useSubcategories
           ? groupBySubcategory(items)
@@ -23,214 +22,189 @@ export function GridLayout({ itemsByCategory, config }: Props) {
 
         return (
           <div key={catId}>
-            {/* Category Header — centered with strong diamond ornament */}
-            <div className="relative flex items-center gap-3 mb-4 justify-center">
-              {/* Left decorative element */}
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="flex-1 h-px"
-                  style={{
-                    width: "3rem",
-                    background: `linear-gradient(90deg, transparent, ${theme.category_header_color}50)`,
-                  }}
-                />
-                <div
-                  className="w-1.5 h-1.5 rotate-45"
-                  style={{ backgroundColor: `${theme.category_header_color}50` }}
-                />
-              </div>
-
-              {/* Title with badge-like container */}
+            {/* Category header — centered title with flanking rules */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "1rem",
+                marginBottom: "0.75rem",
+              }}
+            >
               <div
-                className="relative px-5 py-2 rounded-xl"
                 style={{
-                  background: `linear-gradient(135deg, ${theme.category_header_color}16, ${theme.category_header_color}08)`,
-                  border: `1px solid ${theme.category_header_color}22`,
-                  boxShadow: `0 0 25px ${theme.category_header_color}12, inset 0 1px 0 ${theme.category_header_color}15`,
+                  flex: 1,
+                  height: "1px",
+                  background: `linear-gradient(90deg, transparent, ${theme.category_header_color}40)`,
+                }}
+              />
+              <h2
+                className="font-serif font-bold"
+                style={{
+                  color: theme.category_header_color,
+                  fontSize: "1.5rem",
+                  letterSpacing: "0.06em",
+                  lineHeight: 1,
+                  textShadow: `0 0 60px ${theme.category_header_color}30`,
+                  whiteSpace: "nowrap",
                 }}
               >
-                <h2
-                  className="font-serif font-bold tracking-wider text-center whitespace-nowrap"
-                  style={{
-                    color: theme.category_header_color,
-                    fontSize: "1.1rem",
-                    textShadow: `0 0 30px ${theme.category_header_color}40`,
-                  }}
-                >
-                  {categoryName}
-                </h2>
-              </div>
-
-              {/* Right decorative element */}
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="w-1.5 h-1.5 rotate-45"
-                  style={{ backgroundColor: `${theme.category_header_color}50` }}
-                />
-                <div
-                  className="flex-1 h-px"
-                  style={{
-                    width: "3rem",
-                    background: `linear-gradient(90deg, ${theme.category_header_color}50, transparent)`,
-                  }}
-                />
-              </div>
+                {categoryName}
+              </h2>
+              <div
+                style={{
+                  flex: 1,
+                  height: "1px",
+                  background: `linear-gradient(90deg, ${theme.category_header_color}40, transparent)`,
+                }}
+              />
             </div>
 
             {sections.map((section, si) => (
-              <div key={section.subCategory ?? si} className="mb-4">
+              <div key={section.subCategory ?? si} className="mb-3">
                 {section.subCategory && (
-                  <div className="flex items-center gap-2 mb-2.5 justify-center">
-                    <div
-                      className="w-12 h-px"
-                      style={{
-                        background: `linear-gradient(90deg, transparent, ${theme.accent_color}30)`,
-                      }}
-                    />
-                    <h3
-                      className="font-semibold tracking-widest uppercase text-center"
-                      style={{
-                        color: theme.accent_color,
-                        fontSize: "0.6rem",
-                        letterSpacing: "0.18em",
-                        opacity: 0.85,
-                      }}
-                    >
-                      {section.subCategory}
-                    </h3>
-                    <div
-                      className="w-12 h-px"
-                      style={{
-                        background: `linear-gradient(90deg, ${theme.accent_color}30, transparent)`,
-                      }}
-                    />
-                  </div>
+                  <p
+                    className="uppercase font-semibold mb-2 text-center"
+                    style={{
+                      color: theme.accent_color,
+                      fontSize: "0.55rem",
+                      letterSpacing: "0.18em",
+                      opacity: 0.7,
+                    }}
+                  >
+                    {section.subCategory}
+                  </p>
                 )}
 
                 <div
-                  className="gap-3"
                   style={{
                     display: "grid",
                     gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+                    gap: "0.5rem",
                   }}
                 >
-                  {section.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-xl overflow-hidden text-center relative flex flex-col"
-                      style={{
-                        backgroundColor: `${theme.text_color}07`,
-                        border: `1px solid ${theme.text_color}0C`,
-                        boxShadow: `
-                          0 2px 6px rgba(0,0,0,0.18),
-                          0 6px 18px rgba(0,0,0,0.2),
-                          inset 0 1px 0 rgba(255,255,255,0.05)
-                        `,
-                      }}
-                    >
-                      {show_images && item.image_url ? (
-                        <div className="relative h-20 overflow-hidden">
-                          <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                            style={{ filter: "brightness(0.88) saturate(1.12)" }}
-                          />
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              background: `linear-gradient(0deg, ${theme.background_color} 0%, ${theme.background_color}AA 22%, transparent 55%)`,
-                            }}
-                          />
-                          {/* Compact dietary badges over image */}
-                          <div className="absolute top-1.5 left-1.5 flex gap-1">
-                            {item.is_vegetarian && (
-                              <div
-                                className="p-0.5 rounded-full"
-                                style={{
-                                  backgroundColor: "rgba(0,0,0,0.65)",
-                                  backdropFilter: "blur(6px)",
-                                  border: "1px solid rgba(74,222,128,0.2)",
-                                }}
-                              >
-                                <Leaf className="w-2.5 h-2.5" style={{ color: "#4ade80" }} />
-                              </div>
-                            )}
-                            {item.is_spicy && (
-                              <div
-                                className="p-0.5 rounded-full"
-                                style={{
-                                  backgroundColor: "rgba(0,0,0,0.65)",
-                                  backdropFilter: "blur(6px)",
-                                  border: "1px solid rgba(248,113,113,0.2)",
-                                }}
-                              >
-                                <Flame className="w-2.5 h-2.5" style={{ color: "#f87171" }} />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <div className="p-2.5 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <h3
-                              className="font-semibold leading-snug"
-                              style={{ color: theme.text_color, fontSize: "0.8rem" }}
-                            >
-                              {item.name}
-                            </h3>
-                            {!(show_images && item.image_url) && (
-                              <>
+                  {section.items.map((item) => {
+                    const hasImage = show_images && !!item.image_url;
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          borderRadius: "0.75rem",
+                          overflow: "hidden",
+                          background: `${theme.text_color}07`,
+                          border: `1px solid ${theme.text_color}0C`,
+                          boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04)`,
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        {hasImage && (
+                          <div style={{ position: "relative", height: "4.5rem", overflow: "hidden", flexShrink: 0 }}>
+                            <img
+                              src={item.image_url!}
+                              alt={item.name}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                filter: "brightness(0.88) saturate(1.1)",
+                              }}
+                            />
+                            <div
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: `linear-gradient(0deg, ${theme.background_color} 0%, ${theme.background_color}99 18%, transparent 50%)`,
+                              }}
+                            />
+                            {/* Dietary dots on image */}
+                            {(item.is_vegetarian || item.is_spicy) && (
+                              <div style={{ position: "absolute", top: "0.35rem", left: "0.35rem", display: "flex", gap: "0.2rem" }}>
                                 {item.is_vegetarian && (
-                                  <Leaf className="w-2.5 h-2.5 shrink-0" style={{ color: "#4ade80" }} />
+                                  <span style={{ display: "block", width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: "#4ade80" }} />
                                 )}
                                 {item.is_spicy && (
-                                  <Flame className="w-2.5 h-2.5 shrink-0" style={{ color: "#f87171" }} />
+                                  <span style={{ display: "block", width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: "#f87171" }} />
                                 )}
-                              </>
+                              </div>
                             )}
                           </div>
-                          {show_descriptions && item.description && (
-                            <p
-                              className="mt-1 line-clamp-1 leading-snug italic"
-                              style={{ color: `${theme.text_color}40`, fontSize: "0.6rem" }}
+                        )}
+
+                        <div
+                          style={{
+                            padding: "0.5rem 0.6rem",
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            gap: "0.3rem",
+                            textAlign: "center",
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem" }}>
+                              <span
+                                style={{
+                                  color: theme.text_color,
+                                  fontSize: "0.78rem",
+                                  fontWeight: 600,
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                {item.name}
+                              </span>
+                              {!hasImage && (
+                                <>
+                                  {item.is_vegetarian && (
+                                    <span style={{ color: "#4ade80", fontSize: "0.4rem" }}>●</span>
+                                  )}
+                                  {item.is_spicy && (
+                                    <span style={{ color: "#f87171", fontSize: "0.4rem" }}>●</span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            {show_descriptions && item.description && (
+                              <p
+                                style={{
+                                  color: `${theme.text_color}35`,
+                                  fontSize: "0.6rem",
+                                  fontStyle: "italic",
+                                  marginTop: "1px",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {show_prices && (
+                            <div
+                              style={{
+                                marginTop: "0.2rem",
+                                padding: "0.2rem 0",
+                                borderRadius: "0.4rem",
+                                background: `${theme.price_color}0F`,
+                                border: `1px solid ${theme.price_color}1E`,
+                                color: theme.price_color,
+                                lineHeight: 1,
+                              }}
                             >
-                              {item.description}
-                            </p>
+                              <span style={{ fontSize: "0.5rem", opacity: 0.45 }}>$</span>
+                              <span style={{ fontSize: "0.88rem", fontWeight: 700 }}>{Math.floor(item.price)}</span>
+                              <span style={{ fontSize: "0.48rem", verticalAlign: "super", fontWeight: 700, opacity: 0.7 }}>
+                                {String(Math.round((item.price % 1) * 100)).padStart(2, "0")}
+                              </span>
+                            </div>
                           )}
                         </div>
-
-                        {show_prices && (
-                          <div
-                            className="mt-2 py-1 rounded-lg tabular-nums text-center leading-none"
-                            style={{
-                              color: theme.price_color,
-                              backgroundColor: `${theme.price_color}10`,
-                              border: `1px solid ${theme.price_color}20`,
-                            }}
-                          >
-                            <span style={{ fontSize: "0.55em", opacity: 0.55, fontWeight: 500 }}>$</span>
-                            <span style={{ fontSize: "0.95rem", fontWeight: 700 }}>
-                              {Math.floor(item.price)}
-                            </span>
-                            <span style={{ fontSize: "0.55em", opacity: 0.8, fontWeight: 600 }}>
-                              .{String(Math.round((item.price % 1) * 100)).padStart(2, "0")}
-                            </span>
-                          </div>
-                        )}
                       </div>
-
-                      {/* Bottom accent */}
-                      <div
-                        className="h-px shrink-0"
-                        style={{
-                          background: `linear-gradient(90deg, transparent, ${theme.accent_color}20, transparent)`,
-                        }}
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

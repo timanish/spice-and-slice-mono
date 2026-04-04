@@ -15,127 +15,97 @@ export function TvMenuHeader({ text, accentColor, textColor, backgroundColor }: 
     return () => clearInterval(interval);
   }, []);
 
-  const hours = time.getHours();
+  const hours = time.getHours() % 12 || 12;
   const minutes = String(time.getMinutes()).padStart(2, "0");
-  const ampm = hours >= 12 ? "PM" : "AM";
-  const displayHour = hours % 12 || 12;
+  const ampm = time.getHours() >= 12 ? "PM" : "AM";
 
   return (
     <div className="relative shrink-0 overflow-hidden">
       <style>{`
-        @keyframes headerAccentPulse {
-          0%, 100% { opacity: 0.7; }
+        @keyframes headerTopBarPulse {
+          0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
-        }
-        @keyframes headerGlowBreath {
-          0%, 100% { opacity: 0.06; }
-          50% { opacity: 0.12; }
         }
       `}</style>
 
-      {/* Subtle gradient background for depth */}
+      {/* Top accent bar — thicker, more visible */}
       <div
-        className="absolute inset-0"
         style={{
-          background: `linear-gradient(180deg, ${accentColor}08 0%, transparent 100%)`,
-          animation: "headerGlowBreath 8s ease-in-out infinite",
+          height: "3px",
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor}40 10%, ${accentColor} 40%, ${accentColor} 60%, ${accentColor}40 90%, transparent 100%)`,
+          animation: "headerTopBarPulse 6s ease-in-out infinite",
         }}
       />
 
-      {/* Main header row */}
-      <div className="relative flex items-center justify-between px-10 py-5 gap-6">
+      {/* Background gradient — gives the header visual depth */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          top: "3px",
+          background: `linear-gradient(180deg, ${accentColor}0D 0%, transparent 100%)`,
+          pointerEvents: "none",
+        }}
+      />
 
-        {/* Left: decorative ornament */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">
-          <div className="flex flex-col gap-1">
-            <div
-              className="w-14 h-px"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${accentColor}60)`,
-              }}
-            />
-            <div
-              className="w-8 h-px ml-auto"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${accentColor}30)`,
-              }}
-            />
-          </div>
-          <div
-            className="w-1.5 h-1.5 rotate-45"
-            style={{ backgroundColor: `${accentColor}55` }}
-          />
-          <div
-            className="w-1 h-1 rotate-45"
-            style={{ backgroundColor: `${accentColor}30` }}
-          />
-        </div>
-
-        {/* Center: restaurant name / menu title */}
-        <div className="flex-1 flex justify-center">
+      {/* Main row */}
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          padding: "1.25rem 2.5rem 1.1rem",
+          gap: "1.5rem",
+        }}
+      >
+        {/* Restaurant / menu title — the hero of the header */}
+        <div style={{ flex: 1, textAlign: "center" }}>
           <h1
-            className="font-serif font-bold text-center tracking-widest"
+            className="font-serif font-bold"
             style={{
               color: accentColor,
-              fontSize: "clamp(1.6rem, 3.5vw, 2.8rem)",
-              lineHeight: 1.1,
-              textShadow: `0 0 50px ${accentColor}45, 0 0 100px ${accentColor}15`,
-              letterSpacing: "0.12em",
+              fontSize: "clamp(2rem, 4.5vw, 3.5rem)",
+              letterSpacing: "0.1em",
+              lineHeight: 1,
+              textShadow: `0 0 80px ${accentColor}40, 0 0 160px ${accentColor}15`,
             }}
           >
             {text || "Our Menu"}
           </h1>
         </div>
 
-        {/* Right: live clock */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">
-          <div
-            className="w-1 h-1 rotate-45"
-            style={{ backgroundColor: `${accentColor}30` }}
-          />
-          <div
-            className="w-1.5 h-1.5 rotate-45"
-            style={{ backgroundColor: `${accentColor}55` }}
-          />
-          <div className="flex flex-col gap-1">
-            <div
-              className="w-14 h-px"
-              style={{
-                background: `linear-gradient(90deg, ${accentColor}60, transparent)`,
-              }}
-            />
-            <div
-              className="w-8 h-px"
-              style={{
-                background: `linear-gradient(90deg, ${accentColor}30, transparent)`,
-              }}
-            />
-          </div>
-          {/* Clock block */}
-          <div
-            className="ml-1 flex items-baseline gap-1 px-3 py-1.5 rounded-xl"
-            style={{
-              backgroundColor: `${accentColor}0C`,
-              border: `1px solid ${accentColor}18`,
-              boxShadow: `inset 0 1px 0 ${accentColor}10`,
-            }}
-          >
+        {/* Live clock — right side, pinned */}
+        <div
+          style={{
+            position: "absolute",
+            right: "2.5rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "2px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: "0.2rem" }}>
             <span
-              className="font-mono font-semibold tabular-nums"
+              className="font-mono font-bold tabular-nums"
               style={{
-                color: `${textColor}90`,
-                fontSize: "1rem",
-                letterSpacing: "0.04em",
+                color: `${textColor}85`,
+                fontSize: "1.5rem",
+                letterSpacing: "0.02em",
+                lineHeight: 1,
               }}
             >
-              {displayHour}:{minutes}
+              {hours}:{minutes}
             </span>
             <span
-              className="font-mono font-medium"
+              className="font-mono font-semibold"
               style={{
                 color: `${textColor}45`,
-                fontSize: "0.6rem",
-                letterSpacing: "0.08em",
+                fontSize: "0.7rem",
+                letterSpacing: "0.06em",
+                lineHeight: 1,
               }}
             >
               {ampm}
@@ -144,22 +114,14 @@ export function TvMenuHeader({ text, accentColor, textColor, backgroundColor }: 
         </div>
       </div>
 
-      {/* Bottom separator — tapered glow line */}
-      <div className="relative mx-6 mb-0">
-        <div
-          className="h-px"
-          style={{
-            background: `linear-gradient(90deg, transparent 0%, ${accentColor}30 15%, ${accentColor}80 40%, ${accentColor} 50%, ${accentColor}80 60%, ${accentColor}30 85%, transparent 100%)`,
-            animation: "headerAccentPulse 5s ease-in-out infinite",
-          }}
-        />
-        <div
-          className="h-px mt-px"
-          style={{
-            background: `linear-gradient(90deg, transparent 10%, ${accentColor}14 30%, ${accentColor}35 50%, ${accentColor}14 70%, transparent 90%)`,
-          }}
-        />
-      </div>
+      {/* Bottom separator — a single clean rule */}
+      <div
+        style={{
+          margin: "0 2rem",
+          height: "1px",
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor}25 15%, ${accentColor}70 45%, ${accentColor}70 55%, ${accentColor}25 85%, transparent 100%)`,
+        }}
+      />
     </div>
   );
 }

@@ -172,7 +172,7 @@ export function TvMenuDisplay() {
         {isMultiScreenStatic || displayMode === "static" ? (
           <div className="flex-1 overflow-hidden">{content}</div>
         ) : displayMode === "pages" ? (
-          <PageSlider duration={config.page_duration ?? 10}>
+          <PageSlider duration={config.page_duration ?? 10} accentColor={theme.accent_color}>
             {content}
           </PageSlider>
         ) : (

@@ -2,17 +2,17 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 
 interface Props {
   duration: number; // seconds per page
+  accentColor: string;
   children: ReactNode;
 }
 
-export function PageSlider({ duration, children }: Props) {
+export function PageSlider({ duration, accentColor, children }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
 
-  // Measure content and calculate pages
   useEffect(() => {
     const measure = () => {
       const container = containerRef.current;
@@ -44,7 +44,6 @@ export function PageSlider({ duration, children }: Props) {
     };
   }, [children]);
 
-  // Auto-advance pages
   useEffect(() => {
     if (totalPages <= 1) return;
 
@@ -64,25 +63,35 @@ export function PageSlider({ duration, children }: Props) {
         className="transition-transform ease-in-out"
         style={{
           transform: `translateY(${translateY}px)`,
-          transitionDuration: "800ms",
+          transitionDuration: "900ms",
         }}
       >
         {children}
       </div>
 
-      {/* Page indicator dots */}
+      {/* Page indicator — segmented accent bar at the very bottom */}
       {totalPages > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: "2rem",
+            right: "2rem",
+            height: "3px",
+            display: "flex",
+            gap: "3px",
+          }}
+        >
           {Array.from({ length: totalPages }).map((_, i) => (
             <div
               key={i}
-              className="rounded-full transition-all duration-300"
               style={{
-                width: i === currentPage ? 24 : 8,
-                height: 8,
-                backgroundColor: i === currentPage
-                  ? "rgba(255,255,255,0.8)"
-                  : "rgba(255,255,255,0.25)",
+                flex: 1,
+                height: "100%",
+                borderRadius: "1.5px",
+                backgroundColor: accentColor,
+                opacity: i === currentPage ? 0.9 : 0.18,
+                transition: "opacity 0.5s ease",
               }}
             />
           ))}
