@@ -7,20 +7,10 @@ interface Props {
   config: TvMenuBoardConfig;
 }
 
-interface FlatSection {
-  type: "category";
-  key: string;
-  name: string;
-  count: number;
-} | {
-  type: "subcategory";
-  key: string;
-  name: string;
-} | {
-  type: "items";
-  key: string;
-  items: MenuItem[];
-};
+type FlatSection =
+  | { type: "category"; key: string; name: string; count: number }
+  | { type: "subcategory"; key: string; name: string }
+  | { type: "items"; key: string; items: MenuItem[] };
 
 export function ModernLayout({ itemsByCategory, config }: Props) {
   const { theme, columns, show_descriptions, show_prices, show_images } = config;
