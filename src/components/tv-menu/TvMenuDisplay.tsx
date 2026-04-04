@@ -100,34 +100,44 @@ export function TvMenuDisplay() {
         fontSize: `${scale}rem`,
       }}
     >
-      {/* Ambient background effects — animated glowing orbs */}
+      {/* Ambient background effects */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {/* Primary accent orb — top-right */}
         <div
-          className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-[120px]"
+          className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full"
           style={{
-            background: `radial-gradient(circle, ${theme.accent_color}, transparent 70%)`,
-            animation: "tvAmbient1 20s ease-in-out infinite",
+            background: `radial-gradient(circle, ${theme.accent_color}22 0%, ${theme.accent_color}0A 40%, transparent 70%)`,
+            animation: "tvAmbient1 22s ease-in-out infinite",
           }}
         />
+        {/* Price-color orb — bottom-left */}
         <div
-          className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-[0.05] blur-[140px]"
+          className="absolute -bottom-48 -left-48 w-[700px] h-[700px] rounded-full"
           style={{
-            background: `radial-gradient(circle, ${theme.price_color}, transparent 70%)`,
-            animation: "tvAmbient2 25s ease-in-out infinite",
+            background: `radial-gradient(circle, ${theme.price_color}18 0%, ${theme.price_color}08 40%, transparent 70%)`,
+            animation: "tvAmbient2 28s ease-in-out infinite",
           }}
         />
+        {/* Center atmosphere — very subtle */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full opacity-[0.03] blur-[100px]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full"
           style={{
-            background: `radial-gradient(ellipse, ${theme.category_header_color}, transparent 70%)`,
-            animation: "tvAmbient3 30s ease-in-out infinite",
+            background: `radial-gradient(ellipse, ${theme.category_header_color}0C 0%, transparent 65%)`,
+            animation: "tvAmbient3 35s ease-in-out infinite",
           }}
         />
-        {/* Subtle noise texture overlay */}
+        {/* Vignette — darkens edges, focuses center */}
         <div
-          className="absolute inset-0 opacity-[0.015]"
+          className="absolute inset-0"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+            background: `radial-gradient(ellipse 85% 85% at center, transparent 50%, rgba(0,0,0,0.35) 100%)`,
+          }}
+        />
+        {/* Subtle film grain for depth */}
+        <div
+          className="absolute inset-0 opacity-[0.022]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
             backgroundRepeat: "repeat",
             backgroundSize: "256px 256px",
           }}
@@ -137,17 +147,17 @@ export function TvMenuDisplay() {
       <style>{`
         @keyframes tvAmbient1 {
           0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(-30px, 20px) scale(1.1); }
-          66% { transform: translate(20px, -15px) scale(0.95); }
+          33% { transform: translate(-40px, 30px) scale(1.12); }
+          66% { transform: translate(25px, -20px) scale(0.94); }
         }
         @keyframes tvAmbient2 {
           0%, 100% { transform: translate(0, 0) scale(1); }
-          40% { transform: translate(40px, -30px) scale(1.15); }
-          70% { transform: translate(-20px, 20px) scale(0.9); }
+          40% { transform: translate(50px, -35px) scale(1.18); }
+          70% { transform: translate(-25px, 25px) scale(0.88); }
         }
         @keyframes tvAmbient3 {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.03; }
-          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.06; }
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          50% { transform: translate(-50%, -50%) scale(1.25); }
         }
       `}</style>
 

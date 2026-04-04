@@ -9,29 +9,28 @@ export function TvMenuFooter({ text, textColor, accentColor }: Props) {
 
   return (
     <div className="shrink-0 relative">
-      {/* Top decorative double-line (mirrors header) */}
-      <div className="mx-8 flex flex-col gap-px">
+      {/* Top separator */}
+      <div className="mx-6">
         <div
           className="h-px"
           style={{
-            background: `linear-gradient(90deg, transparent 15%, ${accentColor}25 35%, ${accentColor}40 50%, ${accentColor}25 65%, transparent 85%)`,
+            background: `linear-gradient(90deg, transparent 10%, ${accentColor}14 30%, ${accentColor}35 50%, ${accentColor}14 70%, transparent 90%)`,
           }}
         />
         <div
-          className="h-px"
+          className="h-px mt-px"
           style={{
-            background: `linear-gradient(90deg, transparent 5%, ${accentColor}50 30%, ${accentColor}80 50%, ${accentColor}50 70%, transparent 95%)`,
+            background: `linear-gradient(90deg, transparent 0%, ${accentColor}30 15%, ${accentColor}70 40%, ${accentColor}90 50%, ${accentColor}70 60%, ${accentColor}30 85%, transparent 100%)`,
           }}
         />
       </div>
 
       <div
-        className="px-10 py-4 text-center tracking-widest uppercase"
+        className="px-10 py-3 text-center tracking-widest uppercase"
         style={{
-          color: `${textColor}80`,
-          fontSize: "0.8rem",
-          letterSpacing: "0.15em",
-          textShadow: `0 0 30px ${accentColor}15`,
+          color: `${textColor}55`,
+          fontSize: "0.72rem",
+          letterSpacing: "0.2em",
         }}
       >
         {text}

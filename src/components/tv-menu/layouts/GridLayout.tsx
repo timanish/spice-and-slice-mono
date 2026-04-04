@@ -23,44 +23,88 @@ export function GridLayout({ itemsByCategory, config }: Props) {
 
         return (
           <div key={catId}>
-            {/* Category Header — centered with gradient lines */}
-            <div className="flex items-center gap-4 mb-4">
+            {/* Category Header — centered with strong diamond ornament */}
+            <div className="relative flex items-center gap-3 mb-4 justify-center">
+              {/* Left decorative element */}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="flex-1 h-px"
+                  style={{
+                    width: "3rem",
+                    background: `linear-gradient(90deg, transparent, ${theme.category_header_color}50)`,
+                  }}
+                />
+                <div
+                  className="w-1.5 h-1.5 rotate-45"
+                  style={{ backgroundColor: `${theme.category_header_color}50` }}
+                />
+              </div>
+
+              {/* Title with badge-like container */}
               <div
-                className="flex-1 h-px"
+                className="relative px-5 py-2 rounded-xl"
                 style={{
-                  background: `linear-gradient(90deg, transparent, ${theme.category_header_color}50)`,
-                }}
-              />
-              <h2
-                className="text-xl font-serif font-bold tracking-wider px-3 whitespace-nowrap"
-                style={{
-                  color: theme.category_header_color,
-                  textShadow: `0 0 35px ${theme.category_header_color}25`,
+                  background: `linear-gradient(135deg, ${theme.category_header_color}16, ${theme.category_header_color}08)`,
+                  border: `1px solid ${theme.category_header_color}22`,
+                  boxShadow: `0 0 25px ${theme.category_header_color}12, inset 0 1px 0 ${theme.category_header_color}15`,
                 }}
               >
-                {categoryName}
-              </h2>
-              <div
-                className="flex-1 h-px"
-                style={{
-                  background: `linear-gradient(90deg, ${theme.category_header_color}50, transparent)`,
-                }}
-              />
+                <h2
+                  className="font-serif font-bold tracking-wider text-center whitespace-nowrap"
+                  style={{
+                    color: theme.category_header_color,
+                    fontSize: "1.1rem",
+                    textShadow: `0 0 30px ${theme.category_header_color}40`,
+                  }}
+                >
+                  {categoryName}
+                </h2>
+              </div>
+
+              {/* Right decorative element */}
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="w-1.5 h-1.5 rotate-45"
+                  style={{ backgroundColor: `${theme.category_header_color}50` }}
+                />
+                <div
+                  className="flex-1 h-px"
+                  style={{
+                    width: "3rem",
+                    background: `linear-gradient(90deg, ${theme.category_header_color}50, transparent)`,
+                  }}
+                />
+              </div>
             </div>
 
             {sections.map((section, si) => (
               <div key={section.subCategory ?? si} className="mb-4">
                 {section.subCategory && (
-                  <h3
-                    className="font-semibold mb-3 px-1 tracking-[0.18em] uppercase text-center"
-                    style={{
-                      color: theme.accent_color,
-                      fontSize: "0.65rem",
-                      textShadow: `0 0 15px ${theme.accent_color}15`,
-                    }}
-                  >
-                    {section.subCategory}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-2.5 justify-center">
+                    <div
+                      className="w-12 h-px"
+                      style={{
+                        background: `linear-gradient(90deg, transparent, ${theme.accent_color}30)`,
+                      }}
+                    />
+                    <h3
+                      className="font-semibold tracking-widest uppercase text-center"
+                      style={{
+                        color: theme.accent_color,
+                        fontSize: "0.6rem",
+                        letterSpacing: "0.18em",
+                        opacity: 0.85,
+                      }}
+                    >
+                      {section.subCategory}
+                    </h3>
+                    <div
+                      className="w-12 h-px"
+                      style={{
+                        background: `linear-gradient(90deg, ${theme.accent_color}30, transparent)`,
+                      }}
+                    />
+                  </div>
                 )}
 
                 <div
@@ -73,11 +117,15 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                   {section.items.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-xl overflow-hidden text-center relative"
+                      className="rounded-xl overflow-hidden text-center relative flex flex-col"
                       style={{
-                        backgroundColor: `${theme.text_color}06`,
-                        border: `1px solid ${theme.text_color}10`,
-                        boxShadow: `0 2px 12px ${theme.background_color}50`,
+                        backgroundColor: `${theme.text_color}07`,
+                        border: `1px solid ${theme.text_color}0C`,
+                        boxShadow: `
+                          0 2px 6px rgba(0,0,0,0.18),
+                          0 6px 18px rgba(0,0,0,0.2),
+                          inset 0 1px 0 rgba(255,255,255,0.05)
+                        `,
                       }}
                     >
                       {show_images && item.image_url ? (
@@ -86,22 +134,23 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                             src={item.image_url}
                             alt={item.name}
                             className="w-full h-full object-cover"
-                            style={{ filter: "brightness(0.85) saturate(1.1)" }}
+                            style={{ filter: "brightness(0.88) saturate(1.12)" }}
                           />
                           <div
                             className="absolute inset-0"
                             style={{
-                              background: `linear-gradient(0deg, ${theme.background_color} 5%, ${theme.background_color}80 30%, transparent 55%)`,
+                              background: `linear-gradient(0deg, ${theme.background_color} 0%, ${theme.background_color}AA 22%, transparent 55%)`,
                             }}
                           />
-                          {/* Dietary badges over image */}
+                          {/* Compact dietary badges over image */}
                           <div className="absolute top-1.5 left-1.5 flex gap-1">
                             {item.is_vegetarian && (
                               <div
                                 className="p-0.5 rounded-full"
                                 style={{
-                                  backgroundColor: `${theme.background_color}CC`,
+                                  backgroundColor: "rgba(0,0,0,0.65)",
                                   backdropFilter: "blur(6px)",
+                                  border: "1px solid rgba(74,222,128,0.2)",
                                 }}
                               >
                                 <Leaf className="w-2.5 h-2.5" style={{ color: "#4ade80" }} />
@@ -111,8 +160,9 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                               <div
                                 className="p-0.5 rounded-full"
                                 style={{
-                                  backgroundColor: `${theme.background_color}CC`,
+                                  backgroundColor: "rgba(0,0,0,0.65)",
                                   backdropFilter: "blur(6px)",
+                                  border: "1px solid rgba(248,113,113,0.2)",
                                 }}
                               >
                                 <Flame className="w-2.5 h-2.5" style={{ color: "#f87171" }} />
@@ -122,52 +172,61 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                         </div>
                       ) : null}
 
-                      <div className="p-2.5">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <h3
-                            className="font-semibold leading-tight"
-                            style={{ color: theme.text_color, fontSize: "0.82rem" }}
-                          >
-                            {item.name}
-                          </h3>
-                          {!(show_images && item.image_url) && (
-                            <>
-                              {item.is_vegetarian && (
-                                <Leaf className="w-2.5 h-2.5 shrink-0" style={{ color: "#4ade80" }} />
-                              )}
-                              {item.is_spicy && (
-                                <Flame className="w-2.5 h-2.5 shrink-0" style={{ color: "#f87171" }} />
-                              )}
-                            </>
+                      <div className="p-2.5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <h3
+                              className="font-semibold leading-snug"
+                              style={{ color: theme.text_color, fontSize: "0.8rem" }}
+                            >
+                              {item.name}
+                            </h3>
+                            {!(show_images && item.image_url) && (
+                              <>
+                                {item.is_vegetarian && (
+                                  <Leaf className="w-2.5 h-2.5 shrink-0" style={{ color: "#4ade80" }} />
+                                )}
+                                {item.is_spicy && (
+                                  <Flame className="w-2.5 h-2.5 shrink-0" style={{ color: "#f87171" }} />
+                                )}
+                              </>
+                            )}
+                          </div>
+                          {show_descriptions && item.description && (
+                            <p
+                              className="mt-1 line-clamp-1 leading-snug italic"
+                              style={{ color: `${theme.text_color}40`, fontSize: "0.6rem" }}
+                            >
+                              {item.description}
+                            </p>
                           )}
                         </div>
-                        {show_descriptions && item.description && (
-                          <p
-                            className="mt-1 opacity-40 line-clamp-1 leading-snug"
-                            style={{ color: theme.text_color, fontSize: "0.62rem" }}
-                          >
-                            {item.description}
-                          </p>
-                        )}
+
                         {show_prices && (
-                          <p
-                            className="font-bold mt-1.5 tabular-nums"
+                          <div
+                            className="mt-2 py-1 rounded-lg tabular-nums text-center leading-none"
                             style={{
                               color: theme.price_color,
-                              fontSize: "0.9rem",
-                              textShadow: `0 0 18px ${theme.price_color}20`,
+                              backgroundColor: `${theme.price_color}10`,
+                              border: `1px solid ${theme.price_color}20`,
                             }}
                           >
-                            ${item.price.toFixed(2)}
-                          </p>
+                            <span style={{ fontSize: "0.55em", opacity: 0.55, fontWeight: 500 }}>$</span>
+                            <span style={{ fontSize: "0.95rem", fontWeight: 700 }}>
+                              {Math.floor(item.price)}
+                            </span>
+                            <span style={{ fontSize: "0.55em", opacity: 0.8, fontWeight: 600 }}>
+                              .{String(Math.round((item.price % 1) * 100)).padStart(2, "0")}
+                            </span>
+                          </div>
                         )}
                       </div>
 
-                      {/* Subtle bottom accent */}
+                      {/* Bottom accent */}
                       <div
-                        className="h-px"
+                        className="h-px shrink-0"
                         style={{
-                          background: `linear-gradient(90deg, transparent, ${theme.accent_color}25, transparent)`,
+                          background: `linear-gradient(90deg, transparent, ${theme.accent_color}20, transparent)`,
                         }}
                       />
                     </div>
