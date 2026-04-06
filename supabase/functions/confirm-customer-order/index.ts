@@ -164,6 +164,47 @@ serve(async (req) => {
       );
     }
 
+    // --- CANCEL ORDER ACTION ---
+    if (action === "cancel") {
+      console.log("Customer cancelling order:", orderId);
+
+      const { error: cancelError } = await serviceClient
+        .from("orders")
+        .update({
+          fulfillment_status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          confirmation_token: null,
+          confirmation_token_expires_at: null,
+        })
+        .eq("id", orderId);
+
+      if (cancelError) {
+        console.error("Error cancelling order:", cancelError);
+        return new Response(
+          JSON.stringify({ error: "Failed to cancel order" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const origin = Deno.env.get("SUPABASE_URL") || "";
+      fetch(`${origin}/functions/v1/send-order-status-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+        body: JSON.stringify({ orderId, newStatus: "cancelled" }),
+      }).catch((e) => console.error("Failed to send customer cancellation email:", e));
+
+      fetch(`${origin}/functions/v1/send-order-status-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+        body: JSON.stringify({ orderId, newStatus: "cancelled", isAdminEmail: true }),
+      }).catch((e) => console.error("Failed to send admin cancellation email:", e));
+
+      return new Response(
+        JSON.stringify({ success: true, orderId }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+
     // --- SUBMIT MODIFICATIONS ACTION ---
     // Customer rejects some admin changes and/or adds new items, sends back for review
     if (action === "submit_modifications") {

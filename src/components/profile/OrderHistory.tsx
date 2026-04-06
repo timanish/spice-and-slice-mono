@@ -118,75 +118,91 @@ const OrderHistory = ({ orders }: OrderHistoryProps) => {
           const scheduledDate = order.fulfillment_type === 'pickup' ? order.pickup_date : order.delivery_date;
           const scheduledTime = order.fulfillment_type === 'pickup' ? order.pickup_time : order.delivery_time;
 
+          const needsConfirmation = deliveryStatus === 'awaiting_customer_confirmation' && order.confirmation_token;
+
           return (
-            <button
-              key={order.id}
-              onClick={() => navigate(`/order/${order.id}`)}
-              className="w-full text-left p-4 hover:bg-gray-50 transition-colors"
-            >
-              {/* Top row: Order ID + Date */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-900 text-sm">
-                  #{order.id.substring(0, 8).toUpperCase()}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {formatDate(order.created_at)}
-                </span>
-              </div>
-
-              {/* Middle row: Fulfillment type + Status */}
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    order.fulfillment_type === 'delivery'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-amber-50 text-amber-700 border-amber-200'
-                  }`}
-                >
-                  {order.fulfillment_type === 'delivery' ? (
-                    <>
-                      <Truck className="h-3 w-3 mr-1" />
-                      Delivery
-                    </>
-                  ) : (
-                    <>
-                      <Package className="h-3 w-3 mr-1" />
-                      Pickup
-                    </>
-                  )}
-                </Badge>
-                <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClass(deliveryStatus)}`}>
-                  {formatStatusLabel(deliveryStatus)}
-                </span>
-                {deliveryStatus === 'awaiting_customer_confirmation' && (
-                  <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Action Required
-                  </Badge>
-                )}
-              </div>
-
-              {/* Scheduled time */}
-              {scheduledDate && scheduledTime && (
-                <div className="text-xs text-gray-500 mb-2">
-                  {scheduledDate} at {scheduledTime}
-                </div>
-              )}
-
-              {/* Bottom row: Total + Items + Arrow */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-gray-900">
-                    ${order.total_amount.toFixed(2)}
+            <div key={order.id} className={`p-4 ${needsConfirmation ? 'bg-amber-50 border-l-4 border-amber-400' : 'hover:bg-gray-50'} transition-colors`}>
+              {/* Clickable area — goes to order detail */}
+              <button
+                onClick={() => navigate(`/order/${order.id}`)}
+                className="w-full text-left"
+              >
+                {/* Top row: Order ID + Date */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900 text-sm">
+                    #{order.id.substring(0, 8).toUpperCase()}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {order.order_items?.length || 0} item(s)
+                    {formatDate(order.created_at)}
                   </span>
                 </div>
-                <ChevronRight className="h-4 w-4 text-gray-400" />
-              </div>
-            </button>
+
+                {/* Middle row: Fulfillment type + Status */}
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      order.fulfillment_type === 'delivery'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    {order.fulfillment_type === 'delivery' ? (
+                      <>
+                        <Truck className="h-3 w-3 mr-1" />
+                        Delivery
+                      </>
+                    ) : (
+                      <>
+                        <Package className="h-3 w-3 mr-1" />
+                        Pickup
+                      </>
+                    )}
+                  </Badge>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClass(deliveryStatus)}`}>
+                    {formatStatusLabel(deliveryStatus)}
+                  </span>
+                  {needsConfirmation && (
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      Action Required
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Scheduled time */}
+                {scheduledDate && scheduledTime && (
+                  <div className="text-xs text-gray-500 mb-2">
+                    {scheduledDate} at {scheduledTime}
+                  </div>
+                )}
+
+                {/* Bottom row: Total + Items */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-gray-900">
+                      ${order.total_amount.toFixed(2)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {order.order_items?.length || 0} item(s)
+                    </span>
+                  </div>
+                  {!needsConfirmation && <ChevronRight className="h-4 w-4 text-gray-400" />}
+                </div>
+              </button>
+
+              {/* Review Order CTA — only for orders awaiting confirmation */}
+              {needsConfirmation && (
+                <Button
+                  size="sm"
+                  className="w-full mt-3 bg-amber-600 hover:bg-amber-700"
+                  onClick={() => navigate(`/order-confirm/${order.id}?token=${order.confirmation_token}`)}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Review & Confirm Order
+                </Button>
+              )}
+            </div>
           );
         })}
       </div>

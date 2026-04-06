@@ -15,6 +15,17 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchAllProducts } from '@/hooks/products/useProductFetcher';
 import type { Product } from '@/hooks/products/types';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Clock,
   AlertCircle,
   CheckCircle,
@@ -28,6 +39,7 @@ import {
   Search,
   Send,
   X,
+  Ban,
 } from 'lucide-react';
 
 interface OrderDetails {
@@ -88,8 +100,10 @@ const OrderConfirmPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [changesSubmitted, setChangesSubmitted] = useState(false);
+  const [orderCancelled, setOrderCancelled] = useState(false);
 
   // Per-item rejection state
   const [rejectedItems, setRejectedItems] = useState<Set<string>>(new Set());
@@ -330,6 +344,34 @@ const OrderConfirmPage = () => {
     }
   };
 
+  const handleCancel = async () => {
+    if (!orderId || !token) return;
+    setIsCancelling(true);
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/confirm-customer-order`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, token, action: 'cancel' }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to cancel order');
+      }
+      setOrderCancelled(true);
+    } catch (err) {
+      toast({
+        title: 'Cancellation Failed',
+        description: err instanceof Error ? err.message : 'Please try again or contact support',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const hasAnyChanges =
     rejectedItems.size > 0 || newItems.length > 0 || customerNotes.trim().length > 0;
 
@@ -452,6 +494,34 @@ const OrderConfirmPage = () => {
             <CardContent className="text-center">
               <p className="text-green-800 mb-6">
                 We've received your modifications. Our team will review and send you a new confirmation email shortly.
+              </p>
+              <Button onClick={() => navigate('/')} className="w-full">
+                Return Home
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (orderCancelled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <Navigation />
+        <div className="container max-w-2xl mx-auto px-4 py-16">
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <div className="flex justify-center mb-4">
+                <div className="p-4 bg-red-100 rounded-full">
+                  <Ban className="h-10 w-10 text-red-600" />
+                </div>
+              </div>
+              <CardTitle className="text-center text-red-900 text-2xl">Order Cancelled</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-red-800 mb-6">
+                Your order has been cancelled. You'll receive a confirmation email shortly.
               </p>
               <Button onClick={() => navigate('/')} className="w-full">
                 Return Home
@@ -945,6 +1015,41 @@ const OrderConfirmPage = () => {
                 Revert items, add products, or add a note above to enable this button.
               </p>
             )}
+
+            <Separator className="my-2" />
+
+            {/* Cancel order */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  disabled={isCancelling || isConfirming || isSubmittingChanges}
+                >
+                  <Ban className="h-4 w-4 mr-2" />
+                  {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently cancel your order. You'll receive a confirmation email.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Order</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleCancel}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Yes, Cancel Order
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
 

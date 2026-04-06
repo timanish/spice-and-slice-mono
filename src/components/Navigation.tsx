@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Package, ListChecks, Settings, Image, Search, User, Layers, Calendar, Star, Quote, ChefHat, Zap, LayoutDashboard, Video } from 'lucide-react';
+import { Menu, X, Package, ListChecks, Settings, Image, Search, User, Layers, Calendar, Star, Quote, ChefHat, Zap, LayoutDashboard, Video, ClipboardList } from 'lucide-react';
 import { useAuth as useClerkAuth, useUser as useClerkUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useUser } from "@/hooks/use-user-clerk";
 import { useCartStore } from "@/stores/cart";
@@ -173,7 +173,7 @@ const Navigation = () => {
             {/* User button - only visible on mobile */}
             <div className="md:hidden">
               {user ? (
-                <UserButton 
+                <UserButton
                   afterSignOutUrl="/"
                   appearance={{
                     elements: {
@@ -182,6 +182,11 @@ const Navigation = () => {
                   }}
                 >
                   <UserButton.MenuItems>
+                    <UserButton.Link
+                      label="My Orders"
+                      labelIcon={<ClipboardList className="h-4 w-4" />}
+                      href="/profile?tab=orders"
+                    />
                     <UserButton.Link
                       label="Profile"
                       labelIcon={<User className="h-4 w-4" />}
@@ -226,6 +231,19 @@ const Navigation = () => {
                   aria-label="Admin Dashboard"
                 >
                   <LayoutDashboard className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
+            {/* My Orders button - only for signed-in users */}
+            {isSignedIn && (
+              <Link to="/profile?tab=orders">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-600 hover:text-food-red hover:bg-food-red/10"
+                  aria-label="My Orders"
+                >
+                  <ClipboardList className="h-5 w-5" />
                 </Button>
               </Link>
             )}

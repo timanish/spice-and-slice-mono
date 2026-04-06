@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LayoutDashboard } from 'lucide-react';
+import { User, ClipboardList } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { UserButton, SignInButton, useUser as useClerkUser } from '@clerk/clerk-react';
 import { useUser } from "@/hooks/use-user-clerk";
@@ -26,6 +26,11 @@ const UserMenu: React.FC = () => {
           }}
         >
           <UserButton.MenuItems>
+            <UserButton.Link
+              label="My Orders"
+              labelIcon={<ClipboardList className="h-4 w-4" />}
+              href="/profile?tab=orders"
+            />
             <UserButton.Link
               label="Profile"
               labelIcon={<User className="h-4 w-4" />}
