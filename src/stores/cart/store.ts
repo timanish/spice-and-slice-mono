@@ -136,7 +136,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
     productId: string,
     weight?: number,
     discountPercentage?: number,
-    flashDealId?: string
+    flashDealId?: string,
+    productSnapshot?: import('./types').ProductSnapshot
   ) => {
     await addToCart(
       productId,
@@ -145,7 +146,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
       weight,
       undefined,
       discountPercentage,
-      flashDealId
+      flashDealId,
+      productSnapshot
     );
   },
 

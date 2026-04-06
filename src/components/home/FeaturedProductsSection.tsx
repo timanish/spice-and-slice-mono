@@ -81,11 +81,24 @@ const FeaturedProductsSection = () => {
       return;
     }
     
-    await addToCart(productId);
+    await addToCart(productId, undefined, undefined, undefined, product ? {
+      name: product.name,
+      price_per_unit: product.price_per_unit,
+      is_weighted: product.is_weighted,
+      unit_of_measure: product.unit_of_measure,
+      image_url: product.image_url,
+      category: product.category,
+    } : undefined);
   };
-  
+
   const handleAddWeightedToCart = async (productId: string, weight: number) => {
-    await addToCart(productId, weight);
+    await addToCart(productId, weight, undefined, undefined, weightedProduct ? {
+      name: weightedProduct.name,
+      price_per_unit: weightedProduct.price_per_unit,
+      is_weighted: true,
+      unit_of_measure: weightedProduct.unit_of_measure,
+      image_url: weightedProduct.image_url,
+    } : undefined);
     toast({
       title: "Added to cart",
       description: `${weight} ${weightedProduct?.unit_of_measure || 'lb'} added to your cart`,

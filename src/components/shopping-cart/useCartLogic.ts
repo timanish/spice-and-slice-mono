@@ -140,8 +140,10 @@ export const useCartLogic = (
         description: "Your order is being reviewed. We'll email you shortly.",
       });
 
-      // Clear cart items from store and localStorage
-      useCartStore.setState({ items: [], comboItems: [] });
+      // Clear cart items from store, localStorage, and in-memory memoization cache
+      const userId = memoizationUtils.getCurrentUserId();
+      memoizationUtils.clearMemoizedResult(`cart-items-${userId}`);
+      useCartStore.setState({ items: [], comboItems: [], lastFetchTime: null });
       clearCartStorage();
 
       setIsOpen(false);

@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "@/lib/auth-token";
 import { CartStoreState } from "../store";
-import { CartItem } from "../types";
+import { CartItem, ProductSnapshot } from "../types";
 import { fetchCart } from "./fetchCart";
 import { memoizationUtils } from "./memoization";
 
@@ -12,6 +12,7 @@ export const addToCart = async (
   quantity?: number,
   discountPercentage?: number,
   flashDealId?: string,
+  productSnapshot?: ProductSnapshot,
 ) => {
   // Optimistic update — instant UI feedback
   const currentItems = [...get().items];
@@ -31,6 +32,26 @@ export const addToCart = async (
       };
     }
     set({ items: updated, hasError: false, errorMessage: null });
+  } else if (productSnapshot) {
+    // New item — add a placeholder so the badge count updates immediately
+    const optimisticItem: CartItem = {
+      id: `temp-${productId}-${Date.now()}`,
+      product_id: productId,
+      quantity: quantity || 1,
+      weight,
+      discount_percentage: discountPercentage,
+      flash_deal_id: flashDealId,
+      product: {
+        name: productSnapshot.name,
+        price_per_unit: productSnapshot.price_per_unit,
+        is_weighted: productSnapshot.is_weighted || false,
+        unit_of_measure: productSnapshot.unit_of_measure || null,
+        image_url: productSnapshot.image_url || null,
+        category: productSnapshot.category || '',
+        tax_rate: productSnapshot.tax_rate || null,
+      },
+    };
+    set({ items: [...currentItems, optimisticItem], hasError: false, errorMessage: null });
   } else {
     set({ hasError: false, errorMessage: null });
   }

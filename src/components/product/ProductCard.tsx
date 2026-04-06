@@ -149,7 +149,16 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         product.id,
         product.is_weighted ? weight : undefined,
         hasDiscount ? product.discount_percentage! : undefined,
-        hasDiscount ? product.flash_deal_id! : undefined
+        hasDiscount ? product.flash_deal_id! : undefined,
+        {
+          name: product.name,
+          price_per_unit: product.price_per_unit,
+          is_weighted: product.is_weighted,
+          unit_of_measure: product.unit_of_measure,
+          image_url: product.image_url,
+          category: product.category,
+          tax_rate: product.tax_rate,
+        }
       );
       
       trackProductAddedToCart(product, {

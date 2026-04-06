@@ -54,6 +54,17 @@ export interface CartComboItem {
   };
 }
 
+// Minimal product data needed for optimistic cart updates
+export interface ProductSnapshot {
+  name: string;
+  price_per_unit: number;
+  is_weighted?: boolean;
+  unit_of_measure?: string | null;
+  image_url?: string | null;
+  category?: string;
+  tax_rate?: number | null;
+}
+
 export interface CartStore {
   items: CartItem[];
   comboItems: CartComboItem[];
@@ -68,7 +79,8 @@ export interface CartStore {
     productId: string,
     weight?: number,
     discountPercentage?: number,
-    flashDealId?: string
+    flashDealId?: string,
+    productSnapshot?: ProductSnapshot
   ) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
