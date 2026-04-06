@@ -217,9 +217,9 @@ serve(async (req) => {
         );
       }
 
-      const { rejectedItemIds = [], deletedItemIds = [], newItems = [], customerNotes } = modifications;
+      const { deletedItemIds = [], newItems = [], customerNotes } = modifications;
 
-      if (rejectedItemIds.length === 0 && deletedItemIds.length === 0 && newItems.length === 0 && !customerNotes?.trim()) {
+      if (deletedItemIds.length === 0 && newItems.length === 0 && !customerNotes?.trim()) {
         return new Response(
           JSON.stringify({ error: "No modifications provided" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -237,54 +237,6 @@ serve(async (req) => {
           JSON.stringify({ error: "Failed to fetch order items" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
-      }
-
-      const currentItemMap = new Map(currentItems.map((i: any) => [i.id, i]));
-
-      // Process rejected items: revert to original quantity/product
-      for (const itemId of rejectedItemIds) {
-        const item = currentItemMap.get(itemId);
-
-        // Security: item must belong to this order
-        if (!item) {
-          return new Response(
-            JSON.stringify({ error: `Item ${itemId} not found in this order` }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-
-        if (!item.original_quantity) {
-          return new Response(
-            JSON.stringify({ error: `Item ${itemId} was not admin-adjusted and cannot be reverted` }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-
-        // Determine original product (may have been substituted)
-        const originalProductId = item.original_product_id ?? item.product_id;
-        const revertedQty = item.original_quantity;
-
-        // Fetch tax rate for original product
-        const { data: origProduct } = await serviceClient
-          .from("products")
-          .select("tax_rate")
-          .eq("id", originalProductId)
-          .single();
-
-        const taxRate = origProduct?.tax_rate ?? 0;
-        const newTaxAmount = Math.round(revertedQty * item.price_per_unit * (taxRate / 100) * 100) / 100;
-
-        await serviceClient
-          .from("order_items")
-          .update({
-            quantity: revertedQty,
-            product_id: originalProductId,
-            original_quantity: null,
-            original_product_id: null,
-            original_product_name: null,
-            tax_amount: newTaxAmount,
-          })
-          .eq("id", itemId);
       }
 
       // Process deleted items: remove from order_items entirely

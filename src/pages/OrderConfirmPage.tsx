@@ -105,9 +105,6 @@ const OrderConfirmPage = () => {
   const [changesSubmitted, setChangesSubmitted] = useState(false);
   const [orderCancelled, setOrderCancelled] = useState(false);
 
-  // Per-item rejection state
-  const [rejectedItems, setRejectedItems] = useState<Set<string>>(new Set());
-
   // Per-item deletion state
   const [deletedItems, setDeletedItems] = useState<Set<string>>(new Set());
 
@@ -255,18 +252,6 @@ const OrderConfirmPage = () => {
     }
   };
 
-  const handleToggleRejectItem = (itemId: string) => {
-    setRejectedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      return next;
-    });
-  };
-
   const handleToggleDeleteItem = (itemId: string) => {
     setDeletedItems((prev) => {
       const next = new Set(prev);
@@ -274,8 +259,6 @@ const OrderConfirmPage = () => {
         next.delete(itemId);
       } else {
         next.add(itemId);
-        // Can't reject and delete simultaneously
-        setRejectedItems((r) => { const rn = new Set(r); rn.delete(itemId); return rn; });
       }
       return next;
     });
@@ -333,7 +316,6 @@ const OrderConfirmPage = () => {
             token,
             action: 'submit_modifications',
             modifications: {
-              rejectedItemIds: Array.from(rejectedItems),
               deletedItemIds: Array.from(deletedItems),
               newItems: newItems.map((i) => ({
                 productId: i.product.id,
@@ -391,7 +373,7 @@ const OrderConfirmPage = () => {
   };
 
   const hasAnyChanges =
-    rejectedItems.size > 0 || deletedItems.size > 0 || newItems.length > 0 || customerNotes.trim().length > 0;
+    deletedItems.size > 0 || newItems.length > 0 || customerNotes.trim().length > 0;
 
   // --- Early return states ---
 
@@ -586,7 +568,7 @@ const OrderConfirmPage = () => {
                 <div>
                   <p className="font-semibold text-orange-900 mb-1">Items Adjusted by Our Team</p>
                   <p className="text-orange-800 text-sm">
-                    Some items were adjusted based on available inventory. You can accept the changes, revert individual items to the original, or add new items — then click <strong>Submit Changes for Review</strong>.
+                    Some items were adjusted based on available inventory. You can accept them as-is, remove any items you don't want, or add new items — then click <strong>Submit Changes for Review</strong>.
                   </p>
                 </div>
               </div>
@@ -609,33 +591,25 @@ const OrderConfirmPage = () => {
                   const isAdminAdjusted =
                     (item.original_quantity && item.original_quantity !== item.quantity) ||
                     (item.original_product_id && item.original_product_id !== item.product_id);
-                  const isRejected = rejectedItems.has(item.id);
                   const isDeleted = deletedItems.has(item.id);
-                  const displayQty = isRejected && item.original_quantity ? item.original_quantity : item.quantity;
 
                   return (
                     <div
                       key={item.id}
                       className={`flex justify-between items-start py-4 border-b last:border-b-0 transition-colors ${
-                        isDeleted ? 'bg-red-50 -mx-4 px-4 rounded opacity-60' :
-                        isRejected ? 'bg-blue-50 -mx-4 px-4 rounded' : ''
+                        isDeleted ? 'bg-red-50 -mx-4 px-4 rounded opacity-60' : ''
                       }`}
                     >
                       <div className="flex-grow mr-4">
-                        {/* Product name */}
+                        {/* Product name — show substitution if applicable */}
                         {item.original_product_name && item.original_product_id !== item.product_id ? (
                           <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            <span className={`${isRejected ? '' : 'line-through text-gray-400'}`}>
-                              {item.original_product_name}
-                            </span>
-                            {!isRejected && !isDeleted && (
+                            <span className="line-through text-gray-400">{item.original_product_name}</span>
+                            {!isDeleted && (
                               <>
                                 {' → '}
                                 <span className="font-bold text-orange-600">{item.product_name}</span>
                               </>
-                            )}
-                            {isRejected && (
-                              <span className="ml-2 text-xs text-blue-600 font-normal">(reverting to original)</span>
                             )}
                           </p>
                         ) : (
@@ -647,17 +621,13 @@ const OrderConfirmPage = () => {
                         {/* Quantity */}
                         <p className="text-sm text-gray-600 mt-1">
                           {isAdminAdjusted && item.original_quantity && item.original_quantity !== item.quantity ? (
-                            isRejected ? (
-                              <span className="text-blue-700 font-medium">{item.original_quantity} (original)</span>
-                            ) : (
-                              <>
-                                <span className="line-through text-gray-400">{item.original_quantity}</span>
-                                {' → '}
-                                <span className="font-bold text-orange-600">{item.quantity}</span>
-                              </>
-                            )
+                            <>
+                              <span className="line-through text-gray-400">{item.original_quantity}</span>
+                              {' → '}
+                              <span className="font-bold text-orange-600">{item.quantity}</span>
+                            </>
                           ) : (
-                            <span>{displayQty}</span>
+                            <span>{item.quantity}</span>
                           )}
                           {' × $'}
                           {item.price_per_unit.toFixed(2)}
@@ -671,35 +641,9 @@ const OrderConfirmPage = () => {
                       <div className="flex items-center gap-2">
                         <div className="text-right">
                           <p className={`font-semibold ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            ${(displayQty * item.price_per_unit).toFixed(2)}
+                            ${(item.quantity * item.price_per_unit).toFixed(2)}
                           </p>
                         </div>
-
-                        {/* Revert — only for admin-adjusted, non-deleted items */}
-                        {isAdminAdjusted && !isDeleted && (
-                          <Button
-                            variant={isRejected ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => handleToggleRejectItem(item.id)}
-                            className={
-                              isRejected
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white text-xs whitespace-nowrap'
-                                : 'text-xs whitespace-nowrap'
-                            }
-                          >
-                            {isRejected ? (
-                              <>
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Reverting
-                              </>
-                            ) : (
-                              <>
-                                <RotateCcw className="h-3 w-3 mr-1" />
-                                Revert
-                              </>
-                            )}
-                          </Button>
-                        )}
 
                         {/* Delete / Restore toggle */}
                         <Button
@@ -1049,7 +993,7 @@ const OrderConfirmPage = () => {
 
             {!hasAnyChanges && (
               <p className="text-xs text-gray-500 text-center">
-                Revert items, add products, or add a note above to enable this button.
+                Remove items, add products, or add a note above to enable this button.
               </p>
             )}
 
