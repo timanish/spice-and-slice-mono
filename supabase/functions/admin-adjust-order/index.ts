@@ -147,7 +147,7 @@ serve(async (req) => {
         // Fetch the order item to check if original_quantity is already set
         const { data: item } = await serviceClient
           .from("order_items")
-          .select("original_quantity, quantity, product_id, original_product_id")
+          .select("original_quantity, quantity, product_id, original_product_id, price_per_unit, products!product_id(tax_rate)")
           .eq("id", orderItemId)
           .single();
 
@@ -177,6 +177,26 @@ serve(async (req) => {
           if (originalProductName) {
             updateData.original_product_name = originalProductName;
           }
+        }
+
+        // Recalculate tax_amount when price or quantity changes
+        if (newQuantity !== undefined || newPricePerUnit !== undefined || newProductId !== undefined) {
+          const effectiveQty = updateData.quantity ?? item?.quantity ?? 0;
+          const effectivePrice = updateData.price_per_unit ?? item?.price_per_unit ?? 0;
+
+          let taxRate = (item?.products as any)?.tax_rate ?? 0;
+
+          // If product is being substituted, get the new product's tax rate
+          if (newProductId !== undefined) {
+            const { data: newProduct } = await serviceClient
+              .from("products")
+              .select("tax_rate")
+              .eq("id", newProductId)
+              .single();
+            taxRate = newProduct?.tax_rate ?? 0;
+          }
+
+          updateData.tax_amount = Math.round(effectiveQty * effectivePrice * (taxRate / 100) * 100) / 100;
         }
 
         const { error: updateError } = await serviceClient
@@ -224,6 +244,7 @@ serve(async (req) => {
           .update({
             total_amount: newTotal,
             taxable_amount: newSubtotal,
+            tax_amount: newTax,
           })
           .eq("id", orderId);
 
@@ -283,7 +304,7 @@ serve(async (req) => {
 
           const { data: item } = await serviceClient
             .from("order_items")
-            .select("original_quantity, quantity, product_id, original_product_id")
+            .select("original_quantity, quantity, product_id, original_product_id, price_per_unit, products!product_id(tax_rate)")
             .eq("id", orderItemId)
             .single();
 
@@ -311,6 +332,26 @@ serve(async (req) => {
             if (originalProductName) {
               updateData.original_product_name = originalProductName;
             }
+          }
+
+          // Recalculate tax_amount when price or quantity changes
+          if (newQuantity !== undefined || newPricePerUnit !== undefined || newProductId !== undefined) {
+            const effectiveQty = updateData.quantity ?? item?.quantity ?? 0;
+            const effectivePrice = updateData.price_per_unit ?? item?.price_per_unit ?? 0;
+
+            let taxRate = (item?.products as any)?.tax_rate ?? 0;
+
+            // If product is being substituted, get the new product's tax rate
+            if (newProductId !== undefined) {
+              const { data: newProduct } = await serviceClient
+                .from("products")
+                .select("tax_rate")
+                .eq("id", newProductId)
+                .single();
+              taxRate = newProduct?.tax_rate ?? 0;
+            }
+
+            updateData.tax_amount = Math.round(effectiveQty * effectivePrice * (taxRate / 100) * 100) / 100;
           }
 
           await serviceClient
@@ -344,6 +385,7 @@ serve(async (req) => {
             .update({
               total_amount: newTotal,
               taxable_amount: newSubtotal,
+              tax_amount: newTax,
             })
             .eq("id", orderId);
         }
@@ -372,6 +414,7 @@ serve(async (req) => {
             .from("orders")
             .update({
               total_amount: newTotal,
+              tax_amount: newTax,
             })
             .eq("id", orderId);
         }

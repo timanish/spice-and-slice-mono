@@ -137,7 +137,7 @@ serve(async (req) => {
       // Fetch order items
       const { data: orderItems, error: itemsError } = await serviceClient
         .from("order_items")
-        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, products!product_id(name)")
+        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, original_product_id, original_product_name, products!product_id(name)")
         .eq("order_id", orderId);
 
       if (itemsError) {
@@ -161,6 +161,166 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         },
+      );
+    }
+
+    // --- SUBMIT MODIFICATIONS ACTION ---
+    // Customer rejects some admin changes and/or adds new items, sends back for review
+    if (action === "submit_modifications") {
+      const { modifications } = requestData;
+
+      if (!modifications) {
+        return new Response(
+          JSON.stringify({ error: "Missing modifications" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const { rejectedItemIds = [], newItems = [], customerNotes } = modifications;
+
+      if (rejectedItemIds.length === 0 && newItems.length === 0 && !customerNotes?.trim()) {
+        return new Response(
+          JSON.stringify({ error: "No modifications provided" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Fetch current order items to validate ownership
+      const { data: currentItems, error: currentItemsError } = await serviceClient
+        .from("order_items")
+        .select("id, product_id, quantity, original_quantity, original_product_id, price_per_unit")
+        .eq("order_id", orderId);
+
+      if (currentItemsError || !currentItems) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch order items" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const currentItemMap = new Map(currentItems.map((i: any) => [i.id, i]));
+
+      // Process rejected items: revert to original quantity/product
+      for (const itemId of rejectedItemIds) {
+        const item = currentItemMap.get(itemId);
+
+        // Security: item must belong to this order
+        if (!item) {
+          return new Response(
+            JSON.stringify({ error: `Item ${itemId} not found in this order` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        if (!item.original_quantity) {
+          return new Response(
+            JSON.stringify({ error: `Item ${itemId} was not admin-adjusted and cannot be reverted` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        // Determine original product (may have been substituted)
+        const originalProductId = item.original_product_id ?? item.product_id;
+        const revertedQty = item.original_quantity;
+
+        // Fetch tax rate for original product
+        const { data: origProduct } = await serviceClient
+          .from("products")
+          .select("tax_rate")
+          .eq("id", originalProductId)
+          .single();
+
+        const taxRate = origProduct?.tax_rate ?? 0;
+        const newTaxAmount = Math.round(revertedQty * item.price_per_unit * (taxRate / 100) * 100) / 100;
+
+        await serviceClient
+          .from("order_items")
+          .update({
+            quantity: revertedQty,
+            product_id: originalProductId,
+            original_quantity: null,
+            original_product_id: null,
+            original_product_name: null,
+            tax_amount: newTaxAmount,
+          })
+          .eq("id", itemId);
+      }
+
+      // Process new items: insert into order_items
+      for (const newItem of newItems) {
+        const { data: product } = await serviceClient
+          .from("products")
+          .select("name, price_per_unit, tax_rate, is_active")
+          .eq("id", newItem.productId)
+          .single();
+
+        if (!product || !product.is_active) {
+          return new Response(
+            JSON.stringify({ error: `Product ${newItem.productId} not found or unavailable` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        const taxAmount = Math.round(newItem.quantity * product.price_per_unit * ((product.tax_rate || 0) / 100) * 100) / 100;
+
+        await serviceClient
+          .from("order_items")
+          .insert({
+            order_id: orderId,
+            product_id: newItem.productId,
+            quantity: newItem.quantity,
+            price_per_unit: product.price_per_unit,
+            tax_amount: taxAmount,
+          });
+      }
+
+      // Recalculate order totals from fresh data
+      const { data: updatedItems } = await serviceClient
+        .from("order_items")
+        .select("quantity, price_per_unit, tax_amount")
+        .eq("order_id", orderId);
+
+      const newSubtotal = (updatedItems || []).reduce(
+        (sum: number, item: any) => sum + item.quantity * item.price_per_unit,
+        0,
+      );
+      const newTax = (updatedItems || []).reduce(
+        (sum: number, item: any) => sum + (item.tax_amount || 0),
+        0,
+      );
+      const newTotal = Math.max(
+        newSubtotal + newTax + order.delivery_fee - (order.discount_amount || 0),
+        0,
+      );
+
+      // Set order back to pending_review and invalidate token
+      await serviceClient
+        .from("orders")
+        .update({
+          fulfillment_status: "pending_review",
+          confirmation_token: null,
+          confirmation_token_expires_at: null,
+          taxable_amount: newSubtotal,
+          tax_amount: newTax,
+          total_amount: newTotal,
+          customer_notes: customerNotes?.trim() || null,
+        })
+        .eq("id", orderId);
+
+      // Notify admin (non-blocking)
+      const origin = Deno.env.get("SUPABASE_URL") || "";
+      fetch(`${origin}/functions/v1/send-order-status-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({ orderId, newStatus: "pending_review", isAdminEmail: true }),
+      }).catch((e) => console.error("Failed to send admin notification:", e));
+
+      return new Response(
+        JSON.stringify({ success: true, orderId }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
       );
     }
 
@@ -282,20 +442,21 @@ serve(async (req) => {
           ? `${name} (${item.quantity}${unitOfMeasure})`
           : name;
 
-        const quantity = isWeighted
-          ? Math.round(item.quantity * 100)
-          : item.quantity;
-        const unitAmount = isWeighted
-          ? Math.round(item.price_per_unit * 100)
-          : Math.round(item.price_per_unit * 100 * item.quantity);
+        // For weighted items: Stripe can't handle decimal quantities, so use qty=1 with
+        // the full line total as the unit_amount (e.g. 2.5kg × $10/kg → qty=1, $25.00).
+        // For non-weighted: use the per-unit price and integer quantity normally.
+        const stripeUnitAmount = isWeighted
+          ? Math.round(item.quantity * item.price_per_unit * 100)
+          : Math.round(item.price_per_unit * 100);
+        const stripeQuantity = isWeighted ? 1 : item.quantity;
 
         lineItems.push({
           price_data: {
             currency: "usd",
             product_data: { name: displayName },
-            unit_amount: isWeighted ? unitAmount : Math.round(item.price_per_unit * 100),
+            unit_amount: stripeUnitAmount,
           },
-          quantity: isWeighted ? quantity : item.quantity,
+          quantity: stripeQuantity,
         });
       }
 

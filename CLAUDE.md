@@ -622,4 +622,68 @@ When providing code:
 
 ---
 
+## Project Operations Quick Reference
+
+> Full details in `CONTEXT.md`. This section has the essentials you need without opening another file.
+
+### Auth — The One Rule That Matters
+
+Every Clerk-authenticated edge function needs `verify_jwt = false` in `supabase/config.toml` **and** both header cases:
+
+```typescript
+const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+const userId = await authenticateRequest(authHeader, serviceClient, false); // true = admin
+```
+
+```toml
+# supabase/config.toml
+[functions.your-function]
+verify_jwt = false
+```
+
+Missing `verify_jwt = false` → 401 on every call, even with valid code.
+
+### Checkout — Order Status Flow
+
+```
+pending_review → awaiting_customer_confirmation → confirmed → preparing → out_for_delivery → delivered
+                         ↑ customer submits modifications ↓
+                       back to pending_review (admin reviews again)
+```
+
+Key functions: `create-pending-order` → `admin-adjust-order` (send_for_confirmation) → `confirm-customer-order` → `complete-stripe-order` (webhook, card only)
+
+Customer on `OrderConfirmPage` can: accept all (→ payment/confirmed), OR revert per-item + add items + submit for re-review.
+
+### Deploying
+
+```bash
+# 1. Apply pending migrations FIRST
+npx supabase db push
+
+# 2. Deploy functions
+npx supabase functions deploy          # all
+npx supabase functions deploy my-fn    # one
+
+# 3. Tail logs to verify
+npx supabase functions logs my-fn --follow
+```
+
+Supabase project: `isexlpmxnhuezhkmbuyu` (spice-and-slice-bazaar)
+
+### Current Tech Stack (actual, not aspirational)
+
+- React 18 + TypeScript + Vite (not Next.js)
+- Tailwind CSS + shadcn/ui
+- Supabase (DB + Edge Functions + Storage)
+- Clerk (auth) — JWT verified in edge functions via `_shared/clerk-auth.ts`
+- Stripe (payments)
+- TanStack Query (data fetching)
+- Zustand (cart state)
+- React Router (navigation)
+- Lucide React (icons)
+- PostHog (analytics)
+
+---
+
 **Remember:** You're not just writing code—you're crafting experiences that make people hungry, excited to shop, and eager to return. Every component should feel premium, polished, and appetizing. Make this food store absolutely irresistible through thoughtful design, smooth interactions, and attention to every detail. The code should be as delicious as the food being sold. 🍽️✨
