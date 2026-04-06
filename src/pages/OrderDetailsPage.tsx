@@ -144,6 +144,9 @@ const OrderDetailsPage = () => {
   };
 
   const formatStatusLabel = (status: string) => {
+    if (status.toLowerCase() === 'awaiting_customer_confirmation') {
+      return 'Awaiting Your Confirmation';
+    }
     return status
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

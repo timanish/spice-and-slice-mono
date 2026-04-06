@@ -70,6 +70,9 @@ const OrderHistory = ({ orders }: OrderHistoryProps) => {
   };
 
   const formatStatusLabel = (status: string) => {
+    if (status.toLowerCase() === 'awaiting_customer_confirmation') {
+      return 'Awaiting Your Confirmation';
+    }
     // Convert snake_case to Title Case
     return status
       .split('_')
