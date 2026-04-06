@@ -217,9 +217,9 @@ serve(async (req) => {
         );
       }
 
-      const { rejectedItemIds = [], newItems = [], customerNotes } = modifications;
+      const { rejectedItemIds = [], deletedItemIds = [], newItems = [], customerNotes } = modifications;
 
-      if (rejectedItemIds.length === 0 && newItems.length === 0 && !customerNotes?.trim()) {
+      if (rejectedItemIds.length === 0 && deletedItemIds.length === 0 && newItems.length === 0 && !customerNotes?.trim()) {
         return new Response(
           JSON.stringify({ error: "No modifications provided" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -285,6 +285,34 @@ serve(async (req) => {
             tax_amount: newTaxAmount,
           })
           .eq("id", itemId);
+      }
+
+      // Process deleted items: remove from order_items entirely
+      if (deletedItemIds.length > 0) {
+        // Security: all IDs must belong to this order
+        const validIds = currentItems.map((i: any) => i.id);
+        for (const itemId of deletedItemIds) {
+          if (!validIds.includes(itemId)) {
+            return new Response(
+              JSON.stringify({ error: `Item ${itemId} not found in this order` }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+        }
+
+        // Prevent deleting all items (must have at least 1 remaining)
+        const remainingCount = currentItems.length - deletedItemIds.length + newItems.length;
+        if (remainingCount < 1) {
+          return new Response(
+            JSON.stringify({ error: "Cannot remove all items from the order. Cancel the order instead." }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        await serviceClient
+          .from("order_items")
+          .delete()
+          .in("id", deletedItemIds);
       }
 
       // Process new items: insert into order_items

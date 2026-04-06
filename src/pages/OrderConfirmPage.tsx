@@ -108,6 +108,9 @@ const OrderConfirmPage = () => {
   // Per-item rejection state
   const [rejectedItems, setRejectedItems] = useState<Set<string>>(new Set());
 
+  // Per-item deletion state
+  const [deletedItems, setDeletedItems] = useState<Set<string>>(new Set());
+
   // New items to add
   const [newItems, setNewItems] = useState<NewItem[]>([]);
 
@@ -264,6 +267,20 @@ const OrderConfirmPage = () => {
     });
   };
 
+  const handleToggleDeleteItem = (itemId: string) => {
+    setDeletedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+        // Can't reject and delete simultaneously
+        setRejectedItems((r) => { const rn = new Set(r); rn.delete(itemId); return rn; });
+      }
+      return next;
+    });
+  };
+
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
     setProductSearchTerm(product.name);
@@ -317,6 +334,7 @@ const OrderConfirmPage = () => {
             action: 'submit_modifications',
             modifications: {
               rejectedItemIds: Array.from(rejectedItems),
+              deletedItemIds: Array.from(deletedItems),
               newItems: newItems.map((i) => ({
                 productId: i.product.id,
                 quantity: i.quantity,
@@ -373,7 +391,7 @@ const OrderConfirmPage = () => {
   };
 
   const hasAnyChanges =
-    rejectedItems.size > 0 || newItems.length > 0 || customerNotes.trim().length > 0;
+    rejectedItems.size > 0 || deletedItems.size > 0 || newItems.length > 0 || customerNotes.trim().length > 0;
 
   // --- Early return states ---
 
@@ -592,23 +610,25 @@ const OrderConfirmPage = () => {
                     (item.original_quantity && item.original_quantity !== item.quantity) ||
                     (item.original_product_id && item.original_product_id !== item.product_id);
                   const isRejected = rejectedItems.has(item.id);
+                  const isDeleted = deletedItems.has(item.id);
                   const displayQty = isRejected && item.original_quantity ? item.original_quantity : item.quantity;
 
                   return (
                     <div
                       key={item.id}
                       className={`flex justify-between items-start py-4 border-b last:border-b-0 transition-colors ${
+                        isDeleted ? 'bg-red-50 -mx-4 px-4 rounded opacity-60' :
                         isRejected ? 'bg-blue-50 -mx-4 px-4 rounded' : ''
                       }`}
                     >
                       <div className="flex-grow mr-4">
-                        {/* Product name — show substitution if applicable */}
+                        {/* Product name */}
                         {item.original_product_name && item.original_product_id !== item.product_id ? (
-                          <p className="font-medium text-gray-900">
+                          <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             <span className={`${isRejected ? '' : 'line-through text-gray-400'}`}>
                               {item.original_product_name}
                             </span>
-                            {!isRejected && (
+                            {!isRejected && !isDeleted && (
                               <>
                                 {' → '}
                                 <span className="font-bold text-orange-600">{item.product_name}</span>
@@ -619,7 +639,9 @@ const OrderConfirmPage = () => {
                             )}
                           </p>
                         ) : (
-                          <p className="font-medium text-gray-900">{item.product_name}</p>
+                          <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                            {item.product_name}
+                          </p>
                         )}
 
                         {/* Quantity */}
@@ -640,17 +662,21 @@ const OrderConfirmPage = () => {
                           {' × $'}
                           {item.price_per_unit.toFixed(2)}
                         </p>
+
+                        {isDeleted && (
+                          <p className="text-xs text-red-600 mt-1">Will be removed from order</p>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <p className="font-semibold text-gray-900">
+                          <p className={`font-semibold ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             ${(displayQty * item.price_per_unit).toFixed(2)}
                           </p>
                         </div>
 
-                        {/* Per-item reject/accept toggle — only for admin-adjusted items */}
-                        {isAdminAdjusted && (
+                        {/* Revert — only for admin-adjusted, non-deleted items */}
+                        {isAdminAdjusted && !isDeleted && (
                           <Button
                             variant={isRejected ? 'default' : 'outline'}
                             size="sm"
@@ -674,6 +700,17 @@ const OrderConfirmPage = () => {
                             )}
                           </Button>
                         )}
+
+                        {/* Delete / Restore toggle */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleDeleteItem(item.id)}
+                          className={`p-1 h-auto ${isDeleted ? 'text-gray-500 hover:text-gray-700' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
+                          title={isDeleted ? 'Restore item' : 'Remove item'}
+                        >
+                          {isDeleted ? <RotateCcw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
                       </div>
                     </div>
                   );
