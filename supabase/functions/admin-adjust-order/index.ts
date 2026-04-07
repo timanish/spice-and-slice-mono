@@ -86,7 +86,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, orderId, itemAdjustments, adminNotes, newDeliveryFee } = requestData;
+    const { action, orderId, itemAdjustments, adminNotes, newDeliveryFee, newItems, comboAddonChanges } = requestData;
 
     if (!action || !orderId) {
       return new Response(
@@ -115,11 +115,101 @@ serve(async (req) => {
       );
     }
 
+    // --- SHARED: Apply combo addon changes helper ---
+    const applyComboAddonChanges = async (orderId: string) => {
+      if (!comboAddonChanges || comboAddonChanges.length === 0) return;
+
+      const { data: currentItems } = await serviceClient
+        .from("order_items")
+        .select("id, product_id, price_per_unit, combo_id, combo_name, is_addon")
+        .eq("order_id", orderId);
+
+      for (const change of comboAddonChanges) {
+        const { comboId, addAddonComboItemIds = [], removeOrderItemIds = [] } = change;
+
+        const comboOrderItems = (currentItems || []).filter((i: any) => i.combo_id === comboId);
+        const pricingItem = comboOrderItems.find((i: any) => i.price_per_unit > 0) || comboOrderItems[0];
+        if (!pricingItem) continue;
+
+        let priceDelta = 0;
+
+        for (const removeId of removeOrderItemIds) {
+          const itemToRemove = comboOrderItems.find((i: any) => i.id === removeId);
+          if (!itemToRemove) continue;
+
+          const { data: comboItemDef } = await serviceClient
+            .from("combo_items")
+            .select("addon_price")
+            .eq("combo_id", comboId)
+            .eq("product_id", itemToRemove.product_id)
+            .eq("is_addon", true)
+            .single();
+
+          priceDelta -= (comboItemDef?.addon_price || 0);
+          await serviceClient.from("order_items").delete().eq("id", removeId);
+        }
+
+        for (const comboItemId of addAddonComboItemIds) {
+          const { data: comboItemDef } = await serviceClient
+            .from("combo_items")
+            .select("product_id, addon_price")
+            .eq("id", comboItemId)
+            .eq("combo_id", comboId)
+            .eq("is_addon", true)
+            .single();
+
+          if (!comboItemDef) continue;
+
+          await serviceClient.from("order_items").insert({
+            order_id: orderId,
+            product_id: comboItemDef.product_id,
+            quantity: 1,
+            price_per_unit: 0,
+            tax_amount: 0,
+            combo_id: comboId,
+            combo_name: pricingItem.combo_name ?? null,
+            is_addon: true,
+          });
+
+          priceDelta += (comboItemDef.addon_price || 0);
+        }
+
+        if (priceDelta !== 0) {
+          const newPrice = Math.max(0, (pricingItem.price_per_unit || 0) + priceDelta);
+          await serviceClient.from("order_items").update({ price_per_unit: newPrice }).eq("id", pricingItem.id);
+        }
+      }
+    };
+
+    // --- SHARED: Insert new items helper ---
+    const insertNewItems = async (orderId: string) => {
+      if (!newItems || newItems.length === 0) return;
+      for (const newItem of newItems) {
+        const { data: product } = await serviceClient
+          .from("products")
+          .select("name, price_per_unit, tax_rate, is_active")
+          .eq("id", newItem.productId)
+          .single();
+        if (!product || !product.is_active) {
+          console.warn("Skipping inactive/missing product:", newItem.productId);
+          continue;
+        }
+        const taxAmount = Math.round(newItem.quantity * product.price_per_unit * ((product.tax_rate || 0) / 100) * 100) / 100;
+        await serviceClient.from("order_items").insert({
+          order_id: orderId,
+          product_id: newItem.productId,
+          quantity: newItem.quantity,
+          price_per_unit: product.price_per_unit,
+          tax_amount: taxAmount,
+        });
+      }
+    };
+
     // --- ADJUST_ITEMS ACTION ---
     if (action === "adjust_items") {
-      if (!itemAdjustments || itemAdjustments.length === 0) {
+      if ((!itemAdjustments || itemAdjustments.length === 0) && (!newItems || newItems.length === 0)) {
         return new Response(
-          JSON.stringify({ error: "No item adjustments provided" }),
+          JSON.stringify({ error: "No item adjustments or new items provided" }),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -219,6 +309,12 @@ serve(async (req) => {
         }
       }
 
+      // Apply combo addon changes
+      await applyComboAddonChanges(orderId);
+
+      // Insert any new items added by admin
+      await insertNewItems(orderId);
+
       // Recalculate order total
       const { data: items } = await serviceClient
         .from("order_items")
@@ -297,7 +393,7 @@ serve(async (req) => {
         }
       }
 
-      // Apply any adjustments first if provided
+      // Apply item adjustments if provided
       if (itemAdjustments && itemAdjustments.length > 0) {
         for (const adj of itemAdjustments) {
           const { orderItemId, newQuantity, newPricePerUnit, newProductId, originalProductName } = adj;
@@ -359,8 +455,21 @@ serve(async (req) => {
             .update(updateData)
             .eq("id", orderItemId);
         }
+      }
 
-        // Recalculate totals
+      // Apply combo addon changes
+      await applyComboAddonChanges(orderId);
+
+      // Insert new items added by admin
+      await insertNewItems(orderId);
+
+      // Recalculate totals whenever anything changed
+      const hasChanges = (itemAdjustments && itemAdjustments.length > 0) ||
+        (newItems && newItems.length > 0) ||
+        (comboAddonChanges && comboAddonChanges.length > 0) ||
+        newDeliveryFee !== undefined;
+
+      if (hasChanges) {
         const { data: items } = await serviceClient
           .from("order_items")
           .select("quantity, price_per_unit, tax_amount")
@@ -385,35 +494,6 @@ serve(async (req) => {
             .update({
               total_amount: newTotal,
               taxable_amount: newSubtotal,
-              tax_amount: newTax,
-            })
-            .eq("id", orderId);
-        }
-      } else if (newDeliveryFee !== undefined) {
-        // If only delivery fee changed (no item adjustments), still need to recalculate total
-        const { data: items } = await serviceClient
-          .from("order_items")
-          .select("quantity, price_per_unit, tax_amount")
-          .eq("order_id", orderId);
-
-        if (items && items.length > 0) {
-          const newSubtotal = items.reduce(
-            (sum: number, item: any) => sum + item.quantity * item.price_per_unit,
-            0,
-          );
-          const newTax = items.reduce(
-            (sum: number, item: any) => sum + (item.tax_amount || 0),
-            0,
-          );
-          const newTotal = Math.max(
-            newSubtotal + newTax + effectiveDeliveryFee - order.discount_amount,
-            0,
-          );
-
-          await serviceClient
-            .from("orders")
-            .update({
-              total_amount: newTotal,
               tax_amount: newTax,
             })
             .eq("id", orderId);

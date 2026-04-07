@@ -214,7 +214,7 @@ serve(async (req) => {
         // Fetch combo items separately (products included in the combo)
         const { data: comboItemsData, error: comboItemsError } = await serviceClient
           .from("combo_items")
-          .select("product_id")
+          .select("id, product_id, is_addon, addon_price")
           .eq("combo_id", comboItem.combo_id);
 
         if (comboItemsError) {
@@ -226,24 +226,38 @@ serve(async (req) => {
           throw new Error(`Combo has no items: ${comboItem.combo_id}`);
         }
 
+        // Filter: always include core items; only include addons that were selected
+        const selectedAddonIds: string[] = comboItem.selected_addon_ids || [];
+        const filteredItems = comboItemsData.filter((ci: any) =>
+          !ci.is_addon || selectedAddonIds.includes(ci.id)
+        );
+
+        // Add addon surcharge to combo price
+        const addonSurcharge = filteredItems
+          .filter((ci: any) => ci.is_addon)
+          .reduce((sum: number, ci: any) => sum + (ci.addon_price || 0), 0);
+
         console.log("Combo fetched:", {
           combo_id: comboItem.combo_id,
           found: !!combo,
           combo_name: combo?.name,
           combo_price: combo?.combo_price,
-          items_count: comboItemsData?.length || 0,
-          items: comboItemsData,
+          total_items: comboItemsData?.length || 0,
+          filtered_items: filteredItems.length,
+          selected_addon_ids: selectedAddonIds,
+          addon_surcharge: addonSurcharge,
         });
 
-        if (combo && comboItemsData) {
-          comboSubtotal += combo.combo_price || 0;
+        if (combo && filteredItems.length > 0) {
+          const totalComboPrice = (combo.combo_price || 0) + addonSurcharge;
+          comboSubtotal += totalComboPrice;
           enrichedComboItems.push({
             ...comboItem,
             combo: {
               ...combo,
               name: combo.name,
-              price: combo.combo_price,
-              items: comboItemsData, // Store the items array
+              price: totalComboPrice,
+              items: filteredItems, // Only selected items
             },
           });
         }
@@ -479,6 +493,7 @@ serve(async (req) => {
             tax_amount: 0,
             combo_id: comboItem.combo_id,
             combo_name: comboName,
+            is_addon: comboProducts[index].is_addon ?? false,
           });
         }
       }

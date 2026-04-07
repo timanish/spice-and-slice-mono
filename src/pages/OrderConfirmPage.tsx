@@ -72,6 +72,17 @@ interface OrderItem {
   original_quantity?: number;
   price_per_unit: number;
   tax_amount: number;
+  combo_id?: string;
+  combo_name?: string;
+  is_addon?: boolean;
+}
+
+interface ComboAddonDef {
+  id: string;          // combo_items.id
+  product_id: string;
+  is_addon: boolean;
+  addon_price: number | null;
+  products: { name: string };
 }
 
 interface NewItem {
@@ -105,7 +116,7 @@ const OrderConfirmPage = () => {
   const [changesSubmitted, setChangesSubmitted] = useState(false);
   const [orderCancelled, setOrderCancelled] = useState(false);
 
-  // Per-item deletion state
+  // Per-item deletion state (regular items only)
   const [deletedItems, setDeletedItems] = useState<Set<string>>(new Set());
 
   // New items to add
@@ -113,6 +124,11 @@ const OrderConfirmPage = () => {
 
   // Customer notes
   const [customerNotes, setCustomerNotes] = useState('');
+
+  // Available addon definitions per combo (from GET response)
+  const [availableCombos, setAvailableCombos] = useState<Record<string, ComboAddonDef[]>>({});
+  // comboId -> {add: comboItemIds[], remove: orderItemIds[]}
+  const [comboAddonChanges, setComboAddonChanges] = useState<Record<string, { add: string[]; remove: string[] }>>({});
 
   // Product search
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -193,9 +209,15 @@ const OrderConfirmPage = () => {
             original_quantity: item.original_quantity,
             price_per_unit: item.price_per_unit,
             tax_amount: item.tax_amount,
+            combo_id: item.combo_id ?? undefined,
+            combo_name: item.combo_name ?? undefined,
+            is_addon: item.is_addon ?? false,
           }));
 
           setOrderItems(formatted);
+          if (result.availableCombos) {
+            setAvailableCombos(result.availableCombos);
+          }
         } else {
           throw new Error('Invalid response format');
         }
@@ -321,6 +343,13 @@ const OrderConfirmPage = () => {
                 productId: i.product.id,
                 quantity: i.quantity,
               })),
+              comboAddonChanges: Object.entries(comboAddonChanges)
+                .filter(([, c]) => c.add.length > 0 || c.remove.length > 0)
+                .map(([comboId, c]) => ({
+                  comboId,
+                  addAddonComboItemIds: c.add,
+                  removeOrderItemIds: c.remove,
+                })),
               customerNotes: customerNotes.trim() || undefined,
             },
           }),
@@ -372,8 +401,9 @@ const OrderConfirmPage = () => {
     }
   };
 
+  const hasComboAddonChanges = Object.values(comboAddonChanges).some(c => c.add.length > 0 || c.remove.length > 0);
   const hasAnyChanges =
-    deletedItems.size > 0 || newItems.length > 0 || customerNotes.trim().length > 0;
+    deletedItems.size > 0 || newItems.length > 0 || hasComboAddonChanges || customerNotes.trim().length > 0;
 
   // --- Early return states ---
 
@@ -577,92 +607,197 @@ const OrderConfirmPage = () => {
         )}
 
         {/* Order Items */}
-        {orderItems.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Order Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {orderItems.map((item) => {
-                  const isAdminAdjusted =
-                    (item.original_quantity && item.original_quantity !== item.quantity) ||
-                    (item.original_product_id && item.original_product_id !== item.product_id);
-                  const isDeleted = deletedItems.has(item.id);
+        {orderItems.length > 0 && (() => {
+          // Separate combo items from regular items
+          const comboMap = new Map<string, OrderItem[]>();
+          const regularItems: OrderItem[] = [];
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`flex justify-between items-start py-4 border-b last:border-b-0 transition-colors ${
-                        isDeleted ? 'bg-red-50 -mx-4 px-4 rounded opacity-60' : ''
-                      }`}
-                    >
-                      <div className="flex-grow mr-4">
-                        {/* Product name — show substitution if applicable */}
-                        {item.original_product_name && item.original_product_id !== item.product_id ? (
-                          <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            <span className="line-through text-gray-400">{item.original_product_name}</span>
-                            {!isDeleted && (
-                              <>
-                                {' → '}
-                                <span className="font-bold text-orange-600">{item.product_name}</span>
-                              </>
-                            )}
-                          </p>
-                        ) : (
-                          <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            {item.product_name}
-                          </p>
-                        )}
+          for (const item of orderItems) {
+            if (item.combo_id) {
+              if (!comboMap.has(item.combo_id)) comboMap.set(item.combo_id, []);
+              comboMap.get(item.combo_id)!.push(item);
+            } else {
+              regularItems.push(item);
+            }
+          }
 
-                        {/* Quantity */}
-                        <p className="text-sm text-gray-600 mt-1">
-                          {isAdminAdjusted && item.original_quantity && item.original_quantity !== item.quantity ? (
-                            <>
-                              <span className="line-through text-gray-400">{item.original_quantity}</span>
-                              {' → '}
-                              <span className="font-bold text-orange-600">{item.quantity}</span>
-                            </>
-                          ) : (
-                            <span>{item.quantity}</span>
+          return (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Order Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+
+                  {/* Combo groups */}
+                  {Array.from(comboMap.entries()).map(([comboId, comboItems]) => {
+                    const pricingItem = comboItems.find(i => i.price_per_unit > 0) || comboItems[0];
+                    const coreItems = comboItems.filter(i => !i.is_addon);
+                    const currentAddonItems = comboItems.filter(i => i.is_addon);
+                    const availableAddons = (availableCombos[comboId] || []).filter(a => a.is_addon);
+                    const pendingChanges = comboAddonChanges[comboId] || { add: [], remove: [] };
+
+                    const toggleAddon = (addon: ComboAddonDef) => {
+                      const existingOrderItem = currentAddonItems.find(i => i.product_id === addon.product_id);
+                      setComboAddonChanges(prev => {
+                        const current = prev[comboId] || { add: [], remove: [] };
+                        if (existingOrderItem) {
+                          const removing = current.remove.includes(existingOrderItem.id);
+                          return {
+                            ...prev,
+                            [comboId]: {
+                              ...current,
+                              remove: removing
+                                ? current.remove.filter(id => id !== existingOrderItem.id)
+                                : [...current.remove, existingOrderItem.id],
+                            },
+                          };
+                        } else {
+                          const adding = current.add.includes(addon.id);
+                          return {
+                            ...prev,
+                            [comboId]: {
+                              ...current,
+                              add: adding
+                                ? current.add.filter(id => id !== addon.id)
+                                : [...current.add, addon.id],
+                            },
+                          };
+                        }
+                      });
+                    };
+
+                    return (
+                      <div key={comboId} className="py-3 border-b last:border-b-0">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="font-semibold text-blue-900">{pricingItem.combo_name || 'Combo'}</p>
+                              <p className="text-xs text-blue-600 mt-0.5">Package deal</p>
+                            </div>
+                            <p className="font-semibold text-blue-900">${pricingItem.price_per_unit.toFixed(2)}</p>
+                          </div>
+
+                          {/* Core items */}
+                          <div className="space-y-1 mb-3">
+                            {coreItems.map(item => (
+                              <div key={item.id} className="flex items-center gap-2 text-sm text-blue-700">
+                                <CheckCircle className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                                <span>{item.product_name}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Addon toggles */}
+                          {availableAddons.length > 0 && (
+                            <div className="pt-2 border-t border-blue-200">
+                              <p className="text-xs font-medium text-blue-800 mb-2">Optional add-ons:</p>
+                              <div className="space-y-1.5">
+                                {availableAddons.map(addon => {
+                                  const existingOrderItem = currentAddonItems.find(i => i.product_id === addon.product_id);
+                                  const isPendingRemove = existingOrderItem && pendingChanges.remove.includes(existingOrderItem.id);
+                                  const isPendingAdd = pendingChanges.add.includes(addon.id);
+                                  const isOn = existingOrderItem ? !isPendingRemove : isPendingAdd;
+
+                                  return (
+                                    <label key={addon.id} className="flex items-center gap-2 cursor-pointer group">
+                                      <input
+                                        type="checkbox"
+                                        checked={isOn}
+                                        onChange={() => toggleAddon(addon)}
+                                        className="rounded"
+                                      />
+                                      <span className="text-sm text-blue-700 group-hover:text-blue-900">
+                                        {addon.products.name}
+                                        {addon.addon_price ? (
+                                          <span className="text-blue-500 ml-1">(+${addon.addon_price.toFixed(2)})</span>
+                                        ) : null}
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           )}
-                          {' × $'}
-                          {item.price_per_unit.toFixed(2)}
-                        </p>
-
-                        {isDeleted && (
-                          <p className="text-xs text-red-600 mt-1">Will be removed from order</p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <p className={`font-semibold ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            ${(item.quantity * item.price_per_unit).toFixed(2)}
-                          </p>
                         </div>
-
-                        {/* Delete / Restore toggle */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleDeleteItem(item.id)}
-                          className={`p-1 h-auto ${isDeleted ? 'text-gray-500 hover:text-gray-700' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
-                          title={isDeleted ? 'Restore item' : 'Remove item'}
-                        >
-                          {isDeleted ? <RotateCcw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-                        </Button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                    );
+                  })}
+
+                  {/* Regular items */}
+                  {regularItems.map((item) => {
+                    const isAdminAdjusted =
+                      (item.original_quantity && item.original_quantity !== item.quantity) ||
+                      (item.original_product_id && item.original_product_id !== item.product_id);
+                    const isDeleted = deletedItems.has(item.id);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex justify-between items-start py-4 border-b last:border-b-0 transition-colors ${
+                          isDeleted ? 'bg-red-50 -mx-4 px-4 rounded opacity-60' : ''
+                        }`}
+                      >
+                        <div className="flex-grow mr-4">
+                          {item.original_product_name && item.original_product_id !== item.product_id ? (
+                            <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              <span className="line-through text-gray-400">{item.original_product_name}</span>
+                              {!isDeleted && (
+                                <>
+                                  {' → '}
+                                  <span className="font-bold text-orange-600">{item.product_name}</span>
+                                </>
+                              )}
+                            </p>
+                          ) : (
+                            <p className={`font-medium ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              {item.product_name}
+                            </p>
+                          )}
+                          <p className="text-sm text-gray-600 mt-1">
+                            {isAdminAdjusted && item.original_quantity && item.original_quantity !== item.quantity ? (
+                              <>
+                                <span className="line-through text-gray-400">{item.original_quantity}</span>
+                                {' → '}
+                                <span className="font-bold text-orange-600">{item.quantity}</span>
+                              </>
+                            ) : (
+                              <span>{item.quantity}</span>
+                            )}
+                            {' × $'}
+                            {item.price_per_unit.toFixed(2)}
+                          </p>
+                          {isDeleted && (
+                            <p className="text-xs text-red-600 mt-1">Will be removed from order</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className={`font-semibold ${isDeleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              ${(item.quantity * item.price_per_unit).toFixed(2)}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleDeleteItem(item.id)}
+                            className={`p-1 h-auto ${isDeleted ? 'text-gray-500 hover:text-gray-700' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
+                            title={isDeleted ? 'Restore item' : 'Remove item'}
+                          >
+                            {isDeleted ? <RotateCcw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Pricing Summary */}
         <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">

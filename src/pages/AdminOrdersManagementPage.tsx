@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -87,6 +87,9 @@ interface Order {
     quantity: number;
     original_quantity?: number;
     price_per_unit: number;
+    combo_id?: string;
+    combo_name?: string;
+    is_addon?: boolean;
     products?: {
       name: string;
       image_url?: string;
@@ -111,6 +114,17 @@ const AdminOrdersManagementPage = () => {
   const [alternativeItems, setAlternativeItems] = useState<Record<string, { productId: string; productName: string; pricePerUnit: number }>>({});
   const [showAlternativeFor, setShowAlternativeFor] = useState<string | null>(null);
   const [alternativeSearchQuery, setAlternativeSearchQuery] = useState("");
+  const [newAdminItems, setNewAdminItems] = useState<Array<{ productId: string; name: string; pricePerUnit: number; quantity: number }>>([]);
+  const [addItemSearchQuery, setAddItemSearchQuery] = useState("");
+  const [addItemQuantity, setAddItemQuantity] = useState(1);
+  const [showAddItemDropdown, setShowAddItemDropdown] = useState(false);
+  // comboId -> available addon definitions from combo_items table
+  const [availableComboAddons, setAvailableComboAddons] = useState<Record<string, Array<{
+    id: string; product_id: string; is_addon: boolean; addon_price: number | null;
+    products: { name: string };
+  }>>>({});
+  // comboId -> {add: comboItemIds to add, remove: orderItemIds to remove}
+  const [comboAddonChanges, setComboAddonChanges] = useState<Record<string, { add: string[]; remove: string[] }>>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -225,10 +239,13 @@ const AdminOrdersManagementPage = () => {
       orderId,
       itemAdjustments,
       newDeliveryFee,
+      newItems,
     }: {
       orderId: string;
       itemAdjustments?: Array<{ orderItemId: string; newQuantity?: number; newProductId?: string; newPricePerUnit?: number; originalProductName?: string }>;
       newDeliveryFee?: number;
+      newItems?: Array<{ productId: string; quantity: number }>;
+      comboAddonChanges?: Array<{ comboId: string; addAddonComboItemIds: string[]; removeOrderItemIds: string[] }>;
     }) => {
       const token = await getToken();
       if (!token) {
@@ -248,6 +265,8 @@ const AdminOrdersManagementPage = () => {
             orderId,
             itemAdjustments,
             newDeliveryFee,
+            newItems,
+            comboAddonChanges,
           }),
         }
       );
@@ -273,6 +292,11 @@ const AdminOrdersManagementPage = () => {
       setAdjustedDeliveryFee(undefined);
       setShowAlternativeFor(null);
       setAlternativeSearchQuery("");
+      setNewAdminItems([]);
+      setAddItemSearchQuery("");
+      setAddItemQuantity(1);
+      setAvailableComboAddons({});
+      setComboAddonChanges({});
     },
     onError: (error) => {
       toast({
@@ -354,6 +378,45 @@ const AdminOrdersManagementPage = () => {
       (product.tags && product.tags.some((tag: string) => tag.toLowerCase().includes(query)))
     );
   }, [alternativeSearchQuery, allProducts]);
+
+  const filteredAddItemProducts = useMemo(() => {
+    if (!addItemSearchQuery.trim()) return [];
+    const query = addItemSearchQuery.toLowerCase();
+    return allProducts
+      .filter(product =>
+        product.is_active &&
+        (product.name?.toLowerCase().includes(query) ||
+          product.category?.name?.toLowerCase().includes(query))
+      )
+      .slice(0, 8);
+  }, [addItemSearchQuery, allProducts]);
+
+  // Fetch available combo addon definitions when an order with combos is opened
+  useEffect(() => {
+    if (!viewingOrder || viewingOrder.fulfillment_status !== "pending_review") return;
+    const comboIds = [...new Set(
+      (viewingOrder.order_items || [])
+        .map(i => i.combo_id)
+        .filter(Boolean) as string[]
+    )];
+    if (comboIds.length === 0) return;
+
+    const fetchAddons = async () => {
+      const results: typeof availableComboAddons = {};
+      for (const comboId of comboIds) {
+        const { data } = await supabase
+          .from("combo_items")
+          .select("id, product_id, is_addon, addon_price, position, products!product_id(name)")
+          .eq("combo_id", comboId)
+          .order("position");
+        if (data) results[comboId] = data as any;
+      }
+      setAvailableComboAddons(results);
+    };
+
+    fetchAddons();
+    setComboAddonChanges({});
+  }, [viewingOrder?.id]);
 
   const getStatusIcon = (status: FulfillmentStatus) => {
     switch (status) {
@@ -864,22 +927,90 @@ const AdminOrdersManagementPage = () => {
 
                         if (isCombo && items[0].combo_id) {
                           // Render as combo group
-                          const comboItem = items[0]; // First item has the price
-                          const displayQuantity = adjustedQuantities[comboItem.id] ?? comboItem.quantity;
-                          const isAdjusted = adjustedQuantities[comboItem.id] !== undefined && adjustedQuantities[comboItem.id] !== comboItem.quantity;
+                          const comboId = items[0].combo_id;
+                          const pricingItem = items.find((i: any) => i.price_per_unit > 0) || items[0];
+                          const displayQuantity = adjustedQuantities[pricingItem.id] ?? pricingItem.quantity;
+                          const isAdjusted = adjustedQuantities[pricingItem.id] !== undefined && adjustedQuantities[pricingItem.id] !== pricingItem.quantity;
+                          const coreItems = items.filter((i: any) => !i.is_addon);
+                          const currentAddonItems = items.filter((i: any) => i.is_addon);
+                          const allAvailableAddons = availableComboAddons[comboId] || [];
+                          const availableAddons = allAvailableAddons.filter((a: any) => a.is_addon);
+                          const pendingChanges = comboAddonChanges[comboId] || { add: [], remove: [] };
 
                           elements.push(
                             <div key={key} className="border-b pb-3 last:border-b-0">
                               <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-2">
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <p className="font-semibold text-sm text-blue-900">{comboItem.combo_name || "Combo"}</p>
-                                    <p className="text-xs text-blue-700 mt-1">{items.length} items included</p>
-                                    <div className="mt-1 space-y-1">
-                                      {items.map(i => (
+                                    <p className="font-semibold text-sm text-blue-900">{pricingItem.combo_name || "Combo"}</p>
+                                    {/* Core items (read-only) */}
+                                    <div className="mt-1 space-y-0.5">
+                                      {coreItems.map((i: any) => (
                                         <p key={i.id} className="text-xs text-blue-600">• {i.products?.name || "Unknown"}</p>
                                       ))}
                                     </div>
+
+                                    {/* Addons section */}
+                                    {availableAddons.length > 0 && (
+                                      <div className="mt-2 pt-2 border-t border-blue-200">
+                                        <p className="text-xs font-medium text-blue-800 mb-1">Add-ons:</p>
+                                        <div className="space-y-1">
+                                          {availableAddons.map((addon: any) => {
+                                            const existingOrderItem = currentAddonItems.find((i: any) => i.product_id === addon.product_id);
+                                            const isPendingAdd = pendingChanges.add.includes(addon.id);
+                                            const isPendingRemove = existingOrderItem && pendingChanges.remove.includes(existingOrderItem.id);
+                                            const isCurrentlyOn = existingOrderItem
+                                              ? !isPendingRemove
+                                              : isPendingAdd;
+
+                                            return (
+                                              <label key={addon.id} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isCurrentlyOn}
+                                                  disabled={viewingOrder.fulfillment_status !== "pending_review"}
+                                                  onChange={() => {
+                                                    setComboAddonChanges(prev => {
+                                                      const current = prev[comboId] || { add: [], remove: [] };
+                                                      if (existingOrderItem) {
+                                                        // Toggle removal of existing addon
+                                                        const removing = current.remove.includes(existingOrderItem.id);
+                                                        return {
+                                                          ...prev,
+                                                          [comboId]: {
+                                                            ...current,
+                                                            remove: removing
+                                                              ? current.remove.filter(id => id !== existingOrderItem.id)
+                                                              : [...current.remove, existingOrderItem.id],
+                                                          },
+                                                        };
+                                                      } else {
+                                                        // Toggle addition of new addon
+                                                        const adding = current.add.includes(addon.id);
+                                                        return {
+                                                          ...prev,
+                                                          [comboId]: {
+                                                            ...current,
+                                                            add: adding
+                                                              ? current.add.filter(id => id !== addon.id)
+                                                              : [...current.add, addon.id],
+                                                          },
+                                                        };
+                                                      }
+                                                    });
+                                                  }}
+                                                  className="rounded"
+                                                />
+                                                <span className="text-xs text-blue-700">
+                                                  {addon.products?.name || "Unknown"}
+                                                  {addon.addon_price ? ` (+$${addon.addon_price.toFixed(2)})` : ""}
+                                                </span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {viewingOrder.fulfillment_status === "pending_review" && (
                                       <div className="mt-2 space-y-2">
@@ -887,27 +1018,27 @@ const AdminOrdersManagementPage = () => {
                                           <label className="text-xs text-gray-600">Combos:</label>
                                           <Input
                                             type="number"
-                                            min="0.01"
-                                            step="0.01"
+                                            min="1"
+                                            step="1"
                                             value={displayQuantity}
                                             onChange={(e) => setAdjustedQuantities(prev => ({
                                               ...prev,
-                                              [comboItem.id]: parseFloat(e.target.value) || 0
+                                              [pricingItem.id]: parseFloat(e.target.value) || 0
                                             }))}
                                             className="w-24 h-8 text-sm"
                                           />
-                                          <span className="text-xs text-gray-500">@ ${comboItem.price_per_unit.toFixed(2)}</span>
+                                          <span className="text-xs text-gray-500">@ ${pricingItem.price_per_unit.toFixed(2)}</span>
                                         </div>
                                         {isAdjusted && (
                                           <p className="text-xs text-orange-600">
-                                            Original: {comboItem.quantity}
+                                            Original: {pricingItem.quantity}
                                           </p>
                                         )}
                                       </div>
                                     )}
                                   </div>
                                   <p className="font-medium text-sm whitespace-nowrap ml-4 text-blue-900">
-                                    ${(displayQuantity * comboItem.price_per_unit).toFixed(2)}
+                                    ${(displayQuantity * pricingItem.price_per_unit).toFixed(2)}
                                   </p>
                                 </div>
                               </div>
@@ -1043,6 +1174,90 @@ const AdminOrdersManagementPage = () => {
                   </div>
                 </div>
 
+                {/* Add Items (pending_review only) */}
+                {viewingOrder.fulfillment_status === "pending_review" && (
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Add Items to Order
+                    </h4>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                      {/* Pending additions */}
+                      {newAdminItems.length > 0 && (
+                        <div className="space-y-2">
+                          {newAdminItems.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm bg-green-50 border border-green-200 rounded px-3 py-2">
+                              <span className="flex-1 text-green-900">
+                                + {item.name}
+                                <span className="text-green-700 ml-2">×{item.quantity} @ ${item.pricePerUnit.toFixed(2)}</span>
+                              </span>
+                              <button
+                                onClick={() => setNewAdminItems(prev => prev.filter((_, i) => i !== idx))}
+                                className="text-red-500 hover:text-red-700 ml-2"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Search + add */}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="Search products to add..."
+                            value={addItemSearchQuery}
+                            onChange={(e) => {
+                              setAddItemSearchQuery(e.target.value);
+                              setShowAddItemDropdown(true);
+                            }}
+                            onFocus={() => setShowAddItemDropdown(true)}
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                          />
+                          {showAddItemDropdown && filteredAddItemProducts.length > 0 && (
+                            <div className="absolute z-10 top-full left-0 right-0 bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto">
+                              {filteredAddItemProducts.map(product => (
+                                <button
+                                  key={product.id}
+                                  onClick={() => {
+                                    setAddItemSearchQuery(product.name);
+                                    setShowAddItemDropdown(false);
+                                    setNewAdminItems(prev => [
+                                      ...prev,
+                                      {
+                                        productId: product.id,
+                                        name: product.name,
+                                        pricePerUnit: product.price_per_unit,
+                                        quantity: addItemQuantity,
+                                      },
+                                    ]);
+                                    setAddItemSearchQuery("");
+                                    setAddItemQuantity(1);
+                                  }}
+                                  className="w-full text-left text-sm px-3 py-2 hover:bg-gray-100 flex justify-between"
+                                >
+                                  <span>{product.name}</span>
+                                  <span className="text-gray-500">${product.price_per_unit.toFixed(2)}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={addItemQuantity}
+                          onChange={(e) => setAddItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-16 h-8 text-sm"
+                          placeholder="Qty"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Order Summary */}
                 <div>
                   <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
@@ -1135,10 +1350,22 @@ const AdminOrdersManagementPage = () => {
                             ...alternativeAdjustments,
                           ];
 
+                          const addonChangesPayload = Object.entries(comboAddonChanges)
+                            .filter(([, c]) => c.add.length > 0 || c.remove.length > 0)
+                            .map(([comboId, c]) => ({
+                              comboId,
+                              addAddonComboItemIds: c.add,
+                              removeOrderItemIds: c.remove,
+                            }));
+
                           sendForConfirmationMutation.mutate({
                             orderId: viewingOrder.id,
                             itemAdjustments: mergedAdjustments.length > 0 ? mergedAdjustments : undefined,
                             newDeliveryFee: adjustedDeliveryFee,
+                            newItems: newAdminItems.length > 0
+                              ? newAdminItems.map(i => ({ productId: i.productId, quantity: i.quantity }))
+                              : undefined,
+                            comboAddonChanges: addonChangesPayload.length > 0 ? addonChangesPayload : undefined,
                           });
                         }}
                         disabled={sendForConfirmationMutation.isPending}

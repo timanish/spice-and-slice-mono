@@ -137,7 +137,7 @@ serve(async (req) => {
       // Fetch order items
       const { data: orderItems, error: itemsError } = await serviceClient
         .from("order_items")
-        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, original_product_id, original_product_name, products!product_id(name)")
+        .select("id, product_id, quantity, original_quantity, price_per_unit, tax_amount, combo_id, combo_name, is_addon, original_product_id, original_product_name, products!product_id(name)")
         .eq("order_id", orderId);
 
       if (itemsError) {
@@ -151,11 +151,28 @@ serve(async (req) => {
         );
       }
 
+      // For each unique combo in this order, fetch all available addon definitions
+      const comboIds = [...new Set((orderItems || []).map((i: any) => i.combo_id).filter(Boolean))];
+      const availableCombos: Record<string, any> = {};
+
+      for (const comboId of comboIds) {
+        const { data: comboItems } = await serviceClient
+          .from("combo_items")
+          .select("id, product_id, is_addon, addon_price, position, products!product_id(name)")
+          .eq("combo_id", comboId)
+          .order("position");
+
+        if (comboItems) {
+          availableCombos[comboId] = comboItems;
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
           order,
           orderItems: orderItems || [],
+          availableCombos,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -217,9 +234,9 @@ serve(async (req) => {
         );
       }
 
-      const { deletedItemIds = [], newItems = [], customerNotes } = modifications;
+      const { deletedItemIds = [], newItems = [], comboAddonChanges = [], customerNotes } = modifications;
 
-      if (deletedItemIds.length === 0 && newItems.length === 0 && !customerNotes?.trim()) {
+      if (deletedItemIds.length === 0 && newItems.length === 0 && comboAddonChanges.length === 0 && !customerNotes?.trim()) {
         return new Response(
           JSON.stringify({ error: "No modifications provided" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -229,7 +246,7 @@ serve(async (req) => {
       // Fetch current order items to validate ownership
       const { data: currentItems, error: currentItemsError } = await serviceClient
         .from("order_items")
-        .select("id, product_id, quantity, original_quantity, original_product_id, price_per_unit")
+        .select("id, product_id, quantity, original_quantity, original_product_id, price_per_unit, combo_id, is_addon")
         .eq("order_id", orderId);
 
       if (currentItemsError || !currentItems) {
@@ -237,6 +254,72 @@ serve(async (req) => {
           JSON.stringify({ error: "Failed to fetch order items" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
+      }
+
+      // Process combo addon changes first (before deletes, so pricing stays consistent)
+      for (const change of comboAddonChanges) {
+        const { comboId, addAddonComboItemIds = [], removeOrderItemIds = [] } = change;
+
+        // Find the first (pricing) order_item for this combo
+        const comboOrderItems = currentItems.filter((i: any) => i.combo_id === comboId);
+        const pricingItem = comboOrderItems.find((i: any) => i.price_per_unit > 0) || comboOrderItems[0];
+        if (!pricingItem) continue;
+
+        let priceDelta = 0;
+
+        // Remove addons: delete order_items and subtract their addon_price from combo price
+        for (const removeId of removeOrderItemIds) {
+          const itemToRemove = currentItems.find((i: any) => i.id === removeId && i.combo_id === comboId);
+          if (!itemToRemove) continue;
+
+          // Look up addon_price from combo_items definition
+          const { data: comboItemDef } = await serviceClient
+            .from("combo_items")
+            .select("addon_price")
+            .eq("combo_id", comboId)
+            .eq("product_id", itemToRemove.product_id)
+            .eq("is_addon", true)
+            .single();
+
+          priceDelta -= (comboItemDef?.addon_price || 0);
+
+          await serviceClient.from("order_items").delete().eq("id", removeId);
+        }
+
+        // Add addons: fetch combo_item definition and insert new order_item
+        for (const comboItemId of addAddonComboItemIds) {
+          const { data: comboItemDef } = await serviceClient
+            .from("combo_items")
+            .select("product_id, addon_price")
+            .eq("id", comboItemId)
+            .eq("combo_id", comboId)
+            .eq("is_addon", true)
+            .single();
+
+          if (!comboItemDef) continue;
+
+          await serviceClient.from("order_items").insert({
+            order_id: orderId,
+            product_id: comboItemDef.product_id,
+            quantity: 1,
+            price_per_unit: 0,
+            tax_amount: 0,
+            combo_id: comboId,
+            combo_name: pricingItem.combo_name ?? null,
+            is_addon: true,
+          });
+
+          priceDelta += (comboItemDef.addon_price || 0);
+        }
+
+        // Update pricing item's price to reflect addon changes
+        if (priceDelta !== 0) {
+          const newPrice = Math.max(0, (pricingItem.price_per_unit || 0) + priceDelta);
+          await serviceClient
+            .from("order_items")
+            .update({ price_per_unit: newPrice })
+            .eq("id", pricingItem.id);
+        }
       }
 
       // Process deleted items: remove from order_items entirely
