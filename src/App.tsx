@@ -49,7 +49,6 @@ import OnboardingPage from "./pages/OnboardingPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import NotFound from "./pages/NotFound";
-import SentryTestPage from "./pages/SentryTestPage";
 import { Root } from './Root';
 import { CartInitializer } from "./components/CartInitializer";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -246,7 +245,6 @@ function App() {
                   <Route path="/order-canceled" element={<OrderCanceledPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
-                  <Route path="/sentry-test" element={<SentryTestPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </AuthProvider>
