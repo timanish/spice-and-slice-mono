@@ -146,7 +146,7 @@ const OnboardingPage = () => {
             onComplete={handleComplete}
             onSkip={handleSkip}
             initialData={{
-              fullName: profileData?.full_name,
+              fullName: profileData?.full_name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
               phone: profileData?.phone_number,
             }}
           />

@@ -111,13 +111,18 @@ export const OnboardingForm = ({ onComplete, onSkip, initialData }: OnboardingFo
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+    }
+
     const phoneDigits = formData.phone.replace(/\D/g, "");
     if (!phoneDigits) {
       newErrors.phone = "Phone number is required";
     } else if (phoneDigits.length < 10) {
       newErrors.phone = "Please enter a valid 10-digit phone number";
     }
-    
+
     if (!formData.addressLine1.trim()) {
       newErrors.addressLine1 = "Address is required";
     }
@@ -146,6 +151,7 @@ export const OnboardingForm = ({ onComplete, onSkip, initialData }: OnboardingFo
       }
 
       await updateProfile({
+        full_name: formData.fullName,
         phone_number: formData.phone,
         profile_completed: true,
         onboarding_shown: true,
@@ -246,17 +252,21 @@ export const OnboardingForm = ({ onComplete, onSkip, initialData }: OnboardingFo
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Full Name - Pre-filled from SSO, read-only */}
+          {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="fullName">
-              Full Name
+              Full Name <span className="text-destructive">*</span>
             </Label>
             <Input
               id="fullName"
+              placeholder="Enter your full name"
               value={formData.fullName}
-              disabled
-              className="bg-muted"
+              onChange={handleChange("fullName")}
+              className={errors.fullName ? "border-destructive" : ""}
             />
+            {errors.fullName && (
+              <p className="text-xs text-destructive">{errors.fullName}</p>
+            )}
           </div>
 
           {/* Phone Number - Required */}
