@@ -7,8 +7,7 @@ import { MenuItem } from '@/hooks/products/types';
 
 interface MenuItemCardProps {
   item: MenuItem;
-  quantity: number;
-  guestCount: number;
+  servingCount: number;
   onAdd: () => void;
   onIncrease: () => void;
   onDecrease: () => void;
@@ -16,29 +15,21 @@ interface MenuItemCardProps {
 
 const MenuItemCard: React.FC<MenuItemCardProps> = ({
   item,
-  quantity,
-  guestCount,
+  servingCount,
   onAdd,
   onIncrease,
   onDecrease
 }) => {
-
-  const spiceLevelColors = {
-    mild: 'bg-green-100 text-green-800 border-green-300',
-    medium: 'bg-orange-100 text-orange-800 border-orange-300',
-    spicy: 'bg-red-100 text-red-800 border-red-300'
-  };
-
   return (
     <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-200 hover:border-[#8B0000] rounded-2xl bg-white">
       {/* Image Section */}
       <div className="relative h-56 overflow-hidden bg-gray-50">
-        <img 
+        <img
           src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80'}
           alt={item.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
         />
-        
+
         {/* Badges Overlay */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
           {item.is_vegetarian && (
@@ -55,10 +46,11 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         </div>
 
         {/* Selected indicator */}
-        {quantity > 0 && (
+        {servingCount > 0 && (
           <div className="absolute top-3 right-3">
-            <div className="bg-[#8B0000] text-white rounded-full w-10 h-10 flex items-center justify-center font-bold shadow-lg">
-              {quantity}
+            <div className="bg-[#8B0000] text-white rounded-full px-2.5 py-1 flex items-center gap-1 font-bold shadow-lg text-sm">
+              <Users className="h-3.5 w-3.5" />
+              {servingCount}
             </div>
           </div>
         )}
@@ -77,67 +69,56 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         </p>
 
         {/* Serving Size Info */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 mb-5 border border-gray-200">
-          <div className="flex justify-between items-center mb-3">
-            <div>
-              <p className="text-xs font-bold text-[#8B0000] uppercase tracking-wider mb-0.5">
-                Full Tray
-              </p>
-              <p className="text-xs text-gray-600 font-medium">Catering Size</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900 leading-none">
-                ${item.price.toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">per tray</p>
-            </div>
-          </div>
-          
-          {/* Serves People Info */}
-          {item.serves_people && (
-            <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+        {item.serves_people && (
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 mb-5 border border-gray-200">
+            <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-[#8B0000]" />
               <span className="text-sm font-semibold text-gray-700">
-                Serves {item.serves_people} people
+                Each tray serves ~{item.serves_people} people
               </span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Quantity Controls */}
-        {quantity === 0 ? (
-          <Button 
+        {/* People Count Controls */}
+        {servingCount === 0 ? (
+          <Button
             onClick={onAdd}
             className="w-full bg-[#8B0000] hover:bg-[#6B0000] text-white h-12 font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 text-base"
           >
-            Add to Quote
+            Add to Enquiry
           </Button>
         ) : (
-          <div className="flex items-center justify-between bg-[#8B0000] rounded-xl p-1.5 shadow-md">
-            <Button
-              onClick={onDecrease}
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-white hover:bg-[#6B0000] hover:text-white rounded-lg"
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            
-            <div className="flex-1 text-center">
-              <span className="text-white font-bold text-xl">{quantity}</span>
-              <span className="text-white/80 text-sm ml-1.5 font-medium">
-                {quantity === 1 ? 'tray' : 'trays'}
-              </span>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 text-center">
+              How many people?
+            </p>
+            <div className="flex items-center justify-between bg-[#8B0000] rounded-xl p-1.5 shadow-md">
+              <Button
+                onClick={onDecrease}
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-white hover:bg-[#6B0000] hover:text-white rounded-lg"
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+
+              <div className="flex-1 text-center">
+                <span className="text-white font-bold text-xl">{servingCount}</span>
+                <span className="text-white/80 text-sm ml-1.5 font-medium">
+                  {servingCount === 1 ? 'person' : 'people'}
+                </span>
+              </div>
+
+              <Button
+                onClick={onIncrease}
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-white hover:bg-[#6B0000] hover:text-white rounded-lg"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
-            
-            <Button
-              onClick={onIncrease}
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-white hover:bg-[#6B0000] hover:text-white rounded-lg"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
           </div>
         )}
       </div>

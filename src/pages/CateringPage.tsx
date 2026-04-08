@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -10,13 +10,12 @@ import DetailsStep from '@/components/catering/DetailsStep';
 import { cateringFormSchema, SelectedMenuItem } from '@/components/catering/types';
 import { useCateringService } from '@/components/catering/cateringService';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
-import { Users, UtensilsCrossed, FileText, Check } from 'lucide-react';
+import { UtensilsCrossed, FileText, Check } from 'lucide-react';
 
 type WizardStep = 'hero' | 'menu' | 'details';
 
 const WIZARD_STEPS = [
-  { id: 'hero' as const, label: 'Guest Count', icon: Users },
+  { id: 'hero' as const, label: 'Get Started', icon: UtensilsCrossed },
   { id: 'menu' as const, label: 'Build Menu', icon: UtensilsCrossed },
   { id: 'details' as const, label: 'Event Details', icon: FileText },
 ];
@@ -78,13 +77,11 @@ const CateringStepIndicator = ({
 
 const CateringPage = () => {
   const [currentStep, setCurrentStep] = useState<WizardStep>('hero');
-  const [guestCount, setGuestCount] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<SelectedMenuItem[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   const { sendCateringEnquiry } = useCateringService();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof cateringFormSchema>>({
     resolver: zodResolver(cateringFormSchema),
@@ -96,18 +93,14 @@ const CateringPage = () => {
       venue: "",
       dietaryRestrictions: "",
       additionalInfo: "",
-      guestCount: "",
       eventDate: "",
       eventTime: ""
     }
   });
 
   const handleContinueFromHero = () => {
-    if (guestCount && parseInt(guestCount) > 0) {
-      form.setValue('guestCount', guestCount);
-      setCurrentStep('menu');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    setCurrentStep('menu');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleProceedToDetails = () => {
@@ -124,9 +117,8 @@ const CateringPage = () => {
   };
 
   const onSubmit = async (data: z.infer<typeof cateringFormSchema>) => {
-    
     if (selectedItems.length === 0) {
-      form.setError("root", { 
+      form.setError("root", {
         type: "manual",
         message: "Please select at least one menu item."
       });
@@ -135,11 +127,10 @@ const CateringPage = () => {
 
     try {
       setLoading(true);
-      
+
       await sendCateringEnquiry({
         ...data,
         selectedItems,
-        guestCount: String(parseInt(guestCount)),
         spiceLevel: 'medium'
       });
 
@@ -148,12 +139,10 @@ const CateringPage = () => {
         description: "We'll get back to you within 24 hours with a customized quote."
       });
 
-      // Reset form and navigate
       form.reset();
       setSelectedItems([]);
-      setGuestCount('');
       setCurrentStep('hero');
-      
+
     } catch (error) {
       console.error('Error submitting catering enquiry:', error);
       toast({
@@ -169,7 +158,6 @@ const CateringPage = () => {
   const handleStepClick = (step: WizardStep) => {
     const currentIndex = WIZARD_STEPS.findIndex(s => s.id === currentStep);
     const targetIndex = WIZARD_STEPS.findIndex(s => s.id === step);
-    // Only allow going back, not forward
     if (targetIndex < currentIndex) {
       setCurrentStep(step);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -197,16 +185,11 @@ const CateringPage = () => {
 
       <main className="flex-1">
         {currentStep === 'hero' && (
-          <HeroStep
-            guestCount={guestCount}
-            onGuestCountChange={setGuestCount}
-            onContinue={handleContinueFromHero}
-          />
+          <HeroStep onContinue={handleContinueFromHero} />
         )}
 
         {currentStep === 'menu' && (
           <MenuBrowseStep
-            guestCount={parseInt(guestCount)}
             selectedItems={selectedItems}
             onUpdateItems={setSelectedItems}
             onProceedToDetails={handleProceedToDetails}

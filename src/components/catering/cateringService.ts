@@ -14,33 +14,17 @@ export const useCateringService = () => {
 
   const sendCateringEnquiry = async (data: CateringEnquiryData) => {
     try {
-      const guestCount = parseInt(data.guestCount, 10);
-      if (user?.id) {
-        // console.log("Attempting to save catering request for user:", user.id);
-        // console.log("Data to insert:", {
-        //   user_id: user.id,
-        //   name: data.name,
-        //   email: data.email,
-        //   phone: data.phone,
-        //   guest_count: guestCount,
-        //   event_type: data.eventType,
-        //   event_date: data.eventDate,
-        //   event_time: data.eventTime,
-        //   venue: data.venue,
-        //   dietary_restrictions: data.dietaryRestrictions || null,
-        //   additional_info: data.additionalInfo || null,
-        //   selected_items: data.selectedItems,
-        //   status: "pending",
-        // });
+      const totalPeople = data.selectedItems.reduce((sum, item) => sum + item.servingCount, 0);
 
-        const { data: insertedData, error: dbError } = await supabase
+      if (user?.id) {
+        const { error: dbError } = await supabase
           .from("catering_requests")
           .insert({
             user_id: user.id,
             name: data.name,
             email: data.email,
             phone: data.phone,
-            guest_count: guestCount,
+            guest_count: totalPeople,
             event_type: data.eventType,
             event_date: data.eventDate,
             event_time: data.eventTime,
@@ -54,8 +38,6 @@ export const useCateringService = () => {
 
         if (dbError) {
           console.error("Error saving to database:", dbError);
-        } else {
-          // console.log("Successfully saved to database:", insertedData);
         }
       } else {
         console.warn("No user ID found, skipping database save");
@@ -72,12 +54,13 @@ Event Details:
 - Event Type: ${data.eventType}
 - Event Date: ${data.eventDate}
 - Event Time: ${data.eventTime}
-- Guest Count: ${guestCount}
 - Venue: ${data.venue}
 - Spice Level: ${data.spiceLevel}
-- Selected Items: ${data.selectedItems
-            .map((item) => `${item.quantity}x ${item.menuItem.name}`)
-            .join(", ")}
+- Selected Items:
+${data.selectedItems
+  .map((item) => `  • ${item.menuItem.name} — ${item.servingCount} people`)
+  .join("\n")}
+- Total People: ${totalPeople}
 - Dietary Restrictions: ${data.dietaryRestrictions || "None"}
 - Additional Information: ${data.additionalInfo || "None"}
           `,

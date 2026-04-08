@@ -2,32 +2,21 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ShoppingBag, X } from 'lucide-react';
+import { ShoppingBag, X, Users } from 'lucide-react';
 import { SelectedMenuItem } from './types';
 
 interface EventSummaryBottomSheetProps {
   selectedItems: SelectedMenuItem[];
-  guestCount: number;
   onRemoveItem: (itemId: string) => void;
   onProceedToDetails: () => void;
 }
 
 const EventSummaryBottomSheet: React.FC<EventSummaryBottomSheetProps> = ({
   selectedItems,
-  guestCount,
   onRemoveItem,
   onProceedToDetails
 }) => {
-  const calculateTotal = () => {
-    return selectedItems.reduce((total, item) => {
-      return total + (item.menuItem.price * item.quantity);
-    }, 0);
-  };
-
-  const totalTrays = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = calculateTotal();
-  const estimatedTax = subtotal * 0.08;
-  const total = subtotal + estimatedTax;
+  const totalPeople = selectedItems.reduce((sum, item) => sum + item.servingCount, 0);
 
   if (selectedItems.length === 0) return null;
 
@@ -41,32 +30,33 @@ const EventSummaryBottomSheet: React.FC<EventSummaryBottomSheetProps> = ({
               <SheetTrigger asChild>
                 <Button variant="outline" className="flex-1 h-12 relative">
                   <ShoppingBag className="h-5 w-5 mr-2" />
-                  <span className="font-semibold">{totalTrays} items</span>
-                  <Badge className="absolute -top-2 -right-2 bg-[#8B0000]">
-                    ${total.toFixed(0)}
+                  <span className="font-semibold">{selectedItems.length} {selectedItems.length === 1 ? 'dish' : 'dishes'}</span>
+                  <Badge className="absolute -top-2 -right-2 bg-[#8B0000] flex items-center gap-0.5">
+                    <Users className="h-3 w-3" />
+                    {totalPeople}
                   </Badge>
                 </Button>
               </SheetTrigger>
-              
+
               <SheetContent side="bottom" className="h-[80vh]">
                 <SheetHeader>
-                  <SheetTitle className="text-left">Your Quote</SheetTitle>
-                  <p className="text-sm text-gray-500 text-left">{guestCount} guests</p>
+                  <SheetTitle className="text-left">Your Selection</SheetTitle>
+                  <p className="text-sm text-gray-500 text-left">{selectedItems.length} {selectedItems.length === 1 ? 'dish' : 'dishes'} · {totalPeople} people total</p>
                 </SheetHeader>
 
                 {/* Items List */}
                 <div className="mt-6 space-y-4 overflow-y-auto max-h-[50vh]">
                   {selectedItems.map((item) => (
-                    <div 
+                    <div
                       key={item.menuItem.id}
                       className="flex gap-3 p-3 bg-gray-50 rounded-lg"
                     >
-                      <img 
+                      <img
                         src={item.menuItem.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80'}
                         alt={item.menuItem.name}
                         className="w-16 h-16 rounded object-cover"
                       />
-                      
+
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
                           <h4 className="font-semibold text-sm">{item.menuItem.name}</h4>
@@ -79,12 +69,10 @@ const EventSummaryBottomSheet: React.FC<EventSummaryBottomSheetProps> = ({
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-gray-500">
-                            {item.quantity} × ${item.menuItem.price.toFixed(2)}
-                          </span>
-                          <span className="font-bold text-sm">
-                            ${(item.menuItem.price * item.quantity).toFixed(2)}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Users className="h-3.5 w-3.5 text-[#8B0000]" />
+                          <span className="text-sm font-semibold text-gray-700">
+                            {item.servingCount} {item.servingCount === 1 ? 'person' : 'people'}
                           </span>
                         </div>
                       </div>
@@ -92,25 +80,18 @@ const EventSummaryBottomSheet: React.FC<EventSummaryBottomSheetProps> = ({
                   ))}
                 </div>
 
-                {/* Totals */}
-                <div className="mt-6 space-y-2 border-t pt-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span className="font-semibold">${subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Estimated Tax</span>
-                    <span className="font-semibold">${estimatedTax.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span className="text-[#8B0000]">${total.toFixed(2)}</span>
-                  </div>
+                {/* Total */}
+                <div className="mt-6 border-t pt-4 flex items-center justify-between">
+                  <span className="text-gray-600 font-medium">Total people served</span>
+                  <span className="font-bold text-lg text-[#8B0000] flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    {totalPeople}
+                  </span>
                 </div>
               </SheetContent>
             </Sheet>
 
-            <Button 
+            <Button
               onClick={onProceedToDetails}
               className="flex-1 h-12 bg-[#8B0000] hover:bg-[#6B0000]"
             >

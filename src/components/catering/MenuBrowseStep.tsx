@@ -9,7 +9,6 @@ import { MenuItem } from '@/hooks/products/types';
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 interface MenuBrowseStepProps {
-  guestCount: number;
   selectedItems: SelectedMenuItem[];
   onUpdateItems: (items: SelectedMenuItem[]) => void;
   onProceedToDetails: () => void;
@@ -17,7 +16,6 @@ interface MenuBrowseStepProps {
 }
 
 const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
-  guestCount,
   selectedItems,
   onUpdateItems,
   onProceedToDetails,
@@ -30,7 +28,7 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
   // Group menu items by category
   const groupedItems = useMemo(() => {
     if (!menuItems) return {};
-    
+
     const grouped = menuItems.reduce((acc, item) => {
       const categoryName = item.category?.name || 'Uncategorized';
       if (!acc[categoryName]) {
@@ -43,8 +41,8 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
     return grouped;
   }, [menuItems]);
 
-  const categories = useMemo(() => 
-    Object.keys(groupedItems).filter(cat => cat && cat !== 'undefined'), 
+  const categories = useMemo(() =>
+    Object.keys(groupedItems).filter(cat => cat && cat !== 'undefined'),
     [groupedItems]
   );
 
@@ -60,7 +58,7 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
     setActiveCategory(category);
     const element = categoryRefs.current[category];
     if (element) {
-      const offset = 150; // Account for sticky header
+      const offset = 150;
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       window.scrollTo({
         top: elementPosition - offset,
@@ -73,7 +71,7 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY + 200;
-      
+
       for (const category of categories) {
         const element = categoryRefs.current[category];
         if (element) {
@@ -90,30 +88,30 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [categories]);
 
-  const getItemQuantity = (itemId: string): number => {
+  const getItemServingCount = (itemId: string): number => {
     const found = selectedItems.find(item => item.menuItem.id === itemId);
-    return found ? found.quantity : 0;
+    return found ? found.servingCount : 0;
   };
 
   const handleAddItem = (menuItem: MenuItem) => {
     const existingIndex = selectedItems.findIndex(item => item.menuItem.id === menuItem.id);
-    
+
     if (existingIndex >= 0) {
       const updated = [...selectedItems];
       updated[existingIndex] = {
         ...updated[existingIndex],
-        quantity: updated[existingIndex].quantity + 1
+        servingCount: updated[existingIndex].servingCount + 5
       };
       onUpdateItems(updated);
     } else {
-      onUpdateItems([...selectedItems, { menuItem, quantity: 1 }]);
+      onUpdateItems([...selectedItems, { menuItem, servingCount: 10 }]);
     }
   };
 
   const handleIncreaseItem = (menuItem: MenuItem) => {
     const updated = selectedItems.map(item =>
       item.menuItem.id === menuItem.id
-        ? { ...item, quantity: item.quantity + 1 }
+        ? { ...item, servingCount: item.servingCount + 5 }
         : item
     );
     onUpdateItems(updated);
@@ -121,11 +119,11 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
 
   const handleDecreaseItem = (menuItem: MenuItem) => {
     const existingItem = selectedItems.find(item => item.menuItem.id === menuItem.id);
-    
-    if (existingItem && existingItem.quantity > 1) {
+
+    if (existingItem && existingItem.servingCount > 5) {
       const updated = selectedItems.map(item =>
         item.menuItem.id === menuItem.id
-          ? { ...item, quantity: item.quantity - 1 }
+          ? { ...item, servingCount: item.servingCount - 5 }
           : item
       );
       onUpdateItems(updated);
@@ -156,7 +154,7 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Guest Count
+            Back
           </button>
         </div>
       )}
@@ -196,8 +194,7 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
                     <MenuItemCard
                       key={item.id}
                       item={item}
-                      quantity={getItemQuantity(item.id)}
-                      guestCount={guestCount}
+                      servingCount={getItemServingCount(item.id)}
                       onAdd={() => handleAddItem(item)}
                       onIncrease={() => handleIncreaseItem(item)}
                       onDecrease={() => handleDecreaseItem(item)}
@@ -213,7 +210,6 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
             <div className="sticky top-24">
               <EventSummarySidebar
                 selectedItems={selectedItems}
-                guestCount={guestCount}
                 onRemoveItem={handleRemoveItem}
                 onProceedToDetails={onProceedToDetails}
               />
@@ -225,7 +221,6 @@ const MenuBrowseStep: React.FC<MenuBrowseStepProps> = ({
       {/* Bottom Sheet (Mobile Only) */}
       <EventSummaryBottomSheet
         selectedItems={selectedItems}
-        guestCount={guestCount}
         onRemoveItem={handleRemoveItem}
         onProceedToDetails={onProceedToDetails}
       />

@@ -18,9 +18,6 @@ export const cateringFormSchema = z.object({
   eventTime: z.string().min(1, {
     message: "Event time is required",
   }),
-  guestCount: z.string().min(1, {
-    message: "Guest count is required",
-  }),
   eventType: z.string().min(1, {
     message: "Event type is required",
   }),
@@ -35,7 +32,7 @@ export type CateringFormValues = z.infer<typeof cateringFormSchema>;
 
 export interface SelectedMenuItem {
   menuItem: MenuItem;
-  quantity: number;
+  servingCount: number; // number of people expected to eat this item
 }
 
 export interface GroupedMenuItems {
