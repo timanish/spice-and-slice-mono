@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import Stripe from "https://esm.sh/stripe@13.8.0";
 import { authenticateRequest } from "../_shared/clerk-auth.ts";
+import { alertError } from "../_shared/alert.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -733,6 +734,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Error completing order:", error);
+    await alertError("complete-stripe-order", error, {}, "critical");
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),
       {

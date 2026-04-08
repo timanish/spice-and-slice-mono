@@ -16,6 +16,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { isRateLimitedByIp, getClientIp } from "../_shared/rate-limiter.ts";
 import { authenticateRequest } from "../_shared/clerk-auth.ts";
+import { alertError } from "../_shared/alert.ts";
 import {
   validateInput,
   validateAndEnrichCartItems,
@@ -605,6 +606,11 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Unexpected error:", error);
+    await alertError("create-pending-order", error, {
+      userId: requestData?.userId,
+      paymentMethod: requestData?.paymentMethod,
+      fulfillmentType: requestData?.fulfillmentType,
+    }, "critical");
     return new Response(
       JSON.stringify({
         error: "Internal server error",

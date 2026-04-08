@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import Stripe from "https://esm.sh/stripe@13.8.0";
 import { isRateLimitedByIp, getClientIp } from "../_shared/rate-limiter.ts";
+import { alertError } from "../_shared/alert.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { authenticateRequest } from "../_shared/clerk-auth.ts";
 
@@ -555,6 +556,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Error creating checkout session:", error);
+    await alertError("create-checkout", error, {}, "critical");
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(JSON.stringify({ error: errorMessage }), {

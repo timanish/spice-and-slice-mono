@@ -17,6 +17,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import Stripe from "https://esm.sh/stripe@14.15.0";
+import { alertError } from "../_shared/alert.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "");
 
@@ -661,6 +662,10 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Unexpected error:", error);
+    await alertError("confirm-customer-order", error, {
+      orderId: requestData?.orderId,
+      action: requestData?.action,
+    }, "critical");
     return new Response(
       JSON.stringify({
         error: "Internal server error",

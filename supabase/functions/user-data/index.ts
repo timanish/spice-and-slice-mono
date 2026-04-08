@@ -12,6 +12,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { authenticateRequest } from "../_shared/clerk-auth.ts";
+import { alertError } from "../_shared/alert.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -605,6 +606,7 @@ serve(async (req: Request) => {
     return await handler(db, userId, payload);
   } catch (error: any) {
     console.error("user-data error:", error);
+    await alertError("user-data", error, {}, "error");
     return errorResponse(error.message || "Internal server error", 500);
   }
 });

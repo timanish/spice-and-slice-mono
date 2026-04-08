@@ -7,6 +7,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { Webhook } from "https://esm.sh/svix@1.15.0";
+import { alertError } from "../_shared/alert.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -298,6 +299,7 @@ serve(async (req: Request) => {
     });
   } catch (error) {
     console.error("Error processing webhook:", error);
+    await alertError("clerk-webhook", error, {}, "error");
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return new Response(JSON.stringify({ error: errorMessage }), {

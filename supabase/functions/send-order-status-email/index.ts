@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { alertError } from "../_shared/alert.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -397,6 +398,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in send-order-status-email function:", error);
+    await alertError("send-order-status-email", error, {}, "error");
     const message = error instanceof Error ? error.message : "Unknown error";
     const isAuthError = message.includes("Unauthorized") || message.includes("authorization");
     return new Response(

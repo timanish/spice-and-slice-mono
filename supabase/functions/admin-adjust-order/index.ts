@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { authenticateRequest } from "../_shared/clerk-auth.ts";
+import { alertError } from "../_shared/alert.ts";
 import {
   generateConfirmationToken,
   getConfirmationTokenExpiry,
@@ -636,6 +637,10 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Unexpected error:", error);
+    await alertError("admin-adjust-order", error, {
+      orderId: requestData?.orderId,
+      action: requestData?.action,
+    }, "error");
     return new Response(
       JSON.stringify({
         error: "Internal server error",
