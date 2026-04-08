@@ -128,6 +128,56 @@ serve(async (req: Request) => {
         const fullName =
           `${firstName} ${lastName}`.trim() || payload.data.username || "User";
 
+        // Check if a profile already exists for this email (dev → prod migration)
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id, full_name, phone_number, profile_completed, onboarding_shown")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (existingProfile && existingProfile.id !== userId) {
+          const oldUserId = existingProfile.id;
+          console.log(`Migrating user data from ${oldUserId} to ${userId} (email: ${email})`);
+
+          // 1. Create new profile copying over existing data
+          const { error: newProfileError } = await supabase.from("profiles").insert({
+            id: userId,
+            email: email,
+            full_name: existingProfile.full_name || fullName,
+            phone_number: existingProfile.phone_number,
+            profile_completed: existingProfile.profile_completed,
+            onboarding_shown: existingProfile.onboarding_shown,
+          });
+          if (newProfileError) throw newProfileError;
+
+          // 2. Migrate all tables referencing the old user ID
+          const tables = [
+            "orders",
+            "user_addresses",
+            "carts",
+            "user_roles",
+            "catering_requests",
+            "testimonials",
+            "customer_messages",
+            "lunch_box_subscriptions",
+            "lunch_box_notifications",
+          ];
+          for (const table of tables) {
+            const { error } = await supabase
+              .from(table)
+              .update({ user_id: userId })
+              .eq("user_id", oldUserId);
+            if (error) console.error(`Error migrating ${table}:`, error);
+            else console.log(`Migrated ${table} from ${oldUserId} to ${userId}`);
+          }
+
+          // 3. Delete old profile
+          await supabase.from("profiles").delete().eq("id", oldUserId);
+
+          console.log(`Migration complete for ${email}`);
+          break;
+        }
+
         // Insert user into profiles table with onboarding flags
         const { error: profileError } = await supabase.from("profiles").insert({
           id: userId,
