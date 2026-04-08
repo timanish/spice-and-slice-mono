@@ -53,7 +53,9 @@ import { Root } from './Root';
 import { CartInitializer } from "./components/CartInitializer";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { PostHogUserTracker } from "./components/analytics/PostHogUserTracker";
+import { SentryUserIdentifier } from "./components/analytics/SentryUserIdentifier";
 import { AIChatBubble } from "./components/ai-chat/AIChatBubble";
+import * as Sentry from '@sentry/react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,12 +70,22 @@ function App() {
   return (
     <Root>
       <React.StrictMode>
+        <Sentry.ErrorBoundary fallback={
+          <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
+            <p className="text-xl font-semibold text-gray-800">Something went wrong</p>
+            <p className="text-gray-500 text-sm">Our team has been notified. Please refresh to try again.</p>
+            <button onClick={() => window.location.reload()} className="px-4 py-2 bg-food-red text-white rounded-lg text-sm">
+              Refresh
+            </button>
+          </div>
+        }>
         <BrowserRouter>
           <ScrollToTop />
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
               <AuthProvider>
                 <PostHogUserTracker />
+                <SentryUserIdentifier />
                 <CartInitializer />
                 <AIChatBubble />
                 <Routes>
@@ -239,6 +251,7 @@ function App() {
             </TooltipProvider>
           </QueryClientProvider>
         </BrowserRouter>
+        </Sentry.ErrorBoundary>
       </React.StrictMode>
     </Root>
   );
