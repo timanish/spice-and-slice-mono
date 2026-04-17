@@ -170,6 +170,46 @@ export async function isUserAdmin(
 }
 
 /**
+ * Fetch user from Clerk API and create their profile if missing.
+ * Handles existing customers who logged in before the production migration.
+ */
+async function autoCreateProfile(supabase: any, userId: string): Promise<void> {
+  const clerkSecretKey = Deno.env.get("CLERK_SECRET_KEY");
+  if (!clerkSecretKey) {
+    throw new Error("User not found");
+  }
+
+  const res = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+    headers: { Authorization: `Bearer ${clerkSecretKey}` },
+  });
+
+  if (!res.ok) {
+    throw new Error("User not found");
+  }
+
+  const user = await res.json();
+  const email = user.email_addresses?.[0]?.email_address ?? "";
+  const firstName = user.first_name ?? "";
+  const lastName = user.last_name ?? "";
+  const fullName = `${firstName} ${lastName}`.trim() || user.username || "User";
+
+  const { error } = await supabase.from("profiles").insert({
+    id: userId,
+    email,
+    full_name: fullName,
+    profile_completed: false,
+    onboarding_shown: false,
+  });
+
+  if (error && error.code !== "23505") {
+    // 23505 = unique violation (race condition, already inserted)
+    throw new Error("Failed to create profile: " + error.message);
+  }
+
+  console.log(`Auto-created profile for ${userId} (${email})`);
+}
+
+/**
  * Complete authentication flow: verify JWT (JWKS), check user exists, verify admin role
  *
  * @param authHeader - The Authorization header value
@@ -188,7 +228,7 @@ export async function authenticateRequest(
 
   const userExists = await verifyUserExists(supabase, userId);
   if (!userExists) {
-    throw new Error("User not found");
+    await autoCreateProfile(supabase, userId);
   }
 
   if (requireAdmin) {
