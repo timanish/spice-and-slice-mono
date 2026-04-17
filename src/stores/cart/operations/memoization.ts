@@ -26,6 +26,10 @@ function getCurrentUserId(): string {
   return "anonymous";
 }
 
+function isAnonymousUser(): boolean {
+  return clerkUserId === null;
+}
+
 function setClerkUserId(userId: string | null) {
   if (userId !== clerkUserId) {
     clerkUserId = userId;
@@ -43,6 +47,7 @@ export const memoizationUtils = {
   storeMemoizedResult,
   clearMemoizedResult,
   getCurrentUserId,
+  isAnonymousUser,
   setClerkUserId,
   clearUserCache,
 };

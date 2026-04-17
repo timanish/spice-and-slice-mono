@@ -34,6 +34,9 @@ export const updateQuantity = async (
     const item = get().items.find((i) => i.product_id === productId);
     if (!item?.id) return;
 
+    // Guest cart is localStorage-only; optimistic update is all we need.
+    if (memoizationUtils.isAnonymousUser()) return;
+
     const res = await fetchWithAuth("user-data", {
       action: "cart.updateQuantity",
       id: item.id,

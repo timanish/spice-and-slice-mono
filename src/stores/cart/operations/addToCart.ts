@@ -56,8 +56,12 @@ export const addToCart = async (
     set({ hasError: false, errorMessage: null });
   }
 
-  // Server sync in background — don't block UI
-  syncAddToCart(productId, set, get, weight, quantity, discountPercentage, flashDealId);
+  // Server sync in background — don't block UI.
+  // Signed-out guests keep a localStorage-only cart (for guest checkout);
+  // the server never sees it so there's nothing to sync.
+  if (!memoizationUtils.isAnonymousUser()) {
+    syncAddToCart(productId, set, get, weight, quantity, discountPercentage, flashDealId);
+  }
 };
 
 async function syncAddToCart(

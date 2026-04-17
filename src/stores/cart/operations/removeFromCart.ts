@@ -29,6 +29,11 @@ export const removeFromCart = async (
       return;
     }
 
+    // Guest cart is localStorage-only — no server row to delete.
+    if (memoizationUtils.isAnonymousUser()) {
+      return;
+    }
+
     const res = await fetchWithAuth("user-data", {
       action: "cart.removeItem",
       id: item.id,
