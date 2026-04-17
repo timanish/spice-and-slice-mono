@@ -148,20 +148,10 @@ const getEmailTemplate = (
     `
     : "";
 
-  // Secondary tracking link for guest orders, surfaced below the primary CTA
-  // at every status so guests always have a way back to /guest-track.
-  const guestTrackingHtml =
-    !isAdminEmail && guestTrackingToken
-      ? `
-      <p style="margin: 16px 0 0 0; font-size: 14px;">
-        <a href="https://www.spiceandslice.shop/guest-track/${orderId}?token=${guestTrackingToken}" style="color: ${template.color}; text-decoration: underline;">
-          Track your order
-        </a>
-      </p>
-    `
-      : "";
-
-  // Determine CTA button based on status and recipient type
+  // Determine CTA button based on status and recipient type.
+  // Guest orders (identified by guestTrackingToken) must never link to
+  // /order/:id — that route is behind AuthGuard. Send them to the token-
+  // scoped /guest-track page instead.
   let ctaButton = "";
 
   if (isAdminEmail && status === "pending_review") {
@@ -173,7 +163,7 @@ const getEmailTemplate = (
       </a>
     `;
   } else if (status === "awaiting_customer_confirmation" && confirmationToken) {
-    // Customer confirms order
+    // Customer confirms order (token-based page works for guests and signed-in)
     ctaButton = `
       <a href="https://www.spiceandslice.shop/order-confirm/${orderId}?token=${confirmationToken}"
          style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
@@ -181,8 +171,16 @@ const getEmailTemplate = (
       </a>
       <p style="margin: 16px 0 0 0; font-size: 12px; color: #9ca3af;">This link expires in 48 hours</p>
     `;
+  } else if (guestTrackingToken) {
+    // Guest order: token-scoped tracking page
+    ctaButton = `
+      <a href="https://www.spiceandslice.shop/guest-track/${orderId}?token=${guestTrackingToken}"
+         style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+        View Order Status
+      </a>
+    `;
   } else {
-    // Default: view order details
+    // Authenticated customer: behind-login order details
     ctaButton = `
       <a href="https://www.spiceandslice.shop/order/${orderId}"
          style="display: inline-block; background-color: ${template.color}; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
@@ -190,6 +188,10 @@ const getEmailTemplate = (
       </a>
     `;
   }
+
+  // Kept empty to preserve the template slot below (no longer needed —
+  // guest orders now get the guest-track URL as the primary CTA).
+  const guestTrackingHtml = "";
 
   return {
     subject: `${template.subject} - Order #${orderId
