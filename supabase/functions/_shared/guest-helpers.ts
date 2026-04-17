@@ -31,23 +31,40 @@ export async function findOrCreateGuestProfile(
   const phone = args.phone.trim();
   const fullName = args.fullName.trim();
 
+  // NOTE: profiles.email does not currently have a UNIQUE constraint in
+  // production (the base CREATE TABLE IF NOT EXISTS was a no-op against
+  // an older schema). That means a given email can legitimately map to
+  // multiple rows — typically a guest row plus a Clerk row that was
+  // auto-created later. Handle this defensively: a single non-guest or
+  // already-claimed match is still a reason to reject, and if there's no
+  // such match, reuse the most recent unclaimed guest row.
   const { data: existing, error: lookupError } = await serviceClient
     .from("profiles")
-    .select("id, is_guest, claimed_clerk_id")
+    .select("id, is_guest, claimed_clerk_id, created_at")
     .eq("email", email)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
   if (lookupError) {
     throw new Error(`Profile lookup failed: ${lookupError.message}`);
   }
 
-  if (existing) {
-    if (!existing.is_guest || existing.claimed_clerk_id) {
-      const err: any = new Error(EMAIL_BELONGS_TO_REAL_USER);
-      err.code = EMAIL_BELONGS_TO_REAL_USER;
-      throw err;
-    }
+  const rows = (existing || []) as Array<{
+    id: string;
+    is_guest: boolean;
+    claimed_clerk_id: string | null;
+  }>;
 
+  const hasRealAccount = rows.some(
+    (r) => !r.is_guest || r.claimed_clerk_id !== null,
+  );
+  if (hasRealAccount) {
+    const err: any = new Error(EMAIL_BELONGS_TO_REAL_USER);
+    err.code = EMAIL_BELONGS_TO_REAL_USER;
+    throw err;
+  }
+
+  const reusable = rows.find((r) => r.is_guest && !r.claimed_clerk_id);
+  if (reusable) {
     // Reuse guest profile, refresh contact details so the most recent
     // checkout's phone/name are used for notifications.
     const { error: updateError } = await serviceClient
@@ -57,14 +74,14 @@ export async function findOrCreateGuestProfile(
         full_name: fullName,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", existing.id);
+      .eq("id", reusable.id);
 
     if (updateError) {
       console.error("Failed to refresh guest profile:", updateError);
       // Non-blocking; stale contact info is tolerable
     }
 
-    return { id: existing.id, isExisting: true };
+    return { id: reusable.id, isExisting: true };
   }
 
   const guestId = `guest_${crypto.randomUUID()}`;
