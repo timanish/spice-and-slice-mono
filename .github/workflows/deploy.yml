@@ -65,6 +65,7 @@ jobs:
         with:
           name: dist
           path: dist/
+          retention-days: 1
 
   deploy-frontend:
     name: Deploy Frontend
