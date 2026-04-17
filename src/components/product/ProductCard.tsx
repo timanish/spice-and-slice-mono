@@ -109,17 +109,9 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
   const handleAddToCart = async () => {
     if (isOutOfStock) return;
 
-    // SECURITY: Check Clerk authentication before adding to cart
-    if (!isSignedIn || !user?.id) {
-      toast({
-        title: "Please log in",
-        description: "You need to be logged in to add items to your cart",
-        variant: "default",
-      });
-      // Open Clerk sign-in modal
-      openSignIn();
-      return;
-    }
+    // Signed-out shoppers add to a localStorage-only cart and check out via
+    // the guest flow (/checkout/guest). Auth is enforced at the checkout
+    // edge functions, not here, so guests can browse and add freely.
 
     // Validate minimum order requirements before adding
     if (hasMinimumOrder) {

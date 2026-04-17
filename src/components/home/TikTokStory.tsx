@@ -107,11 +107,9 @@ const TikTokStory = ({ video, isInView = false, variant = 'desktop', onClick, is
 
   const handleAddAllToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (!isSignedIn) {
-      openSignIn();
-      return;
-    }
+
+    // Guest checkout (/checkout/guest) handles signed-out carts; no
+    // sign-in gate on add-to-cart.
 
     if (!products || products.length === 0) return;
 

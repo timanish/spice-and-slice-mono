@@ -26,10 +26,7 @@ const TikTokProductShowcase = ({ products, videoTitle }: TikTokProductShowcasePr
   const [addingProductId, setAddingProductId] = useState<string | null>(null);
 
   const handleAddToCart = async (product: TikTokVideoProduct) => {
-    if (!isSignedIn) {
-      openSignIn();
-      return;
-    }
+    // Guest checkout handles signed-out carts; no sign-in gate here.
 
     trackEvent('tiktok_video_clicked', {
       video_id: product.id,
