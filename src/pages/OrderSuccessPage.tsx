@@ -3,11 +3,13 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useCartStore } from '@/stores/cart';
+import { clearCartStorage } from '@/stores/cart/store';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useUser as useClerkUser } from '@clerk/clerk-react';
-import { fetchWithAuth } from '@/lib/auth-token';
+import { fetchAnonymous, fetchWithAuth } from '@/lib/auth-token';
 import { usePostHogTracking } from '@/hooks/usePostHogTracking';
+import { PostCheckoutSignupPrompt } from '@/components/checkout/PostCheckoutSignupPrompt';
 
 const OrderSuccessPage = () => {
   const { forceRefreshCart } = useCartStore();
@@ -22,19 +24,35 @@ const OrderSuccessPage = () => {
 
   // Determine if this is a cash order (no session_id means cash payment)
   const sessionId = searchParams.get('session_id');
+  const guestTrackingToken = searchParams.get('guestTrackingToken');
+  const orderIdParam = searchParams.get('orderId');
   const isCashOrder = !sessionId;
+  const isGuestCompletion = !!sessionId && !!guestTrackingToken;
 
   useEffect(() => {
 
     // If we have a session_id, it means this is a Stripe payment success
-    // We need to create the order in the database
-    // useRef guard prevents React StrictMode double-invocation
-    if (sessionId && user && !orderAttempted.current) {
+    // We need to create the order in the database.
+    // Branches on auth: authenticated users send a JWT; guests send the
+    // guest_tracking_token that was propagated through the Stripe success_url.
+    // useRef guard prevents React StrictMode double-invocation.
+    const canAttempt =
+      sessionId &&
+      !orderAttempted.current &&
+      (isGuestCompletion || !!user);
+
+    if (canAttempt) {
       orderAttempted.current = true;
       setIsCreatingOrder(true);
-      
-      // Call edge function to complete the order (using Clerk JWT auth)
-      fetchWithAuth('complete-stripe-order', { sessionId })
+
+      const request = isGuestCompletion
+        ? fetchAnonymous('complete-stripe-order', {
+            sessionId,
+            guestTrackingToken,
+          })
+        : fetchWithAuth('complete-stripe-order', { sessionId });
+
+      request
         .then(async (response) => {
           // Handle non-JSON responses (e.g. gateway errors)
           const text = await response.text();
@@ -84,7 +102,14 @@ const OrderSuccessPage = () => {
               }
             }
 
-            forceRefreshCart();
+            if (isGuestCompletion) {
+              // Guest flow: no server cart to refresh. Clear local cart so
+              // the UI doesn't keep showing the just-purchased items.
+              clearCartStorage();
+              useCartStore.setState({ items: [], comboItems: [] });
+            } else {
+              forceRefreshCart();
+            }
           }
         })
         .catch((err) => {
@@ -108,7 +133,7 @@ const OrderSuccessPage = () => {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [sessionId, user]);
+  }, [sessionId, user, isGuestCompletion, guestTrackingToken]);
 
   if (isCreatingOrder) {
     return (
@@ -187,13 +212,30 @@ const OrderSuccessPage = () => {
               A confirmation email has been sent to {user.primaryEmailAddress.emailAddress}.
             </p>
           )}
-          
+
+          {isGuestCompletion && orderCreated && orderIdParam && guestTrackingToken && (
+            <PostCheckoutSignupPrompt
+              orderId={orderIdParam}
+              guestTrackingToken={guestTrackingToken}
+            />
+          )}
+
           <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild>
               <Link to="/">Continue Shopping</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/profile?tab=orders">View Your Orders</Link>
+              {isGuestCompletion && orderIdParam && guestTrackingToken ? (
+                <Link
+                  to={`/guest-track/${orderIdParam}?token=${encodeURIComponent(
+                    guestTrackingToken,
+                  )}`}
+                >
+                  View Order Status
+                </Link>
+              ) : (
+                <Link to="/profile?tab=orders">View Your Orders</Link>
+              )}
             </Button>
           </div>
         </div>

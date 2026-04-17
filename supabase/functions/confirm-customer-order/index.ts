@@ -577,14 +577,22 @@ serve(async (req) => {
         });
       }
 
-      // Create Stripe session
+      // Create Stripe session. For guest orders, propagate the guest tracking
+      // token through success_url so OrderSuccessPage can complete the order
+      // without a Clerk JWT.
+      const frontendUrl = Deno.env.get("FRONTEND_URL") || "http://localhost:5173";
+      const successQuery = order.guest_tracking_token
+        ? `session_id={CHECKOUT_SESSION_ID}&orderId=${orderId}&guestTrackingToken=${encodeURIComponent(
+            order.guest_tracking_token,
+          )}`
+        : `session_id={CHECKOUT_SESSION_ID}&orderId=${orderId}`;
       try {
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ["card"],
           line_items: lineItems,
           mode: "payment",
-          success_url: `${Deno.env.get("FRONTEND_URL") || "http://localhost:5173"}/order-success?session_id={CHECKOUT_SESSION_ID}&orderId=${orderId}`,
-          cancel_url: `${Deno.env.get("FRONTEND_URL") || "http://localhost:5173"}/order-confirm/${orderId}?token=${token}`,
+          success_url: `${frontendUrl}/order-success?${successQuery}`,
+          cancel_url: `${frontendUrl}/order-confirm/${orderId}?token=${token}`,
           metadata: {
             order_id: orderId,
             user_id: order.user_id,

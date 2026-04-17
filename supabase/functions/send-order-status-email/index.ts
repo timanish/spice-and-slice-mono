@@ -40,7 +40,8 @@ const getEmailTemplate = (
   driverNotes?: string,
   confirmationToken?: string,
   orderItems?: any[],
-  isAdminEmail?: boolean
+  isAdminEmail?: boolean,
+  guestTrackingToken?: string,
 ) => {
   const statusTemplates: Record<
     string,
@@ -147,6 +148,19 @@ const getEmailTemplate = (
     `
     : "";
 
+  // Secondary tracking link for guest orders, surfaced below the primary CTA
+  // at every status so guests always have a way back to /guest-track.
+  const guestTrackingHtml =
+    !isAdminEmail && guestTrackingToken
+      ? `
+      <p style="margin: 16px 0 0 0; font-size: 14px;">
+        <a href="https://www.spiceandslice.shop/guest-track/${orderId}?token=${guestTrackingToken}" style="color: ${template.color}; text-decoration: underline;">
+          Track your order
+        </a>
+      </p>
+    `
+      : "";
+
   // Determine CTA button based on status and recipient type
   let ctaButton = "";
 
@@ -231,6 +245,7 @@ const getEmailTemplate = (
                     <!-- CTA Button -->
                     <div style="text-align: center; margin: 32px 0;">
                       ${ctaButton}
+                      ${guestTrackingHtml}
                     </div>
                     
                     <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
@@ -353,7 +368,8 @@ serve(async (req) => {
       driverNotes,
       confirmationToken,
       orderItems,
-      isAdminEmail
+      isAdminEmail,
+      order.guest_tracking_token || undefined,
     );
 
     // Determine recipient

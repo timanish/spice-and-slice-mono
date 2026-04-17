@@ -83,7 +83,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    const { sessionId } = requestBody;
+    const { sessionId, guestTrackingToken } = requestBody;
 
     if (!sessionId) {
       return new Response(JSON.stringify({ error: "Missing sessionId" }), {
@@ -94,9 +94,27 @@ serve(async (req) => {
 
     const serviceClient = getServiceRoleClient();
 
-    // SECURITY: Authenticate request and get verified userId from JWT
+    // AUTHENTICATION: Prefer Clerk JWT. Fall back to guest_tracking_token for
+    // guest orders that have no JWT. The token is validated below against the
+    // specific order tied to this Stripe session (same authorization strength
+    // as the JWT identity check).
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
-    const userId = await authenticateRequest(authHeader, serviceClient, false);
+    let userId: string | null = null;
+    const isGuestRequest = !!guestTrackingToken;
+
+    if (!isGuestRequest) {
+      try {
+        userId = await authenticateRequest(authHeader, serviceClient, false);
+      } catch (authError: any) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized", details: authError.message }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -148,14 +166,7 @@ serve(async (req) => {
       const orderId = session.metadata.order_id;
       const metadataUserId = session.metadata.user_id;
 
-      if (metadataUserId !== userId) {
-        return new Response(JSON.stringify({ error: "User ID mismatch" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Fetch existing order
+      // Fetch existing order (needed for both auth paths)
       const { data: order, error: orderError } = await serviceClient
         .from("orders")
         .select("*")
@@ -171,6 +182,27 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           },
         );
+      }
+
+      if (isGuestRequest) {
+        // Guest flow: tracking token must match the order it's scoped to.
+        if (!order.guest_tracking_token || order.guest_tracking_token !== guestTrackingToken) {
+          return new Response(
+            JSON.stringify({ error: "Invalid tracking token" }),
+            {
+              status: 403,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        }
+        // Adopt the order owner as the effective userId for downstream steps
+        // (cart cleanup is a no-op for guests since they have no server cart).
+        userId = metadataUserId;
+      } else if (metadataUserId !== userId) {
+        return new Response(JSON.stringify({ error: "User ID mismatch" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Verify order is in awaiting_customer_confirmation status

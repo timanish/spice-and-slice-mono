@@ -2,7 +2,8 @@ import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 import { AuthGuard } from "./components/AuthGuard";
 import { AdminGuard } from "./components/AdminGuard";
 import { AuthProvider } from "./contexts/ClerkAuthContext";
@@ -43,6 +44,9 @@ import OrderPendingPage from "./pages/OrderPendingPage";
 import OrderConfirmPage from "./pages/OrderConfirmPage";
 import OrderCanceledPage from "./pages/OrderCanceledPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import GuestCheckoutPage from "./pages/GuestCheckoutPage";
+import GuestOrderTrackingPage from "./pages/GuestOrderTrackingPage";
+import GuestClaimPage from "./pages/GuestClaimPage";
 import LunchBoxPage from "./pages/LunchBoxPage";
 import LunchBoxSuccessPage from "./pages/LunchBoxSuccessPage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -56,6 +60,27 @@ import { PostHogUserTracker } from "./components/analytics/PostHogUserTracker";
 import { SentryUserIdentifier } from "./components/analytics/SentryUserIdentifier";
 import { AIChatBubble } from "./components/ai-chat/AIChatBubble";
 import * as Sentry from '@sentry/react';
+
+// Route /checkout to the authenticated CheckoutPage for signed-in users and
+// to GuestCheckoutPage for signed-out users. Waits for Clerk to load so we
+// don't flash the wrong view while auth state resolves.
+const CheckoutRouter = () => {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+  return isSignedIn ? (
+    <AuthGuard>
+      <CheckoutPage />
+    </AuthGuard>
+  ) : (
+    <Navigate to="/checkout/guest" replace />
+  );
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,11 +121,10 @@ function App() {
                   <Route path="/lunch-box" element={<LunchBoxPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/auth" element={<AuthPageClerk />} />
-                  <Route path="/checkout" element={
-                    <AuthGuard>
-                      <CheckoutPage />
-                    </AuthGuard>
-                  } />
+                  <Route path="/checkout" element={<CheckoutRouter />} />
+                  <Route path="/checkout/guest" element={<GuestCheckoutPage />} />
+                  <Route path="/guest-track/:orderId" element={<GuestOrderTrackingPage />} />
+                  <Route path="/claim" element={<GuestClaimPage />} />
                   <Route path="/onboarding" element={
                     <AuthGuard>
                       <OnboardingPage />

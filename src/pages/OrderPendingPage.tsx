@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { useUserData } from '@/hooks/useUserData';
 import Navigation from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
@@ -9,12 +10,22 @@ import { CheckCircle, Clock, Mail, ArrowRight } from 'lucide-react';
 const OrderPendingPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const { isLoaded, isSignedIn } = useAuth();
   const { getOrder } = useUserData();
   const [order, setOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Guest orders can't be fetched via the authenticated user-data endpoint.
+    // Render a static confirmation for signed-out users and rely on the email
+    // the backend dispatches for next steps. Proper token-based guest tracking
+    // arrives in Phase 3b.
+    if (isLoaded && !isSignedIn) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchOrder = async () => {
       if (!orderId) return;
 
@@ -58,7 +69,60 @@ const OrderPendingPage = () => {
 
     // Clean up interval on unmount
     return () => clearInterval(pollInterval);
-  }, [orderId, getOrder, order?.fulfillment_status]);
+  }, [orderId, getOrder, order?.fulfillment_status, isLoaded, isSignedIn]);
+
+  // Guest flow: no data fetch, just thank-you + email-next-steps copy.
+  if (isLoaded && !isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <Navigation />
+        <div className="container max-w-2xl mx-auto px-4 py-16">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle className="h-8 w-8 text-food-green" />
+              </div>
+              <CardTitle className="text-2xl font-serif">Order received</CardTitle>
+              <CardDescription className="mt-2">
+                Thanks — we've got your order and our team is reviewing it now.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-gray-700">
+              <div className="flex items-start gap-3">
+                <Mail className="h-5 w-5 text-food-red mt-0.5 shrink-0" />
+                <p>
+                  We'll email you within a few minutes with a link to confirm
+                  your order and complete payment. Keep an eye on your inbox
+                  (and your spam folder, just in case).
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-food-orange mt-0.5 shrink-0" />
+                <p>
+                  Your order is in <span className="font-medium">pending review</span> status.
+                  You won't be charged until you confirm.
+                </p>
+              </div>
+              {orderId && (
+                <p className="text-xs text-gray-500 border-t pt-4">
+                  Reference:{" "}
+                  <span className="font-mono">{orderId}</span>
+                </p>
+              )}
+              <div className="pt-2">
+                <Link to="/products">
+                  <Button variant="outline" className="w-full">
+                    Continue shopping
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

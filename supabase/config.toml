@@ -231,6 +231,12 @@ verify_jwt = false
 verify_jwt = false
 [functions.create-pending-order]
 verify_jwt = false
+[functions.create-guest-pending-order]
+verify_jwt = false
+[functions.claim-guest-profile]
+verify_jwt = false
+[functions.guest-get-order]
+verify_jwt = false
 [functions.create-lunchbox-checkout]
 verify_jwt = false
 [functions.complete-stripe-order]
