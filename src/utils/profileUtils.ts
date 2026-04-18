@@ -26,7 +26,14 @@ function readCachedComplete(userId: string): boolean {
   if (!raw) return false;
   try {
     const parsed = JSON.parse(raw);
-    if (parsed && Date.now() - parsed.timestamp < PROFILE_CACHE_TTL) {
+    // Only trust entries that explicitly flag isComplete=true. This also
+    // correctly rejects stale false entries written by the previous cache
+    // implementation, which stored both outcomes.
+    if (
+      parsed &&
+      parsed.isComplete === true &&
+      Date.now() - parsed.timestamp < PROFILE_CACHE_TTL
+    ) {
       globalProfileCache.set(userId, { timestamp: parsed.timestamp });
       return true;
     }
