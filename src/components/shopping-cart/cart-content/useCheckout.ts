@@ -1,17 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useCartStore } from "@/stores/cart";
 import { useUser as useClerkUser } from "@clerk/clerk-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-const profileCache = new Map<
-  string,
-  {
-    isComplete: boolean;
-    timestamp: number;
-  }
->();
-const PROFILE_CACHE_TTL = 60000;
+import { checkProfileComplete } from "@/utils/profileUtils";
 
 export const useCheckout = () => {
   const { items } = useCartStore();
@@ -44,64 +35,11 @@ export const useCheckout = () => {
     const getUserProfile = async () => {
       try {
         profileCheckInProgressRef.current = true;
-        const cacheKey = user.id;
-        const cachedProfile = profileCache.get(cacheKey);
-
-        if (
-          cachedProfile &&
-          Date.now() - cachedProfile.timestamp < PROFILE_CACHE_TTL
-        ) {
-          setProfileComplete(cachedProfile.isComplete);
-          profileCheckedRef.current = true;
-          profileCheckInProgressRef.current = false;
-          return;
-        }
-
-        const localStorageKey = `profile_complete_${user.id}`;
-        const localStorageData = localStorage.getItem(localStorageKey);
-        if (localStorageData) {
-          try {
-            const parsed = JSON.parse(localStorageData);
-            if (parsed && Date.now() - parsed.timestamp < PROFILE_CACHE_TTL) {
-              setProfileComplete(parsed.isComplete);
-              profileCache.set(cacheKey, {
-                isComplete: parsed.isComplete,
-                timestamp: parsed.timestamp,
-              });
-
-              profileCheckedRef.current = true;
-              profileCheckInProgressRef.current = false;
-              return;
-            }
-          } catch (e) {
-            console.error("Error parsing localStorage profile cache", e);
-          }
-        }
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("phone_number, profile_completed")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        const isComplete = !!(data?.phone_number && data?.profile_completed);
+        // Single source of truth — same util AuthGuard uses. Requires phone
+        // + at least one address; ignores the profile_completed flag, which
+        // can drift out of sync with reality.
+        const isComplete = await checkProfileComplete(user.id);
         setProfileComplete(isComplete);
-
-        const timestamp = Date.now();
-        profileCache.set(cacheKey, {
-          isComplete,
-          timestamp,
-        });
-
-        localStorage.setItem(
-          localStorageKey,
-          JSON.stringify({
-            isComplete,
-            timestamp,
-          })
-        );
-
         profileCheckedRef.current = true;
       } catch (error) {
         console.error(
