@@ -118,7 +118,7 @@ serve(async (req) => {
 
     // --- SHARED: Apply combo addon changes helper ---
     const applyComboAddonChanges = async (orderId: string) => {
-      if (!comboAddonChanges || comboAddonChanges.length === 0) return;
+      if (!Array.isArray(comboAddonChanges) || comboAddonChanges.length === 0) return;
 
       const { data: currentItems } = await serviceClient
         .from("order_items")
@@ -184,7 +184,7 @@ serve(async (req) => {
 
     // --- SHARED: Insert new items helper ---
     const insertNewItems = async (orderId: string) => {
-      if (!newItems || newItems.length === 0) return;
+      if (!Array.isArray(newItems) || newItems.length === 0) return;
       for (const newItem of newItems) {
         const { data: product } = await serviceClient
           .from("products")
@@ -465,9 +465,9 @@ serve(async (req) => {
       await insertNewItems(orderId);
 
       // Recalculate totals whenever anything changed
-      const hasChanges = (itemAdjustments && itemAdjustments.length > 0) ||
-        (newItems && newItems.length > 0) ||
-        (comboAddonChanges && comboAddonChanges.length > 0) ||
+      const hasChanges = (Array.isArray(itemAdjustments) && itemAdjustments.length > 0) ||
+        (Array.isArray(newItems) && newItems.length > 0) ||
+        (Array.isArray(comboAddonChanges) && comboAddonChanges.length > 0) ||
         newDeliveryFee !== undefined;
 
       if (hasChanges) {

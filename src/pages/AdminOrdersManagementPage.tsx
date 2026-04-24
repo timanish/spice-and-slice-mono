@@ -243,6 +243,7 @@ const AdminOrdersManagementPage = () => {
       itemAdjustments,
       newDeliveryFee,
       newItems,
+      comboAddonChanges,
     }: {
       orderId: string;
       itemAdjustments?: Array<{ orderItemId: string; newQuantity?: number; newProductId?: string; newPricePerUnit?: number; originalProductName?: string }>;
