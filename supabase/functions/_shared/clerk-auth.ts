@@ -207,6 +207,28 @@ async function autoCreateProfile(supabase: any, userId: string): Promise<void> {
   }
 
   console.log(`Auto-created profile for ${userId} (${email})`);
+
+  // Ensure a default user_roles row exists. The Clerk webhook normally creates
+  // this on user.created, but if the webhook didn't fire (or its role insert
+  // silently errored) we'd be left with a profile but no role, which breaks
+  // admin checks and role-scoped queries.
+  const { data: existingRole } = await supabase
+    .from("user_roles")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existingRole) {
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .insert({ user_id: userId, role: "user" });
+    if (roleError) {
+      console.error(`Failed to create default role for ${userId}:`, roleError);
+    } else {
+      console.log(`Auto-created default user role for ${userId}`);
+    }
+  }
 }
 
 /**
