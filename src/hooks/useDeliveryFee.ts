@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Hard upper bound on delivery distance. Must match
+ * `MAX_DELIVERY_DISTANCE_MILES` in supabase/functions/_shared/order-helpers.ts.
+ */
+export const MAX_DELIVERY_DISTANCE_MILES = 100;
+
 export interface DeliveryZone {
   id: string;
   zone_name: string;
@@ -16,6 +22,12 @@ export interface DeliveryFeeResult {
   amountNeededForFreeShipping: number;
   zone: DeliveryZone | null;
   isWithinDeliveryRange: boolean;
+  /**
+   * True when the user is past the last configured zone. The order is still
+   * allowed through; admin sets a custom delivery fee during pending_review
+   * and sends it back for customer confirmation before payment.
+   */
+  isQuoteRequired: boolean;
   distance: number | null;
   freeShippingThreshold: number;
   isLoading: boolean;
@@ -65,6 +77,7 @@ export function useDeliveryFee(
       amountNeededForFreeShipping: 0,
       zone: null,
       isWithinDeliveryRange: false,
+      isQuoteRequired: false,
       distance: userDistance,
       freeShippingThreshold: 0,
       isLoading,
@@ -80,8 +93,17 @@ export function useDeliveryFee(
         userDistance >= zone.min_distance && userDistance < zone.max_distance
     );
 
-    // If no zone matches, user is outside delivery range
+    // If no zone matches, the user is past our configured zones.
+    // Within the hard cap: allow the order through and let admin quote a fee.
+    // Past the cap: mark delivery unavailable.
     if (!applicableZone) {
+      if (userDistance <= MAX_DELIVERY_DISTANCE_MILES) {
+        return {
+          ...defaultResult,
+          isWithinDeliveryRange: true,
+          isQuoteRequired: true,
+        };
+      }
       return {
         ...defaultResult,
         isWithinDeliveryRange: false,
@@ -101,6 +123,7 @@ export function useDeliveryFee(
       amountNeededForFreeShipping: Math.max(0, amountNeededForFreeShipping),
       zone: applicableZone,
       isWithinDeliveryRange: true,
+      isQuoteRequired: false,
       distance: userDistance,
       freeShippingThreshold: applicableZone.free_shipping_threshold,
       isLoading,

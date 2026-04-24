@@ -717,6 +717,7 @@ const CheckoutPage = () => {
               distance={deliveryFeeData.distance}
               zoneName={deliveryFeeData.zone?.zone_name || null}
               isWithinDeliveryRange={deliveryFeeData.isWithinDeliveryRange}
+              isQuoteRequired={deliveryFeeData.isQuoteRequired}
               freeShippingThreshold={deliveryFeeData.freeShippingThreshold}
               cartTotal={orderTotalBeforeDelivery}
               deliveryAddress={userProfile ? {
@@ -740,8 +741,8 @@ const CheckoutPage = () => {
             pickupUnavailableMessage={pickupValidation?.message}
             isDeliveryAvailable={deliveryFeeData.isWithinDeliveryRange}
             deliveryUnavailableMessage={
-              userProfile?.distance_from_store && userProfile.distance_from_store >= 30
-                ? `Delivery is not available for your location (${userProfile.distance_from_store.toFixed(1)} miles from store). Maximum delivery distance is 30 miles.`
+              userProfile?.distance_from_store && userProfile.distance_from_store > 100
+                ? `Delivery is not available for your location (${userProfile.distance_from_store.toFixed(1)} miles from store). Maximum delivery distance is 100 miles.`
                 : 'Delivery is not available for your location.'
             }
             isNationwideAvailable={isNationwideAvailable}
@@ -1599,10 +1600,21 @@ const CheckoutPage = () => {
                     <span>{formatCurrency(deliveryFee)}</span>
                   </div>
                 )}
+                {fulfillmentType === 'delivery' && deliveryFeeData.isQuoteRequired && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Delivery Fee</span>
+                    <span className="text-amber-700 font-medium">Quoted after review</span>
+                  </div>
+                )}
                 <Separator className="my-2" />
                 <div className="flex justify-between text-base font-bold">
                   <span>Total</span>
-                  <span className="text-food-red">{formatCurrency(total)}</span>
+                  <span className="text-food-red">
+                    {formatCurrency(total)}
+                    {fulfillmentType === 'delivery' && deliveryFeeData.isQuoteRequired && (
+                      <span className="ml-1 text-xs font-normal text-amber-700">+ delivery TBD</span>
+                    )}
+                  </span>
                 </div>
               </div>
             </div>

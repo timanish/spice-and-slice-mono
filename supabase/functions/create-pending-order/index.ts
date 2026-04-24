@@ -26,6 +26,7 @@ import {
   fetchAddressSnapshot,
   validatePickupSlotCapacity,
   calculatePickupReminderTime,
+  MAX_DELIVERY_DISTANCE_MILES,
 } from "../_shared/order-helpers.ts";
 
 const corsHeaders = {
@@ -278,17 +279,14 @@ serve(async (req) => {
         deliveryDistance = feeData.distance;
         deliveryZone = feeData.zone;
 
-        // CRITICAL: Reject delivery orders where user is outside all delivery zones
-        if (deliveryZone === null && feeData.distance !== null) {
-          console.error(
-            `Delivery zone validation failed: User is ${feeData.distance} miles away, outside all delivery zones`,
-          );
+        // Reject addresses past the hard delivery cap.
+        if (feeData.zone === null && feeData.distance !== null) {
           return new Response(
             JSON.stringify({
               error: "Delivery unavailable",
               details: `Your location (${feeData.distance.toFixed(
                 1,
-              )} miles) is outside our delivery range. Please select pickup or nationwide shipping.`,
+              )} miles) is beyond our maximum delivery distance of ${MAX_DELIVERY_DISTANCE_MILES} miles. Please select pickup or nationwide shipping.`,
             }),
             {
               status: 400,

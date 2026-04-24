@@ -48,6 +48,8 @@ import { format } from "date-fns";
 
 type FulfillmentStatus = 'pending_review' | 'pending' | 'awaiting_customer_confirmation' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
+const QUOTE_REQUIRED_ZONE = "Outside Zone (Quote Required)";
+
 interface Order {
   id: string;
   created_at: string;
@@ -64,6 +66,7 @@ interface Order {
   pickup_time?: string;
   delivery_fee?: number;
   delivery_zone?: string;
+  delivery_distance?: number | null;
   cancelled_at?: string;
   address_id?: string;
   card_last4?: string;
@@ -815,6 +818,25 @@ const AdminOrdersManagementPage = () => {
                     </div>
                   </div>
                 )}
+                {viewingOrder.fulfillment_status === "pending_review" &&
+                  viewingOrder.fulfillment_type === "delivery" &&
+                  viewingOrder.delivery_zone === QUOTE_REQUIRED_ZONE && (
+                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 flex gap-3">
+                    <Truck className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-red-900">Delivery Quote Required</p>
+                      <p className="text-sm text-red-800 mt-1">
+                        Customer is{" "}
+                        <span className="font-semibold">
+                          {viewingOrder.delivery_distance != null
+                            ? `${Number(viewingOrder.delivery_distance).toFixed(1)} miles`
+                            : "outside all delivery zones"}
+                        </span>{" "}
+                        from the store. Set a custom delivery fee below before sending for confirmation.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {viewingOrder.fulfillment_status === "awaiting_customer_confirmation" && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
                     <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -1271,25 +1293,33 @@ const AdminOrdersManagementPage = () => {
                         ${viewingOrder.order_items?.reduce((sum, item) => sum + item.quantity * item.price_per_unit, 0).toFixed(2) || "0.00"}
                       </span>
                     </div>
-                    {(viewingOrder.delivery_fee > 0 || viewingOrder.fulfillment_type === "delivery") && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Delivery Fee:</span>
-                        {viewingOrder.fulfillment_status === "pending_review" && viewingOrder.fulfillment_type === "delivery" ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">$</span>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0}
-                              onChange={(e) => setAdjustedDeliveryFee(parseFloat(e.target.value) || 0)}
-                              className="w-20 h-8 text-sm"
-                            />
-                          </div>
-                        ) : (
-                          <span className="font-medium">${(adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0).toFixed(2)}</span>
-                        )}
-                      </div>
-                    )}
+                    {(viewingOrder.delivery_fee > 0 || viewingOrder.fulfillment_type === "delivery") && (() => {
+                      const quoteRequired = viewingOrder.delivery_zone === QUOTE_REQUIRED_ZONE;
+                      const currentFee = adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0;
+                      const needsFee = quoteRequired && currentFee <= 0;
+                      return (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">
+                            Delivery Fee:
+                            {needsFee && <span className="ml-1 text-red-600 font-semibold">*required</span>}
+                          </span>
+                          {viewingOrder.fulfillment_status === "pending_review" && viewingOrder.fulfillment_type === "delivery" ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500">$</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0}
+                                onChange={(e) => setAdjustedDeliveryFee(parseFloat(e.target.value) || 0)}
+                                className={`w-20 h-8 text-sm ${needsFee ? "border-red-400 ring-1 ring-red-300" : ""}`}
+                              />
+                            </div>
+                          ) : (
+                            <span className="font-medium">${currentFee.toFixed(2)}</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-between border-t pt-2">
                       <span className="text-gray-700 font-semibold">Total:</span>
                       <span className="text-lg font-bold text-food-red">${viewingOrder.total_amount.toFixed(2)}</span>
@@ -1320,8 +1350,19 @@ const AdminOrdersManagementPage = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {viewingOrder.fulfillment_status === "pending_review" && (
+                  {viewingOrder.fulfillment_status === "pending_review" && (() => {
+                    const quoteRequired =
+                      viewingOrder.fulfillment_type === "delivery" &&
+                      viewingOrder.delivery_zone === QUOTE_REQUIRED_ZONE;
+                    const currentFee = adjustedDeliveryFee ?? viewingOrder.delivery_fee ?? 0;
+                    const needsFee = quoteRequired && currentFee <= 0;
+                    return (
                     <>
+                      {needsFee && (
+                        <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2">
+                          Enter a delivery fee above before sending this order for confirmation.
+                        </p>
+                      )}
                       <Button
                         onClick={() => {
                           const changedItems = Object.entries(adjustedQuantities)
@@ -1368,7 +1409,7 @@ const AdminOrdersManagementPage = () => {
                             comboAddonChanges: addonChangesPayload.length > 0 ? addonChangesPayload : undefined,
                           });
                         }}
-                        disabled={sendForConfirmationMutation.isPending}
+                        disabled={sendForConfirmationMutation.isPending || needsFee}
                         className="w-full bg-food-red hover:bg-food-red/90"
                       >
                         {sendForConfirmationMutation.isPending ? "Sending..." : "Send for Confirmation"}
@@ -1385,7 +1426,8 @@ const AdminOrdersManagementPage = () => {
                         Cancel Order
                       </Button>
                     </>
-                  )}
+                    );
+                  })()}
                   {viewingOrder.fulfillment_status === "awaiting_customer_confirmation" && (
                     <>
                       <Button

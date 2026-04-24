@@ -32,6 +32,8 @@ interface RequestBody {
   isAdminEmail?: boolean;
 }
 
+const QUOTE_REQUIRED_ZONE = "Outside Zone (Quote Required)";
+
 const getEmailTemplate = (
   status: string,
   customerName: string,
@@ -42,21 +44,32 @@ const getEmailTemplate = (
   orderItems?: any[],
   isAdminEmail?: boolean,
   guestTrackingToken?: string,
+  deliveryZone?: string | null,
+  deliveryDistance?: number | null,
 ) => {
+  const isQuoteRequired = deliveryZone === QUOTE_REQUIRED_ZONE;
+  const distanceLabel =
+    deliveryDistance != null ? `${Number(deliveryDistance).toFixed(1)} miles` : "outside our standard delivery zones";
   const statusTemplates: Record<
     string,
     { subject: string; heading: string; message: string; color: string }
   > = {
     pending_review: {
       subject: isAdminEmail
-        ? `⚡ New Order Pending Review - #${orderId.slice(-8).toUpperCase()}`
+        ? isQuoteRequired
+          ? `🚚 Delivery Quote Needed - #${orderId.slice(-8).toUpperCase()}`
+          : `⚡ New Order Pending Review - #${orderId.slice(-8).toUpperCase()}`
         : "Order Received - Being Reviewed",
       heading: isAdminEmail
         ? "New Order Awaiting Review 📋"
         : "We've Received Your Order! 📋",
       message: isAdminEmail
-        ? `A new order has been submitted and requires your review. Please check the order details, verify item availability, and make any necessary adjustments before sending to the customer for confirmation.`
-        : "Thank you for your order! Our team is currently reviewing your items to ensure we have the best quality products available. We'll send you an updated order with any adjustments shortly.",
+        ? isQuoteRequired
+          ? `A new order has been submitted from a customer ${distanceLabel} from the store — outside the standard delivery zones. Please review the order, set a custom delivery fee, and send it for customer confirmation.`
+          : `A new order has been submitted and requires your review. Please check the order details, verify item availability, and make any necessary adjustments before sending to the customer for confirmation.`
+        : isQuoteRequired
+          ? `Thank you for your order! Your address is ${distanceLabel} from our store — outside our standard delivery zones. Our team will review your order, calculate a custom delivery fee, and email you a link to confirm before any payment is taken.`
+          : "Thank you for your order! Our team is currently reviewing your items to ensure we have the best quality products available. We'll send you an updated order with any adjustments shortly.",
       color: isAdminEmail ? "#dc2626" : "#f59e0b",
     },
     awaiting_customer_confirmation: {
@@ -372,6 +385,8 @@ serve(async (req) => {
       orderItems,
       isAdminEmail,
       order.guest_tracking_token || undefined,
+      order.delivery_zone,
+      order.delivery_distance,
     );
 
     // Determine recipient

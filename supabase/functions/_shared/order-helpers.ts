@@ -190,6 +190,19 @@ export async function validateAndEnrichCartItems(
 }
 
 /**
+ * Zone label used when an address is beyond all configured delivery zones
+ * but still within the hard delivery cap. Order is accepted; admin sets a
+ * custom delivery fee during pending_review.
+ */
+export const QUOTE_REQUIRED_ZONE = "Outside Zone (Quote Required)";
+
+/**
+ * Hard upper bound on delivery distance. Addresses past this cap are rejected
+ * at checkout — admin cannot viably deliver that far.
+ */
+export const MAX_DELIVERY_DISTANCE_MILES = 100;
+
+/**
  * Look up delivery fee from delivery_zones based on address distance.
  */
 export async function lookupDeliveryFee(
@@ -227,6 +240,12 @@ export async function lookupDeliveryFee(
     };
   }
 
+  // Beyond configured zones but within the hard cap — admin will quote a fee.
+  if (distance <= MAX_DELIVERY_DISTANCE_MILES) {
+    return { fee: 0, distance, zone: QUOTE_REQUIRED_ZONE };
+  }
+
+  // Past the hard cap — let caller reject (zone=null signals "undeliverable").
   return { fee: 0, distance, zone: null };
 }
 
