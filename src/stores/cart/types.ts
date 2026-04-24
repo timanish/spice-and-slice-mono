@@ -87,6 +87,7 @@ export interface CartStore {
   updateWeight: (productId: string, weight: number) => Promise<void>;
   retryFetchCart: () => Promise<void>;
   clearError: () => void;
+  clearCart: () => void;
   addCombo: (comboId: string, selectedAddonIds?: string[]) => Promise<void>;
   removeCombo: (cartComboItemId: string) => Promise<void>;
   updateComboQuantity: (cartComboItemId: string, quantity: number) => Promise<void>;

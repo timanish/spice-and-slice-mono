@@ -55,7 +55,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { user } = useClerkUser();
   const { getToken } = useAuth();
-  const { items, comboItems, removeFromCart, updateQuantity, fetchCart } = useCartStore();
+  const { items, comboItems, removeFromCart, updateQuantity, fetchCart, clearCart } = useCartStore();
   const { toast } = useToast();
   const { trackCheckoutStarted, trackEvent } = usePostHogTracking();
   const { listAddresses } = useUserData();
@@ -506,6 +506,11 @@ const CheckoutPage = () => {
       }
 
       const orderResult = await response.json();
+
+      // Backend already deleted cart_items / cart_combo_items in
+      // create-pending-order. Wipe the client-side Zustand store + localStorage
+      // so the UI reflects the empty cart immediately.
+      clearCart();
 
       toast({
         title: "Order placed!",

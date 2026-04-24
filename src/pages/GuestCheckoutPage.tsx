@@ -32,7 +32,7 @@ const GuestCheckoutPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isLoaded, isSignedIn } = useUser();
-  const { items, comboItems } = useCartStore();
+  const { items, comboItems, clearCart } = useCartStore();
   const addressInputRef = useRef<HTMLInputElement>(null);
 
   const [fulfillmentType, setFulfillmentType] = useState<Fulfillment>("delivery");
@@ -182,6 +182,10 @@ const GuestCheckoutPage = () => {
       if (!res.ok) {
         throw new Error(payload?.error || payload?.details || "Checkout failed");
       }
+
+      // Backend has no cart rows to clear for guests (cart lived in Zustand
+      // only), but we still need to zero out the client state + localStorage.
+      clearCart();
 
       toast({
         title: "Order received",

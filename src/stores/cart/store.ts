@@ -68,6 +68,15 @@ export const useCartStore = create<CartStore>((set, get) => ({
     set({ hasError: false, errorMessage: null });
   },
 
+  clearCart: () => {
+    clearCartStorage();
+    set({
+      items: [],
+      comboItems: [],
+      lastFetchTime: Date.now(),
+    });
+  },
+
   retryFetchCart: async () => {
     // Check if we're currently rate limited
     const currentState = get();
