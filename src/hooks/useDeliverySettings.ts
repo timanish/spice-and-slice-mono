@@ -13,7 +13,14 @@ export interface DeliverySettings {
   deliveryCutoffHour: number;
   timezone: string;
   maxDaysAdvance: number;
+  /**
+   * Minimum cart subtotal (pre-tax, pre-delivery-fee) in USD required to
+   * place a delivery order. Editable from the admin settings page.
+   */
+  minDeliveryOrderAmount: number;
 }
+
+export const DEFAULT_MIN_DELIVERY_ORDER_AMOUNT = 50;
 
 export function useDeliverySettings() {
   return useQuery({
@@ -33,6 +40,9 @@ export function useDeliverySettings() {
         return acc;
       }, {} as Record<string, string>);
 
+      const parsedMin = parseFloat(
+        settingsMap.delivery_minimum_order_amount ?? "",
+      );
       const settings: DeliverySettings = {
         minDeliveryHours: parseInt(settingsMap.min_delivery_hours || "2", 10),
         deliveryCutoffHour: parseInt(
@@ -41,16 +51,20 @@ export function useDeliverySettings() {
         ),
         timezone: settingsMap.timezone || "America/Chicago",
         maxDaysAdvance: parseInt(settingsMap.max_days_advance || "7", 10),
+        minDeliveryOrderAmount: Number.isFinite(parsedMin) && parsedMin >= 0
+          ? parsedMin
+          : DEFAULT_MIN_DELIVERY_ORDER_AMOUNT,
       };
 
       return settings;
     },
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
     placeholderData: {
       minDeliveryHours: 2,
       deliveryCutoffHour: 18,
       timezone: "America/Chicago",
       maxDaysAdvance: 7,
+      minDeliveryOrderAmount: DEFAULT_MIN_DELIVERY_ORDER_AMOUNT,
     },
   });
 }

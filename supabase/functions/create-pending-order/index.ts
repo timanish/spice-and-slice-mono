@@ -300,6 +300,38 @@ serve(async (req) => {
       }
     }
 
+    // --- DELIVERY MINIMUM ORDER CHECK ---
+    // Server-side enforcement so the minimum can't be bypassed by a stale or
+    // tampered client. Setting is editable from the admin Delivery Settings.
+    if (fulfillmentType === "delivery") {
+      const DEFAULT_MIN = 50;
+      const { data: minSetting } = await serviceClient
+        .from("delivery_settings")
+        .select("value")
+        .eq("key", "delivery_minimum_order_amount")
+        .maybeSingle();
+
+      const parsedMin = parseFloat(minSetting?.value ?? "");
+      const minimum = Number.isFinite(parsedMin) && parsedMin >= 0 ? parsedMin : DEFAULT_MIN;
+      const combinedSubtotalForMin = subtotal + comboSubtotal;
+
+      if (combinedSubtotalForMin < minimum) {
+        const needed = (minimum - combinedSubtotalForMin).toFixed(2);
+        return new Response(
+          JSON.stringify({
+            error: "Minimum order not met for delivery",
+            details: `Delivery requires a minimum order of $${minimum.toFixed(
+              2,
+            )}. Add $${needed} more, or switch to pickup.`,
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
     // --- ADDRESS SNAPSHOT ---
     let addressData = null;
     if (fulfillmentType === "delivery" && addressId) {

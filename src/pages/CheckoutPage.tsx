@@ -29,7 +29,8 @@ import {
   Clock,
   Truck,
   Globe,
-  AlertTriangle
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import {
   Dialog,
@@ -46,6 +47,7 @@ import DeliveryFeeBanner from '@/components/checkout/DeliveryFeeBanner';
 import { FulfillmentTypeSelector } from '@/components/checkout/FulfillmentTypeSelector';
 import { PickupInfo } from '@/components/checkout/PickupInfo';
 import { useDeliveryFee } from '@/hooks/useDeliveryFee';
+import { useDeliverySettings, DEFAULT_MIN_DELIVERY_ORDER_AMOUNT } from '@/hooks/useDeliverySettings';
 import { usePickupSettings } from '@/hooks/usePickupSettings';
 import { calculatePickupReadyTime } from '@/utils/pickupUtils';
 import { validateMinimumOrders, formatMinimumOrderErrors, validateShippingEligibility } from '@/utils/cartValidation';
@@ -201,6 +203,12 @@ const CheckoutPage = () => {
 
   const { settings: pickupSettings, isPickupAvailable, validation: pickupValidation, isLoading: isPickupLoading } = usePickupSettings();
   const pickupReadyAt = pickupSettings ? calculatePickupReadyTime(pickupSettings.preparation_time_minutes) : null;
+
+  const { data: deliverySettings } = useDeliverySettings();
+  const deliveryMinimumOrder =
+    deliverySettings?.minDeliveryOrderAmount ?? DEFAULT_MIN_DELIVERY_ORDER_AMOUNT;
+  const meetsDeliveryMinimum = subtotal >= deliveryMinimumOrder;
+  const deliveryMinimumNeeded = Math.max(0, deliveryMinimumOrder - subtotal);
 
   useEffect(() => {
     // Auto-switch fulfillment type when outside delivery range
@@ -386,6 +394,16 @@ const CheckoutPage = () => {
             ? `Your location (${userProfile.distance_from_store.toFixed(1)} miles) is outside our delivery range. Please select pickup or nationwide shipping.`
             : "Delivery is not available for your location. Please select pickup or nationwide shipping.",
           variant: "destructive",
+        });
+        return;
+      }
+
+      if (!meetsDeliveryMinimum) {
+        toast({
+          title: "Minimum order not met for delivery",
+          description: `Delivery requires a minimum order of ${formatCurrency(deliveryMinimumOrder)}. Add ${formatCurrency(deliveryMinimumNeeded)} more, or switch to pickup.`,
+          variant: "destructive",
+          duration: 8000,
         });
         return;
       }
@@ -712,6 +730,24 @@ const CheckoutPage = () => {
               </div>
             );
           })()}
+
+          {/* Minimum order banner — only when delivery is the chosen option */}
+          {fulfillmentType === 'delivery' && !meetsDeliveryMinimum && (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-900 mb-1">
+                    Add {formatCurrency(deliveryMinimumNeeded)} more to qualify for delivery
+                  </p>
+                  <p className="text-sm text-amber-800">
+                    We require a minimum order of {formatCurrency(deliveryMinimumOrder)} for delivery (delivery fees apply on top).
+                    You can add more items, or switch to pickup to place a smaller order.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Delivery Fee Banner - for delivery, nationwide, or if out of range */}
           {(fulfillmentType === 'delivery' || fulfillmentType === 'nationwide' || (!deliveryFeeData.isWithinDeliveryRange && deliveryFeeData.distance !== null && deliveryFeeData.distance > 30)) && (
