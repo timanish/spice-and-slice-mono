@@ -33,6 +33,7 @@ import AdminDeliverySettingsPage from "./pages/AdminDeliverySettingsPage";
 import AdminPickupSettingsPage from "./pages/AdminPickupSettingsPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage";
 import AdminOrdersManagementPage from "./pages/AdminOrdersManagementPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminTikTokPage from "./pages/AdminTikTokPage";
 import AdminTvMenuPage from "./pages/AdminTvMenuPage";
 import AdminBulkOperationsPage from "./pages/AdminBulkOperationsPage";
@@ -238,6 +239,11 @@ function App() {
                   <Route path="/admin/orders" element={
                     <AdminGuard>
                       <AdminOrdersManagementPage />
+                    </AdminGuard>
+                  } />
+                  <Route path="/admin/users" element={
+                    <AdminGuard>
+                      <AdminUsersPage />
                     </AdminGuard>
                   } />
                   <Route path="/admin/tiktok" element={

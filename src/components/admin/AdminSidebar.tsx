@@ -22,6 +22,7 @@ import {
   Home,
   ArrowLeft,
   Mail,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -69,6 +70,7 @@ const navSections: NavSection[] = [
     icon: ShoppingBag,
     items: [
       { label: "Orders", path: "/admin/orders", icon: ShoppingBag, badge: "new" },
+      { label: "User Management", path: "/admin/users", icon: Users },
       { label: "Delivery Settings", path: "/admin/delivery-settings", icon: Clock },
       { label: "Pickup Settings", path: "/admin/pickup-settings", icon: Truck },
       { label: "Store Settings", path: "/admin/store-settings", icon: Settings },

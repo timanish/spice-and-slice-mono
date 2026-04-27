@@ -277,6 +277,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.send-admin-customer-message]
 verify_jwt = false
+[functions.admin-manage-users]
+verify_jwt = false
 
 [inbucket]
 enabled = false
