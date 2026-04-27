@@ -11,6 +11,7 @@ import {
   updateComboQuantity,
   toggleComboAddon,
 } from "./operations";
+import { memoizationUtils } from "./operations/memoization";
 
 // Extend the CartStore interface with implementation details
 export interface CartStoreState extends CartStore {
@@ -70,6 +71,12 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   clearCart: () => {
     clearCartStorage();
+    // The fetchCart operation has its own in-memory memoization keyed by
+    // userId. Without invalidating it, the next fetchCart after we wipe
+    // state hits the stale memo and repopulates the cart with the
+    // pre-order items.
+    const userId = memoizationUtils.getCurrentUserId();
+    memoizationUtils.clearMemoizedResult(`cart-items-${userId}`);
     set({
       items: [],
       comboItems: [],
