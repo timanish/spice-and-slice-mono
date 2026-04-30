@@ -201,9 +201,34 @@ async function autoCreateProfile(supabase: any, userId: string): Promise<void> {
     onboarding_shown: false,
   });
 
-  if (error && error.code !== "23505") {
-    // 23505 = unique violation (race condition, already inserted)
-    throw new Error("Failed to create profile: " + error.message);
+  if (error) {
+    if (error.code === "23505") {
+      // 23505 can mean two different things:
+      //   (a) profiles_pkey conflict — race with the Clerk webhook that
+      //       inserted this same user_id moments earlier. Safe to continue.
+      //   (b) idx_profiles_email_unique conflict — a different user_id
+      //       already owns this email (older Clerk account or unclaimed
+      //       guest profile). NO row exists for the current user_id, and
+      //       continuing would later FK-violate downstream (e.g. carts).
+      // Re-query by id to disambiguate.
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!existing) {
+        console.error(
+          `autoCreateProfile: email ${email} already belongs to a different account; cannot create profile for ${userId}`,
+        );
+        throw new Error(
+          `EMAIL_ALREADY_IN_USE: An account with email ${email} already exists. Sign in with that account, or use the guest-claim flow if it was a guest checkout.`,
+        );
+      }
+      // (a) confirmed — profile row exists for this userId, continue.
+    } else {
+      throw new Error("Failed to create profile: " + error.message);
+    }
   }
 
   console.log(`Auto-created profile for ${userId} (${email})`);
