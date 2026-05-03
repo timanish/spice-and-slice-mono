@@ -9,6 +9,7 @@ import { MenuComingSoon } from "./MenuComingSoon";
 import { ClassicLayout } from "./layouts/ClassicLayout";
 import { ModernLayout } from "./layouts/ModernLayout";
 import { GridLayout } from "./layouts/GridLayout";
+import { RestaurantLayout } from "./layouts/RestaurantLayout";
 import { Loader2 } from "lucide-react";
 import { MenuItem } from "@/hooks/products/types";
 
@@ -84,12 +85,16 @@ export function TvMenuDisplay() {
       ? ModernLayout
       : config.layout === "grid"
         ? GridLayout
-        : ClassicLayout;
+        : config.layout === "restaurant"
+          ? RestaurantLayout
+          : ClassicLayout;
 
   const content = <LayoutComponent itemsByCategory={displayData} config={config} />;
 
   // Force static (no auto-scroll/paging) only when viewing a specific split screen
   const isMultiScreenStatic = screenNumber > 0 && totalScreens > 1;
+
+  const isRestaurant = config.layout === "restaurant";
 
   return (
     <div
@@ -100,46 +105,51 @@ export function TvMenuDisplay() {
         fontSize: `${scale}rem`,
       }}
     >
-      {/* Ambient background effects */}
+      {/* Ambient background effects — printed-menu look in restaurant mode skips
+          the orbs/grain in favor of a clean warm bg with just a vignette. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {/* Primary accent orb — top-right */}
-        <div
-          className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full"
-          style={{
-            background: `radial-gradient(circle, ${theme.accent_color}22 0%, ${theme.accent_color}0A 40%, transparent 70%)`,
-            animation: "tvAmbient1 22s ease-in-out infinite",
-          }}
-        />
-        {/* Price-color orb — bottom-left */}
-        <div
-          className="absolute -bottom-48 -left-48 w-[700px] h-[700px] rounded-full"
-          style={{
-            background: `radial-gradient(circle, ${theme.price_color}18 0%, ${theme.price_color}08 40%, transparent 70%)`,
-            animation: "tvAmbient2 28s ease-in-out infinite",
-          }}
-        />
-        {/* Center atmosphere — very subtle */}
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full"
-          style={{
-            background: `radial-gradient(ellipse, ${theme.category_header_color}0C 0%, transparent 65%)`,
-            animation: "tvAmbient3 35s ease-in-out infinite",
-          }}
-        />
+        {!isRestaurant && (
+          <>
+            {/* Primary accent orb — top-right */}
+            <div
+              className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full"
+              style={{
+                background: `radial-gradient(circle, ${theme.accent_color}22 0%, ${theme.accent_color}0A 40%, transparent 70%)`,
+                animation: "tvAmbient1 22s ease-in-out infinite",
+              }}
+            />
+            {/* Price-color orb — bottom-left */}
+            <div
+              className="absolute -bottom-48 -left-48 w-[700px] h-[700px] rounded-full"
+              style={{
+                background: `radial-gradient(circle, ${theme.price_color}18 0%, ${theme.price_color}08 40%, transparent 70%)`,
+                animation: "tvAmbient2 28s ease-in-out infinite",
+              }}
+            />
+            {/* Center atmosphere — very subtle */}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full"
+              style={{
+                background: `radial-gradient(ellipse, ${theme.category_header_color}0C 0%, transparent 65%)`,
+                animation: "tvAmbient3 35s ease-in-out infinite",
+              }}
+            />
+            {/* Subtle film grain for depth */}
+            <div
+              className="absolute inset-0 opacity-[0.022]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "repeat",
+                backgroundSize: "256px 256px",
+              }}
+            />
+          </>
+        )}
         {/* Vignette — darkens edges, focuses center */}
         <div
           className="absolute inset-0"
           style={{
             background: `radial-gradient(ellipse 85% 85% at center, transparent 50%, rgba(0,0,0,0.35) 100%)`,
-          }}
-        />
-        {/* Subtle film grain for depth */}
-        <div
-          className="absolute inset-0 opacity-[0.022]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-            backgroundRepeat: "repeat",
-            backgroundSize: "256px 256px",
           }}
         />
       </div>
@@ -167,6 +177,8 @@ export function TvMenuDisplay() {
           accentColor={theme.accent_color}
           textColor={theme.text_color}
           backgroundColor={theme.background_color}
+          variant={isRestaurant ? "restaurant" : "default"}
+          categoryHeaderColor={theme.category_header_color}
         />
 
         {isMultiScreenStatic || displayMode === "static" ? (
@@ -188,6 +200,8 @@ export function TvMenuDisplay() {
           text={config.footer_text}
           textColor={theme.text_color}
           accentColor={theme.accent_color}
+          variant={isRestaurant ? "restaurant" : "default"}
+          categoryHeaderColor={theme.category_header_color}
         />
       </div>
     </div>

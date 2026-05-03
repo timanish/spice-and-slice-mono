@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TvMenuBoard, TvMenuBoardConfig, DEFAULT_CONFIG } from "@/types/tv-menu";
+import { TvMenuBoard, TvMenuBoardConfig, DEFAULT_CONFIG, RESTAURANT_THEME } from "@/types/tv-menu";
 import { MenuItem } from "@/hooks/products/types";
 import {
   Dialog,
@@ -262,8 +262,8 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                 {/* Layout Style */}
                 <div>
                   <Label className="text-sm font-semibold">Layout Style</Label>
-                  <div className="grid grid-cols-3 gap-3 mt-2">
-                    {(["classic", "modern", "grid"] as const).map((layout) => (
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    {(["classic", "modern", "grid", "restaurant"] as const).map((layout) => (
                       <button
                         key={layout}
                         onClick={() => update("layout", layout)}
@@ -278,11 +278,51 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                           {layout === "classic" && "Dark, dotted leaders"}
                           {layout === "modern" && "Light, card-based"}
                           {layout === "grid" && "Dense, compact cards"}
+                          {layout === "restaurant" && "Framed panels, ribbon headers"}
                         </div>
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Accent Images — restaurant layout only */}
+                {config.layout === "restaurant" && (
+                  <div>
+                    <Label className="text-sm font-semibold">Accent Dish Photos</Label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Up to 4 hero dish photos placed at the corners (TL, TR, BR, BL). Paste image URLs.
+                    </p>
+                    <div className="space-y-2">
+                      {[0, 1, 2, 3].map((i) => {
+                        const slotLabel = ["Top-Left", "Top-Right", "Bottom-Right", "Bottom-Left"][i];
+                        const value = config.accent_images?.[i] ?? "";
+                        return (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 w-24 flex-shrink-0">{slotLabel}</span>
+                            <Input
+                              placeholder="https://…"
+                              value={value}
+                              onChange={(e) => {
+                                const next = [...(config.accent_images ?? [])];
+                                while (next.length <= i) next.push("");
+                                next[i] = e.target.value;
+                                update("accent_images", next);
+                              }}
+                              className="flex-1 text-xs"
+                            />
+                            {value && (
+                              <img
+                                src={value}
+                                alt=""
+                                className="w-9 h-9 rounded-full object-cover border"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Columns */}
                 <div>
@@ -494,6 +534,28 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
           <TabsContent value="theme" className="mt-4">
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-5">
+                {/* Theme Presets */}
+                <div className="rounded-lg border bg-gray-50 p-3">
+                  <Label className="text-sm font-semibold">Presets</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    One-click theme + layout combos.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        layout: "restaurant",
+                        theme: { ...RESTAURANT_THEME },
+                      }))
+                    }
+                  >
+                    Apply Restaurant Preset
+                  </Button>
+                </div>
+
                 {[
                   { key: "background_color", label: "Background Color" },
                   { key: "text_color", label: "Text Color" },

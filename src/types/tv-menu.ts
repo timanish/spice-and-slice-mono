@@ -11,7 +11,7 @@ export interface TvMenuBoardConfig {
   data_source: "menu_items" | "products" | "both";
   category_ids: string[];
   excluded_item_ids: string[];
-  layout: "classic" | "modern" | "grid";
+  layout: "classic" | "modern" | "grid" | "restaurant";
   show_images: boolean;
   show_descriptions: boolean;
   show_prices: boolean;
@@ -24,6 +24,8 @@ export interface TvMenuBoardConfig {
   total_screens: number; // 1 = single screen, 2 = split across 2 TVs
   header_text: string;
   footer_text: string;
+  // Restaurant layout: up to 4 hero dish photos placed at TL, TR, BR, BL.
+  accent_images?: string[];
   theme: TvMenuBoardTheme;
 }
 
@@ -42,6 +44,16 @@ export const DEFAULT_THEME: TvMenuBoardTheme = {
   accent_color: "#FFD700",
   category_header_color: "#FFD700",
   price_color: "#4ade80",
+  font_size_scale: 1,
+};
+
+// Warm, printed-menu palette tuned for the Restaurant layout.
+export const RESTAURANT_THEME: TvMenuBoardTheme = {
+  background_color: "#1a0f0a",
+  text_color: "#FFF5E1",
+  accent_color: "#FF8C00",
+  category_header_color: "#FFD700",
+  price_color: "#FFC83D",
   font_size_scale: 1,
 };
 
