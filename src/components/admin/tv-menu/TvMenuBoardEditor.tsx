@@ -18,7 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X, ArrowUp, ArrowDown } from "lucide-react";
+import { uploadImage } from "@/lib/upload-image";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   board: TvMenuBoard;
@@ -29,12 +31,49 @@ interface Props {
 }
 
 export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Props) {
+  const { toast } = useToast();
   const [config, setConfig] = useState<TvMenuBoardConfig>({
     ...DEFAULT_CONFIG,
     ...board.config,
     theme: { ...DEFAULT_CONFIG.theme, ...(board.config?.theme ?? {}) },
   });
   const [slug, setSlug] = useState((board as any).slug ?? "");
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+
+  const handleStaticImageUpload = async (file: File, atIndex?: number) => {
+    const idx = atIndex ?? config.static_images?.length ?? 0;
+    setUploadingIdx(idx);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const filePath = `tv-menu/${board.id}-${Date.now()}-${idx}.${ext}`;
+      const url = await uploadImage(file, filePath, { requireAdmin: true });
+      const next = [...(config.static_images ?? [])];
+      next[idx] = url;
+      update("static_images", next);
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err?.message ?? "Could not upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingIdx(null);
+    }
+  };
+
+  const moveStaticImage = (from: number, to: number) => {
+    const list = [...(config.static_images ?? [])];
+    if (to < 0 || to >= list.length) return;
+    const [item] = list.splice(from, 1);
+    list.splice(to, 0, item);
+    update("static_images", list);
+  };
+
+  const removeStaticImage = (idx: number) => {
+    const next = [...(config.static_images ?? [])];
+    next.splice(idx, 1);
+    update("static_images", next);
+  };
 
   // Fetch ALL active categories (including TV-only ones hidden from website)
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -262,8 +301,8 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                 {/* Layout Style */}
                 <div>
                   <Label className="text-sm font-semibold">Layout Style</Label>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    {(["classic", "modern", "grid", "restaurant"] as const).map((layout) => (
+                  <div className="grid grid-cols-3 gap-3 mt-2">
+                    {(["classic", "modern", "grid", "restaurant", "static_images"] as const).map((layout) => (
                       <button
                         key={layout}
                         onClick={() => update("layout", layout)}
@@ -273,17 +312,105 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
-                        <div className="text-sm font-medium capitalize">{layout}</div>
+                        <div className="text-sm font-medium capitalize">
+                          {layout === "static_images" ? "Static Images" : layout}
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {layout === "classic" && "Dark, dotted leaders"}
                           {layout === "modern" && "Light, card-based"}
                           {layout === "grid" && "Dense, compact cards"}
                           {layout === "restaurant" && "Framed panels, ribbon headers"}
+                          {layout === "static_images" && "Upload menu images"}
                         </div>
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Static Images uploader — static_images layout only */}
+                {config.layout === "static_images" && (
+                  <div>
+                    <Label className="text-sm font-semibold">Menu Images</Label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Upload PNG/JPG images. With <code className="bg-gray-100 px-1 rounded">?screen=N&of=M</code> on each TV, image #N is shown on screen N. Without those params, all images cycle (uses Page Duration from Display tab).
+                    </p>
+
+                    <div className="space-y-2">
+                      {(config.static_images ?? []).map((url, i) => (
+                        <div
+                          key={`${url}-${i}`}
+                          className="flex items-center gap-2 p-2 border rounded-lg bg-white"
+                        >
+                          <span className="text-xs font-mono text-gray-500 w-6 text-center">
+                            #{i + 1}
+                          </span>
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-20 h-12 object-cover rounded border bg-gray-100"
+                          />
+                          <span className="flex-1 text-xs text-gray-600 truncate" title={url}>
+                            {url.split("/").pop()}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => moveStaticImage(i, i - 1)}
+                            disabled={i === 0}
+                            className="h-7 w-7 p-0"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => moveStaticImage(i, i + 1)}
+                            disabled={i === (config.static_images?.length ?? 0) - 1}
+                            className="h-7 w-7 p-0"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeStaticImage(i)}
+                            className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <label className="flex items-center justify-center w-full h-20 mt-2 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                      {uploadingIdx !== null ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading…
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Upload className="h-4 w-4" />
+                          Click to add menu image (PNG/JPG)
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleStaticImageUpload(f);
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingIdx !== null}
+                      />
+                    </label>
+                  </div>
+                )}
 
                 {/* Accent Images — restaurant layout only */}
                 {config.layout === "restaurant" && (

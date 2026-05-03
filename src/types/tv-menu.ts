@@ -11,7 +11,7 @@ export interface TvMenuBoardConfig {
   data_source: "menu_items" | "products" | "both";
   category_ids: string[];
   excluded_item_ids: string[];
-  layout: "classic" | "modern" | "grid" | "restaurant";
+  layout: "classic" | "modern" | "grid" | "restaurant" | "static_images";
   show_images: boolean;
   show_descriptions: boolean;
   show_prices: boolean;
@@ -26,6 +26,9 @@ export interface TvMenuBoardConfig {
   footer_text: string;
   // Restaurant layout: up to 4 hero dish photos placed at TL, TR, BR, BL.
   accent_images?: string[];
+  // static_images layout: full-bleed images shown directly. With ?screen=N&of=M
+  // each TV shows static_images[N-1]; otherwise they cycle on page_duration.
+  static_images?: string[];
   theme: TvMenuBoardTheme;
 }
 

@@ -10,6 +10,7 @@ import { ClassicLayout } from "./layouts/ClassicLayout";
 import { ModernLayout } from "./layouts/ModernLayout";
 import { GridLayout } from "./layouts/GridLayout";
 import { RestaurantLayout } from "./layouts/RestaurantLayout";
+import { StaticImagesLayout } from "./layouts/StaticImagesLayout";
 import { Loader2 } from "lucide-react";
 import { MenuItem } from "@/hooks/products/types";
 
@@ -79,6 +80,20 @@ export function TvMenuDisplay() {
   const { theme } = config;
   const scale = theme.font_size_scale ?? 1;
   const displayMode = config.display_mode ?? (config.auto_scroll ? "scroll" : "static");
+
+  // Static-images layout: bypass everything (header/footer/orbs/data) and render
+  // the uploaded image(s) full-bleed. The image IS the menu.
+  if (config.layout === "static_images") {
+    return (
+      <StaticImagesLayout
+        images={config.static_images ?? []}
+        screenNumber={screenNumber}
+        totalScreens={totalScreens}
+        durationSeconds={config.page_duration ?? 10}
+        backgroundColor={theme.background_color}
+      />
+    );
+  }
 
   const LayoutComponent =
     config.layout === "modern"
