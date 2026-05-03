@@ -328,7 +328,7 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                 <div>
                   <Label className="text-sm font-semibold">Columns</Label>
                   <div className="flex gap-3 mt-2">
-                    {[1, 2, 3].map((n) => (
+                    {[1, 2, 3, 4].map((n) => (
                       <button
                         key={n}
                         onClick={() => update("columns", n)}
