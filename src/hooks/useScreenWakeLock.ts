@@ -17,26 +17,45 @@ export function useScreenWakeLock(enabled = true) {
 
     let sentinel: WakeLockSentinel | null = null;
     let cancelled = false;
+    let acquiring = false;
     const noSleep = new NoSleep();
     const wakeLock = (navigator as WakeLockNavigator).wakeLock;
 
     const acquire = async () => {
-      if (cancelled || document.visibilityState !== "visible") return;
-      if (wakeLock) {
-        try {
-          sentinel = await wakeLock.request("screen");
-          sentinel.addEventListener("release", () => {
-            sentinel = null;
-          });
-          return;
-        } catch {
-          // Fall through to NoSleep fallback
-        }
-      }
+      if (cancelled || acquiring || sentinel) return;
+      if (document.visibilityState !== "visible") return;
+      acquiring = true;
       try {
-        await noSleep.enable();
-      } catch {
-        // First call may need a user gesture; gestureRetry handles it
+        if (wakeLock) {
+          try {
+            const result = await wakeLock.request("screen");
+            if (cancelled) {
+              result.release().catch(() => {});
+              return;
+            }
+            sentinel = result;
+            sentinel.addEventListener("release", () => {
+              sentinel = null;
+              // OS may release the lock on its own (dimming/battery policy).
+              // Re-acquire if the document is still visible.
+              if (!cancelled && document.visibilityState === "visible") {
+                acquire();
+              }
+            });
+            return;
+          } catch {
+            // Fall through to NoSleep fallback
+          }
+        }
+        if (cancelled) return;
+        try {
+          await noSleep.enable();
+          if (cancelled) noSleep.disable();
+        } catch {
+          // First call may need a user gesture; gestureRetry handles it
+        }
+      } finally {
+        acquiring = false;
       }
     };
 
@@ -64,6 +83,7 @@ export function useScreenWakeLock(enabled = true) {
       window.removeEventListener("keydown", gestureRetry);
       window.removeEventListener("touchstart", gestureRetry);
       sentinel?.release().catch(() => {});
+      sentinel = null;
       noSleep.disable();
     };
   }, [enabled]);
