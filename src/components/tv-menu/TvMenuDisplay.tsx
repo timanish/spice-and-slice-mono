@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { usePublishedTvMenu } from "@/hooks/usePublishedTvMenu";
+import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 import { TvMenuHeader } from "./TvMenuHeader";
 import { TvMenuFooter } from "./TvMenuFooter";
 import { AutoScroller } from "./AutoScroller";
@@ -22,6 +23,8 @@ export function TvMenuDisplay() {
   const totalScreens = parseInt(searchParams.get("of") ?? "0") || 0;
 
   const { data, isLoading, error } = usePublishedTvMenu(boardId, slug);
+
+  useScreenWakeLock();
 
   // Daily reload for memory hygiene on 24/7 displays
   useEffect(() => {
