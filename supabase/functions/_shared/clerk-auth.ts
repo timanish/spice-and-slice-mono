@@ -188,7 +188,15 @@ async function autoCreateProfile(supabase: any, userId: string): Promise<void> {
   }
 
   const user = await res.json();
-  const email = user.email_addresses?.[0]?.email_address ?? "";
+  // Resolve primary email by matching id; normalize to lowercase to align with
+  // idx_profiles_email_unique (LOWER(email)).
+  const primaryEmailId = user.primary_email_address_id;
+  const primaryObj = user.email_addresses?.find(
+    (e: { id: string }) => e.id === primaryEmailId,
+  );
+  const rawEmail =
+    primaryObj?.email_address ?? user.email_addresses?.[0]?.email_address ?? "";
+  const email = rawEmail.toLowerCase();
   const firstName = user.first_name ?? "";
   const lastName = user.last_name ?? "";
   const fullName = `${firstName} ${lastName}`.trim() || user.username || "User";

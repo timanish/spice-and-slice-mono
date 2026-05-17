@@ -19,7 +19,7 @@ interface WebhookEvent {
   type: string;
   data: {
     id: string;
-    email_addresses?: Array<{ email_address: string }>;
+    email_addresses?: Array<{ id: string; email_address: string }>;
     primary_email_address_id?: string;
     first_name?: string;
     last_name?: string;
@@ -115,25 +115,35 @@ serve(async (req: Request) => {
     switch (payload.type) {
       case "user.created": {
         const userId = payload.data.id;
+        // Resolve the primary email by matching the id field, not the address.
+        // (Clerk's array uses `id` like "idn_xxx"; the old code compared
+        // address-vs-id and always fell through to [0].)
         const primaryEmailId = payload.data.primary_email_address_id;
         const emailObj = payload.data.email_addresses?.find(
-          (e) => e.email_address === primaryEmailId,
+          (e) => e.id === primaryEmailId,
         );
-        const email =
+        const rawEmail =
           emailObj?.email_address ||
           payload.data.email_addresses?.[0]?.email_address;
+        // Normalize to match idx_profiles_email_unique (LOWER(email)). Without
+        // this, a case-mismatched signup misses the existing-profile lookup,
+        // skips the migration path, and the subsequent INSERT trips 23505.
+        const email = rawEmail?.toLowerCase() ?? null;
 
         const firstName = payload.data.first_name || "";
         const lastName = payload.data.last_name || "";
         const fullName =
           `${firstName} ${lastName}`.trim() || payload.data.username || "User";
 
-        // Check if a profile already exists for this email (dev → prod migration)
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("id, full_name, phone_number, profile_completed, onboarding_shown")
-          .eq("email", email)
-          .maybeSingle();
+        // Check if a profile already exists for this email (dev → prod migration).
+        // Use ilike for case-insensitive match against any historically-stored casing.
+        const { data: existingProfile } = email
+          ? await supabase
+              .from("profiles")
+              .select("id, full_name, phone_number, profile_completed, onboarding_shown")
+              .ilike("email", email)
+              .maybeSingle()
+          : { data: null };
 
         if (existingProfile && existingProfile.id !== userId) {
           const oldUserId = existingProfile.id;
@@ -188,8 +198,33 @@ serve(async (req: Request) => {
         });
 
         if (profileError) {
-          console.error("Error creating profile:", profileError);
-          throw profileError;
+          // 23505 = unique violation. Two paths can land here:
+          //   (a) profiles_pkey race — autoCreateProfile already inserted this
+          //       same userId moments earlier on a parallel authenticated
+          //       request. Safe no-op.
+          //   (b) idx_profiles_email_unique race — the email exists under a
+          //       *different* userId we didn't detect via the lookup above
+          //       (only happens if the row appeared between the SELECT and
+          //       INSERT). Falls through to a re-check.
+          if (profileError.code === "23505") {
+            const { data: byId } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("id", userId)
+              .maybeSingle();
+
+            if (!byId) {
+              console.error(
+                `clerk-webhook: email ${email} owned by a different account; cannot create profile for ${userId}`,
+                profileError,
+              );
+              throw profileError;
+            }
+            console.log(`clerk-webhook: profile for ${userId} already exists, skipping insert`);
+          } else {
+            console.error("Error creating profile:", profileError);
+            throw profileError;
+          }
         }
 
         // Check if user should be admin (from public metadata)
@@ -239,11 +274,12 @@ serve(async (req: Request) => {
         const userId = payload.data.id;
         const primaryEmailId = payload.data.primary_email_address_id;
         const emailObj = payload.data.email_addresses?.find(
-          (e) => e.email_address === primaryEmailId,
+          (e) => e.id === primaryEmailId,
         );
-        const email =
+        const rawEmail =
           emailObj?.email_address ||
           payload.data.email_addresses?.[0]?.email_address;
+        const email = rawEmail?.toLowerCase() ?? null;
 
         const firstName = payload.data.first_name || "";
         const lastName = payload.data.last_name || "";
