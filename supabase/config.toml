@@ -215,8 +215,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.printer-ack-job]
 verify_jwt = false
-[functions.printer-claim-job]
-verify_jwt = false
 [functions.refresh-tiktok-video]
 verify_jwt = false
 
