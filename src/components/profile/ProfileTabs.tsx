@@ -1,9 +1,7 @@
 
-import { Dispatch, SetStateAction } from 'react';
-
 interface ProfileTabsProps {
   activeTab: string;
-  setActiveTab: Dispatch<SetStateAction<string>>;
+  setActiveTab: (tab: string) => void;
 }
 
 const ProfileTabs = ({ activeTab, setActiveTab }: ProfileTabsProps) => {

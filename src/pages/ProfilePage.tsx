@@ -15,9 +15,23 @@ import { useOrderHistory } from '@/hooks/useOrderHistory';
 import { usePostHogTracking } from '@/hooks/usePostHogTracking';
 
 const ProfilePage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'orders', 'subscription', or 'catering'
   const { trackEvent } = usePostHogTracking();
+
+  // Tab clicks update the URL (single source of truth). The effect below then
+  // syncs activeTab from the URL — keeping state and URL consistent and making
+  // tabs shareable / back-button friendly.
+  const handleTabChange = (tab: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   
   const { profile, loading: profileLoading } = useProfileData();
   const { orders, loading: ordersLoading } = useOrderHistory(activeTab);
@@ -55,7 +69,7 @@ const ProfilePage = () => {
       <div className="container max-w-5xl py-8 flex-1">
         <h1 className="text-3xl font-bold mb-8">My Account</h1>
         
-        <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <ProfileTabs activeTab={activeTab} setActiveTab={handleTabChange} />
         
         {activeTab === 'profile' ? (
           <div className="space-y-8">
