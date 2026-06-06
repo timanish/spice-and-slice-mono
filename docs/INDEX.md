@@ -32,6 +32,7 @@
 | [STATE-MANAGEMENT.md](./STATE-MANAGEMENT.md) | Hooks, stores, contexts, caching strategies |
 | [FEATURES.md](./FEATURES.md) | Business features: cart, checkout, catering, subscriptions, admin |
 | [SECURITY-AUDIT.md](./SECURITY-AUDIT.md) | Security findings, remediation status, priority matrix |
+| [TESTING.md](./TESTING.md) | Local E2E sandbox: Supabase/Clerk/Stripe test plane, manual testing, Playwright |
 
 ## Dev Commands
 

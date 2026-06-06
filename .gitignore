@@ -23,7 +23,17 @@ dist-ssr
 *.sln
 *.sw?
 .env
+# Test-env secrets — the *.example versions are committed instead
+.env.test
+supabase/functions/.env.test
+supabase/functions/.env
+# Local-only Supabase schema baseline dump (regenerate via `supabase db dump`)
+supabase/_baseline_public.sql
 .claude/mcp.json
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.auth/
 # Bun lockfiles (use npm/package-lock.json for Cloudflare Pages)
 bun.lock
 bun.lockb
