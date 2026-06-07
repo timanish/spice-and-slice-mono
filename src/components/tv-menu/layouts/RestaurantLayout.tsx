@@ -67,49 +67,66 @@ export function RestaurantLayout({ itemsByCategory, config }: Props) {
         </div>
       ))}
 
-      <div
-        style={{
-          columnCount: columns,
-          columnGap: "1.75rem",
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        {cats.map(([catId, { categoryName, items }], idx) => {
-          const sections = useSubcategories
-            ? groupBySubcategory(items)
-            : [{ subCategory: null, items }];
+      {(() => {
+        const fullWidthIds = new Set(config.full_width_category_ids ?? []);
+        const indexed = cats.map(([catId, value], idx) => ({ catId, value, idx }));
+        const regular = indexed.filter((x) => !fullWidthIds.has(x.catId));
+        const featured = indexed.filter((x) => fullWidthIds.has(x.catId));
 
+        const renderPanel = ({ catId, value, idx }: (typeof indexed)[number], wide: boolean) => {
+          const sections = useSubcategories
+            ? groupBySubcategory(value.items)
+            : [{ subCategory: null, items: value.items }];
           return (
             <CategoryPanel
               key={catId}
-              header={resolveSectionHeader(config, catId, categoryName, idx)}
+              header={resolveSectionHeader(config, catId, value.categoryName, idx)}
+              image={config.section_images?.[catId]}
               sections={sections}
               theme={theme}
               showDescriptions={show_descriptions}
               showPrices={show_prices}
+              wide={wide}
+              itemColumns={wide ? Math.max(2, columns) : 1}
             />
           );
-        })}
-      </div>
+        };
+
+        return (
+          <div style={{ position: "relative", zIndex: 2 }}>
+            <div style={{ columnCount: columns, columnGap: "1.75rem" }}>
+              {regular.map((x) => renderPanel(x, false))}
+            </div>
+            {featured.length > 0 && (
+              <div>{featured.map((x) => renderPanel(x, true))}</div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 interface CategoryPanelProps {
   header: string;
+  image?: string;
   sections: { subCategory: string | null; items: MenuItem[] }[];
   theme: TvMenuBoardConfig["theme"];
   showDescriptions: boolean;
   showPrices: boolean;
+  wide?: boolean;
+  itemColumns?: number;
 }
 
 function CategoryPanel({
   header,
+  image,
   sections,
   theme,
   showDescriptions,
   showPrices,
+  wide = false,
+  itemColumns = 1,
 }: CategoryPanelProps) {
   const goldStrong = theme.category_header_color;
   const goldSoft = `${theme.category_header_color}55`;
@@ -120,7 +137,7 @@ function CategoryPanel({
         position: "relative",
         marginBottom: "1.75rem",
         paddingTop: "1.5rem", // space for the ribbon that overlaps the top edge
-        breakInside: "avoid-column",
+        breakInside: wide ? undefined : "avoid-column",
       }}
     >
       {/* Double-rule gold frame */}
@@ -163,6 +180,38 @@ function CategoryPanel({
           </span>
         </div>
 
+        {image && (
+          <div
+            style={{
+              width: "100%",
+              height: "5rem",
+              borderRadius: "0.45rem",
+              overflow: "hidden",
+              marginBottom: "0.7rem",
+              border: `1px solid ${theme.category_header_color}55`,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
+            }}
+          >
+            <img
+              src={image}
+              alt=""
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: "saturate(1.1)",
+              }}
+            />
+          </div>
+        )}
+
+        <div
+          style={
+            wide && itemColumns > 1
+              ? { columnCount: itemColumns, columnGap: "2.5rem" }
+              : undefined
+          }
+        >
         {sections.map((section, si) => (
           <div key={section.subCategory ?? si}>
             {section.subCategory && (
@@ -193,6 +242,7 @@ function CategoryPanel({
             ))}
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
@@ -215,6 +265,7 @@ function ItemRow({ item, theme, showDescription, showPrice }: ItemRowProps) {
         alignItems: "baseline",
         gap: "0.5rem",
         padding: "0.42rem 0",
+        breakInside: "avoid",
       }}
     >
       {/* Bullet */}

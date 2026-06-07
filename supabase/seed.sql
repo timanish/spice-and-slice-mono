@@ -46,7 +46,8 @@ insert into public.tv_menu_boards (id, name, slug, is_published, config) values
      'data_source', 'both',
      'category_ids', jsonb_build_array(
        '11111111-1111-1111-1111-111111111111',
-       '22222222-2222-2222-2222-222222222222'
+       '22222222-2222-2222-2222-222222222222',
+       '33333333-3333-3333-3333-333333333333'
      ),
      'excluded_item_ids', jsonb_build_array(),
      'layout', 'restaurant',
@@ -79,7 +80,15 @@ insert into public.tv_menu_boards (id, name, slug, is_published, config) values
      'body_font', 'Inter',
      'section_labels', jsonb_build_object(
        '11111111-1111-1111-1111-111111111111', 'Kitchen Favorites',
-       '22222222-2222-2222-2222-222222222222', 'Meat Counter'
+       '22222222-2222-2222-2222-222222222222', 'Meat Counter',
+       '33333333-3333-3333-3333-333333333333', 'Pantry Specials'
+     ),
+     'section_images', jsonb_build_object(
+       '11111111-1111-1111-1111-111111111111', '/tv-menu/accents/dish1.png',
+       '22222222-2222-2222-2222-222222222222', '/tv-menu/accents/dish2.png'
+     ),
+     'full_width_category_ids', jsonb_build_array(
+       '33333333-3333-3333-3333-333333333333'
      ),
      'theme', jsonb_build_object(
        'background_color', '#1a0f0a',

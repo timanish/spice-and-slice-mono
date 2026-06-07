@@ -22,6 +22,12 @@ export interface TvMenuBoardConfig {
   // renaming store categories or re-exporting any background art.
   section_labels?: Record<string, string>;
   show_section_numbers?: boolean; // prefix headers with "1." etc. (default true)
+  // Per-section dish photo: categoryId -> image url (rendered in the panel,
+  // Restaurant layout). Like the momo/tacos shots on a printed menu.
+  section_images?: Record<string, string>;
+  // Categories rendered full-width (spanning all columns, below the grid) in the
+  // Restaurant layout — e.g. a "Combo / Specials" feature section at the bottom.
+  full_width_category_ids?: string[];
   display_mode: "scroll" | "pages" | "static";
   auto_scroll: boolean;
   scroll_speed: "slow" | "medium" | "fast";

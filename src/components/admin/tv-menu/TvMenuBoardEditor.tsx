@@ -42,6 +42,25 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
+
+  const handleSectionImageUpload = async (catId: string, file: File) => {
+    setUploadingSectionId(catId);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const filePath = `tv-menu/section-${board.id}-${catId}-${Date.now()}.${ext}`;
+      const url = await uploadImage(file, filePath, { requireAdmin: true });
+      update("section_images", { ...(config.section_images ?? {}), [catId]: url });
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err?.message ?? "Could not upload section image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingSectionId(null);
+    }
+  };
 
   const handleLogoUpload = async (file: File) => {
     setUploadingLogo(true);
@@ -346,6 +365,70 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                               }}
                               className="flex-1 text-sm"
                             />
+                            {/* Full-width toggle (Restaurant layout) */}
+                            <button
+                              type="button"
+                              title="Render this section full-width (spans all columns, below the grid)"
+                              onClick={() => {
+                                const cur = config.full_width_category_ids ?? [];
+                                update(
+                                  "full_width_category_ids",
+                                  cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
+                                );
+                              }}
+                              className={`px-2 h-8 rounded border text-xs flex-shrink-0 transition-colors ${
+                                (config.full_width_category_ids ?? []).includes(id)
+                                  ? "border-food-red bg-food-red/5 text-food-red"
+                                  : "border-gray-200 text-gray-500 hover:border-gray-300"
+                              }`}
+                            >
+                              Wide
+                            </button>
+                            {/* Per-section dish photo (Restaurant layout) */}
+                            {config.section_images?.[id] ? (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <img
+                                  src={config.section_images[id]}
+                                  alt=""
+                                  className="h-8 w-8 rounded object-cover border"
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const next = { ...(config.section_images ?? {}) };
+                                    delete next[id];
+                                    update("section_images", next);
+                                  }}
+                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <label
+                                title="Add section photo"
+                                className="flex items-center justify-center h-8 w-8 flex-shrink-0 border-2 border-dashed rounded cursor-pointer bg-white hover:bg-gray-100"
+                              >
+                                {uploadingSectionId === id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" />
+                                ) : (
+                                  <Upload className="h-3.5 w-3.5 text-gray-500" />
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/webp"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleSectionImageUpload(id, f);
+                                    e.target.value = "";
+                                  }}
+                                  disabled={uploadingSectionId === id}
+                                />
+                              </label>
+                            )}
                           </div>
                         );
                       })}
