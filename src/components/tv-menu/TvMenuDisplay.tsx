@@ -114,6 +114,13 @@ export function TvMenuDisplay() {
 
   const isRestaurant = config.layout === "restaurant";
 
+  // Background template image: a full-bleed designed backdrop the menu renders on
+  // top of. When present we drop the ambient orbs/grain (they'd clash with the
+  // artwork) and add a configurable scrim so item text stays legible.
+  const bgImage = config.background_image_url;
+  const overlayColor = config.overlay_color ?? "#000000";
+  const overlayOpacity = config.overlay_opacity ?? 0.4;
+
   return (
     <div
       className="h-screen flex flex-col overflow-hidden relative"
@@ -126,7 +133,26 @@ export function TvMenuDisplay() {
       {/* Ambient background effects — printed-menu look in restaurant mode skips
           the orbs/grain in favor of a clean warm bg with just a vignette. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {!isRestaurant && (
+        {bgImage && (
+          <>
+            {/* Full-bleed background template */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url("${bgImage}")`,
+                backgroundSize: config.background_size ?? "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            />
+            {/* Legibility scrim over the artwork */}
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: overlayColor, opacity: overlayOpacity }}
+            />
+          </>
+        )}
+        {!isRestaurant && !bgImage && (
           <>
             {/* Primary accent orb — top-right */}
             <div

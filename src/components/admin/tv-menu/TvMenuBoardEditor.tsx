@@ -39,6 +39,25 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
   });
   const [slug, setSlug] = useState((board as any).slug ?? "");
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [uploadingBg, setUploadingBg] = useState(false);
+
+  const handleBackgroundUpload = async (file: File) => {
+    setUploadingBg(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const filePath = `tv-menu/bg-${board.id}-${Date.now()}.${ext}`;
+      const url = await uploadImage(file, filePath, { requireAdmin: true });
+      update("background_image_url", url);
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err?.message ?? "Could not upload background image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingBg(false);
+    }
+  };
 
   const handleStaticImageUpload = async (file: File, atIndex?: number) => {
     const idx = atIndex ?? config.static_images?.length ?? 0;
@@ -661,6 +680,110 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
           <TabsContent value="theme" className="mt-4">
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-5">
+                {/* Background Template Image */}
+                <div className="rounded-lg border bg-gray-50 p-3">
+                  <Label className="text-sm font-semibold">Background Template</Label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Upload a full-bleed background (textures, frames, logo, hero photo) and
+                    the menu items render on top of it — designed look, still fully editable.
+                    Leave the menu area of your artwork clear.
+                  </p>
+
+                  {config.background_image_url ? (
+                    <div className="flex items-center gap-2 p-2 border rounded-lg bg-white mb-3">
+                      <img
+                        src={config.background_image_url}
+                        alt=""
+                        className="w-24 h-14 object-cover rounded border bg-gray-100"
+                      />
+                      <span className="flex-1 text-xs text-gray-600 truncate">
+                        {config.background_image_url.split("/").pop()}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => update("background_image_url", undefined)}
+                        className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-100 transition-colors mb-3">
+                      {uploadingBg ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading…
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Upload className="h-4 w-4" />
+                          Upload background image (PNG/JPG)
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleBackgroundUpload(f);
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingBg}
+                      />
+                    </label>
+                  )}
+
+                  {config.background_image_url && (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        {(["cover", "contain"] as const).map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => update("background_size", size)}
+                            className={`flex-1 px-3 py-1.5 rounded-lg border-2 text-xs font-medium capitalize transition-colors ${
+                              (config.background_size ?? "cover") === size
+                                ? "border-food-red bg-food-red/5 text-food-red"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Overlay (darken for legibility)</Label>
+                        <input
+                          type="color"
+                          value={config.overlay_color ?? "#000000"}
+                          onChange={(e) => update("overlay_color", e.target.value)}
+                          className="w-9 h-9 rounded border cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-xs">Overlay Opacity</Label>
+                          <span className="text-xs text-gray-500 font-mono">
+                            {Math.round((config.overlay_opacity ?? 0.4) * 100)}%
+                          </span>
+                        </div>
+                        <Slider
+                          value={[config.overlay_opacity ?? 0.4]}
+                          onValueChange={([v]) => update("overlay_opacity", v)}
+                          min={0}
+                          max={0.85}
+                          step={0.05}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Theme Presets */}
                 <div className="rounded-lg border bg-gray-50 p-3">
                   <Label className="text-sm font-semibold">Presets</Label>

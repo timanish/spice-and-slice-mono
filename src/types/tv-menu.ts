@@ -24,6 +24,15 @@ export interface TvMenuBoardConfig {
   total_screens: number; // 1 = single screen, 2 = split across 2 TVs
   header_text: string;
   footer_text: string;
+  // Background template: a full-bleed image rendered BEHIND the menu (classic /
+  // modern / grid / restaurant layouts). Lets a designer build a beautiful EMPTY
+  // template (textures, frames, logo, hero photo) while live prices/items render
+  // on top — designed-image quality with full editability.
+  background_image_url?: string;
+  background_size?: "cover" | "contain"; // default "cover"
+  // Scrim drawn over the background image for text legibility.
+  overlay_color?: string; // default "#000000"
+  overlay_opacity?: number; // 0-1, default 0.4
   // Restaurant layout: up to 4 hero dish photos placed at TL, TR, BR, BL.
   accent_images?: string[];
   // static_images layout: full-bleed images shown directly. With ?screen=N&of=M
@@ -77,5 +86,8 @@ export const DEFAULT_CONFIG: TvMenuBoardConfig = {
   total_screens: 1,
   header_text: "Our Menu",
   footer_text: "",
+  background_size: "cover",
+  overlay_color: "#000000",
+  overlay_opacity: 0.4,
   theme: DEFAULT_THEME,
 };
