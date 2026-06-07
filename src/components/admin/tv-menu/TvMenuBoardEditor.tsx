@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TvMenuBoard, TvMenuBoardConfig, DEFAULT_CONFIG, RESTAURANT_THEME } from "@/types/tv-menu";
+import { TvMenuBoard, TvMenuBoardConfig, DEFAULT_CONFIG } from "@/types/tv-menu";
+import { TV_MENU_PRESETS } from "@/components/tv-menu/presets";
 import { MenuItem } from "@/hooks/products/types";
 import {
   Dialog,
@@ -1061,26 +1062,36 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                   </div>
                 </div>
 
-                {/* Theme Presets */}
+                {/* Theme Presets — one-click style/layout bundles */}
                 <div className="rounded-lg border bg-gray-50 p-3">
                   <Label className="text-sm font-semibold">Presets</Label>
                   <p className="text-xs text-gray-500 mb-2">
-                    One-click theme + layout combos.
+                    One-click style bundles (layout + theme + fonts + background).
+                    Your content — categories, labels, photos, logo — is kept.
                   </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        layout: "restaurant",
-                        theme: { ...RESTAURANT_THEME },
-                      }))
-                    }
-                  >
-                    Apply Restaurant Preset
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TV_MENU_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            ...preset.config,
+                            theme: preset.config.theme
+                              ? { ...prev.theme, ...preset.config.theme }
+                              : prev.theme,
+                          }))
+                        }
+                        className="p-2.5 rounded-lg border-2 border-gray-200 hover:border-food-red text-left transition-colors"
+                      >
+                        <div className="text-sm font-medium">{preset.name}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {preset.description}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {[
