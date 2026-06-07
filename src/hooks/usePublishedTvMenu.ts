@@ -63,6 +63,7 @@ export function usePublishedTvMenu(boardId?: string, slug?: string) {
           .select("*, category:categories(id, name)")
           .in("category_id", config.category_ids)
           .eq("is_available", true)
+          .order("display_order", { ascending: true })
           .order("name");
 
         if (itemsError) throw itemsError;

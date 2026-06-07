@@ -19,8 +19,9 @@ test("admin can apply a preset and it persists", async ({ page }) => {
     await signInAs(page, TEST_USERS.admin);
     await page.goto("/admin/tv-menu");
 
-    // Open the board editor (pencil icon), go to Theme, apply "Grid Compact".
-    await page.locator("button:has(.lucide-pencil)").first().click();
+    // Open the "Main Board" editor (scope to its card — other boards may exist).
+    const card = page.locator(".hover\\:shadow-md").filter({ hasText: "Main Board" });
+    await card.locator("button:has(.lucide-pencil)").click();
     await page.getByRole("tab", { name: "Theme" }).click();
     await page.getByText("Grid Compact").click();
     await page.getByRole("button", { name: "Save Changes" }).click();
