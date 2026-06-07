@@ -1,6 +1,7 @@
 import { TvMenuBoardConfig } from "@/types/tv-menu";
 import { MenuItem } from "@/hooks/products/types";
 import { groupBySubcategory } from "./groupBySubcategory";
+import { resolveSectionHeader } from "./sectionHeader";
 
 interface Props {
   itemsByCategory: Map<string, { categoryName: string; items: MenuItem[] }>;
@@ -23,7 +24,7 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
         columnRuleColor: `${theme.text_color}07`,
       }}
     >
-      {cats.map(([catId, { categoryName, items }]) => {
+      {cats.map(([catId, { categoryName, items }], idx) => {
         const sections = useSubcategories
           ? groupBySubcategory(items)
           : [{ subCategory: null, items }];
@@ -42,7 +43,7 @@ export function ClassicLayout({ itemsByCategory, config }: Props) {
                   textShadow: `0 0 80px ${theme.category_header_color}25`,
                 }}
               >
-                {categoryName}
+                {resolveSectionHeader(config, catId, categoryName, idx)}
               </h2>
               <div
                 style={{

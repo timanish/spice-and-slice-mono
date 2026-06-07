@@ -1,6 +1,7 @@
 import { TvMenuBoardConfig } from "@/types/tv-menu";
 import { MenuItem } from "@/hooks/products/types";
 import { groupBySubcategory } from "./groupBySubcategory";
+import { resolveSectionHeader } from "./sectionHeader";
 
 interface Props {
   itemsByCategory: Map<string, { categoryName: string; items: MenuItem[] }>;
@@ -15,7 +16,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
 
   return (
     <div className="px-8 py-5 space-y-6">
-      {cats.map(([catId, { categoryName, items }]) => {
+      {cats.map(([catId, { categoryName, items }], idx) => {
         const sections = useSubcategories
           ? groupBySubcategory(items)
           : [{ subCategory: null, items }];
@@ -49,7 +50,7 @@ export function GridLayout({ itemsByCategory, config }: Props) {
                   whiteSpace: "nowrap",
                 }}
               >
-                {categoryName}
+                {resolveSectionHeader(config, catId, categoryName, idx)}
               </h2>
               <div
                 style={{

@@ -279,6 +279,48 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                   )}
                 </div>
 
+                {/* Section Headers — custom label + numbering per board */}
+                {(config.category_ids?.length ?? 0) > 0 && (
+                  <div>
+                    <Label className="text-sm font-semibold">Section Headers</Label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Custom label per section (defaults to the category name). Editable any
+                      time — no need to touch the background image.
+                    </p>
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-sm">Show section numbers (1. 2. 3.)</Label>
+                      <Switch
+                        checked={config.show_section_numbers ?? true}
+                        onCheckedChange={(v) => update("show_section_numbers", v)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {(config.category_ids ?? []).map((id, i) => {
+                        const cat = categories.find((c) => c.id === id);
+                        if (!cat) return null;
+                        return (
+                          <div key={id} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">
+                              {(config.show_section_numbers ?? true) ? `${i + 1}.` : ""}
+                            </span>
+                            <Input
+                              value={config.section_labels?.[id] ?? ""}
+                              placeholder={cat.name}
+                              onChange={(e) => {
+                                const next = { ...(config.section_labels ?? {}) };
+                                if (e.target.value.trim()) next[id] = e.target.value;
+                                else delete next[id];
+                                update("section_labels", next);
+                              }}
+                              className="flex-1 text-sm"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Item Exclusions */}
                 {filteredItems.length > 0 && (
                   <div>

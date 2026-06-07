@@ -1,6 +1,7 @@
 import { TvMenuBoardConfig } from "@/types/tv-menu";
 import { MenuItem } from "@/hooks/products/types";
 import { groupBySubcategory } from "./groupBySubcategory";
+import { resolveSectionHeader } from "./sectionHeader";
 
 interface Props {
   itemsByCategory: Map<string, { categoryName: string; items: MenuItem[] }>;
@@ -82,8 +83,7 @@ export function RestaurantLayout({ itemsByCategory, config }: Props) {
           return (
             <CategoryPanel
               key={catId}
-              number={idx + 1}
-              name={categoryName}
+              header={resolveSectionHeader(config, catId, categoryName, idx)}
               sections={sections}
               theme={theme}
               showDescriptions={show_descriptions}
@@ -97,8 +97,7 @@ export function RestaurantLayout({ itemsByCategory, config }: Props) {
 }
 
 interface CategoryPanelProps {
-  number: number;
-  name: string;
+  header: string;
   sections: { subCategory: string | null; items: MenuItem[] }[];
   theme: TvMenuBoardConfig["theme"];
   showDescriptions: boolean;
@@ -106,8 +105,7 @@ interface CategoryPanelProps {
 }
 
 function CategoryPanel({
-  number,
-  name,
+  header,
   sections,
   theme,
   showDescriptions,
@@ -161,7 +159,7 @@ function CategoryPanel({
               textShadow: "0 1px 2px rgba(0,0,0,0.35)",
             }}
           >
-            {number}. {name}
+            {header}
           </span>
         </div>
 

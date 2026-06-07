@@ -17,6 +17,11 @@ export interface TvMenuBoardConfig {
   show_prices: boolean;
   columns: number;
   group_by_subcategory: boolean;
+  // Per-board section header overrides: categoryId -> custom label (defaults to
+  // the category name). Lets TV headers read "1. Appetizer - Veg" without
+  // renaming store categories or re-exporting any background art.
+  section_labels?: Record<string, string>;
+  show_section_numbers?: boolean; // prefix headers with "1." etc. (default true)
   display_mode: "scroll" | "pages" | "static";
   auto_scroll: boolean;
   scroll_speed: "slow" | "medium" | "fast";
@@ -89,5 +94,6 @@ export const DEFAULT_CONFIG: TvMenuBoardConfig = {
   background_size: "cover",
   overlay_color: "#000000",
   overlay_opacity: 0.4,
+  show_section_numbers: true,
   theme: DEFAULT_THEME,
 };
