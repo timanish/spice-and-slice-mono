@@ -68,7 +68,15 @@ insert into public.tv_menu_boards (id, name, slug, is_published, config) values
      'overlay_opacity', 0.2,
      'logo_image_url', '/tv-menu/logo.png',
      'logo_height', 110,
+     'accent_images', jsonb_build_array(
+       '/tv-menu/accents/dish1.png',
+       '/tv-menu/accents/dish2.png',
+       '/tv-menu/accents/dish3.png',
+       '/tv-menu/accents/dish4.png'
+     ),
      'show_section_numbers', true,
+     'heading_font', 'Cinzel',
+     'body_font', 'Inter',
      'section_labels', jsonb_build_object(
        '11111111-1111-1111-1111-111111111111', 'Kitchen Favorites',
        '22222222-2222-2222-2222-222222222222', 'Meat Counter'

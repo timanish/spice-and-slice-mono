@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Upload, X, ArrowUp, ArrowDown } from "lucide-react";
 import { uploadImage } from "@/lib/upload-image";
 import { useToast } from "@/hooks/use-toast";
+import { HEADING_FONTS, BODY_FONTS, googleFontsHref } from "@/components/tv-menu/fonts";
 
 interface Props {
   board: TvMenuBoard;
@@ -186,6 +187,18 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
     });
     setSlug((board as any).slug ?? "");
   }, [board]);
+
+  // Load all curated fonts so the picker buttons preview in their own typeface.
+  useEffect(() => {
+    const href = googleFontsHref([...HEADING_FONTS, ...BODY_FONTS]);
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, []);
 
   const update = <K extends keyof TvMenuBoardConfig>(key: K, value: TvMenuBoardConfig[K]) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -915,6 +928,54 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Typography */}
+                <div className="rounded-lg border bg-gray-50 p-3">
+                  <Label className="text-sm font-semibold">Typography</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Heading font (section titles) and body font (items & prices).
+                  </p>
+                  <div className="mb-3">
+                    <Label className="text-xs">Heading font</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {HEADING_FONTS.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => update("heading_font", f)}
+                          style={{ fontFamily: `'${f}'` }}
+                          className={`px-2 py-2 rounded border text-sm truncate transition-colors ${
+                            (config.heading_font ?? "Playfair Display") === f
+                              ? "border-food-red bg-food-red/5 text-food-red"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Body font</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {BODY_FONTS.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => update("body_font", f)}
+                          style={{ fontFamily: `'${f}'` }}
+                          className={`px-2 py-2 rounded border text-sm truncate transition-colors ${
+                            (config.body_font ?? "Inter") === f
+                              ? "border-food-red bg-food-red/5 text-food-red"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Theme Presets */}

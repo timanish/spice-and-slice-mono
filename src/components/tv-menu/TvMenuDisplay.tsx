@@ -7,6 +7,7 @@ import { TvMenuFooter } from "./TvMenuFooter";
 import { AutoScroller } from "./AutoScroller";
 import { PageSlider } from "./PageSlider";
 import { MenuComingSoon } from "./MenuComingSoon";
+import { googleFontsHref } from "./fonts";
 import { ClassicLayout } from "./layouts/ClassicLayout";
 import { ModernLayout } from "./layouts/ModernLayout";
 import { GridLayout } from "./layouts/GridLayout";
@@ -44,6 +45,21 @@ export function TvMenuDisplay() {
       document.body.style.cursor = "";
     };
   }, [hideCursor]);
+
+  // Load the board's chosen fonts on demand (defaults are already bundled).
+  const headingFont = data?.board?.config?.heading_font || "Playfair Display";
+  const bodyFont = data?.board?.config?.body_font || "Inter";
+  useEffect(() => {
+    const href = googleFontsHref([headingFont, bodyFont]);
+    if (!href) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [headingFont, bodyFont]);
 
   // Split items for multi-screen mode
   const displayData = useMemo(() => {
@@ -123,13 +139,19 @@ export function TvMenuDisplay() {
 
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden relative"
+      className="tv-root h-screen flex flex-col overflow-hidden relative"
       style={{
         backgroundColor: theme.background_color,
         color: theme.text_color,
         fontSize: `${scale}rem`,
       }}
     >
+      {/* Board-selected fonts: body applies to the whole menu; heading font
+          overrides the layouts' serif headers/title. */}
+      <style>{`
+        .tv-root { font-family: '${bodyFont}', system-ui, sans-serif; }
+        .tv-root .font-serif { font-family: '${headingFont}', Georgia, serif; }
+      `}</style>
       {/* Ambient background effects — printed-menu look in restaurant mode skips
           the orbs/grain in favor of a clean warm bg with just a vignette. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">

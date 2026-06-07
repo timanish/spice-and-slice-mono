@@ -70,4 +70,34 @@ await logoPage.waitForTimeout(500); // let the web font load
 await logoPage.screenshot({ path: logoOut, omitBackground: true });
 console.log("wrote", logoOut);
 
+// --- Demo accent "dish" placeholders (circular, transparent PNGs) ----------
+const accentsDir = path.join(outDir, "accents");
+mkdirSync(accentsDir, { recursive: true });
+const DISHES = [
+  { c1: "#E8A33D", c2: "#7a3b12" }, // golden (samosa-ish)
+  { c1: "#F2E6CE", c2: "#9c8a63" }, // cream (momo-ish)
+  { c1: "#D6452B", c2: "#5e1408" }, // red (curry-ish)
+  { c1: "#5BA83F", c2: "#234d16" }, // green (greens)
+];
+for (let i = 0; i < DISHES.length; i++) {
+  const d = DISHES[i];
+  const dishHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
+    html,body{margin:0;width:400px;height:400px;}
+    .p{width:400px;height:400px;display:flex;align-items:center;justify-content:center;}
+    .plate{width:360px;height:360px;border-radius:50%;position:relative;overflow:hidden;
+      background:radial-gradient(circle at 38% 32%, ${d.c1} 0%, ${d.c2} 72%);
+      box-shadow: inset 0 0 40px rgba(0,0,0,.55), inset 0 0 0 14px rgba(20,12,8,.85),
+                  0 0 0 6px rgba(255,215,0,.25);}
+    .hl{position:absolute;top:46px;left:70px;width:120px;height:70px;border-radius:50%;
+      background:radial-gradient(circle, rgba(255,255,255,.38), transparent 70%);filter:blur(4px);}
+  </style></head><body><div class="p"><div class="plate"><div class="hl"></div></div></div></body></html>`;
+  const dp = await browser.newPage({
+    viewport: { width: 400, height: 400 },
+    deviceScaleFactor: 2,
+  });
+  await dp.setContent(dishHtml, { waitUntil: "networkidle" });
+  await dp.screenshot({ path: path.join(accentsDir, `dish${i + 1}.png`), omitBackground: true });
+}
+console.log("wrote", path.join(accentsDir, "dish1..4.png"));
+
 await browser.close();

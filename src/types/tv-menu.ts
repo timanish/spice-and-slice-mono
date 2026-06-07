@@ -47,6 +47,9 @@ export interface TvMenuBoardConfig {
   // static_images layout: full-bleed images shown directly. With ?screen=N&of=M
   // each TV shows static_images[N-1]; otherwise they cycle on page_duration.
   static_images?: string[];
+  // Typography (curated Google Fonts; loaded on demand by the display).
+  heading_font?: string; // section headers + title (default "Playfair Display")
+  body_font?: string; // item names / prices / body (default "Inter")
   theme: TvMenuBoardTheme;
 }
 
@@ -99,5 +102,7 @@ export const DEFAULT_CONFIG: TvMenuBoardConfig = {
   overlay_color: "#000000",
   overlay_opacity: 0.4,
   show_section_numbers: true,
+  heading_font: "Playfair Display",
+  body_font: "Inter",
   theme: DEFAULT_THEME,
 };
