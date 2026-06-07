@@ -82,3 +82,23 @@ insert into public.tv_menu_boards (id, name, slug, is_published, config) values
        'font_size_scale', 1
      )
    ));
+
+-- --- Local dev admin -------------------------------------------------------
+-- Persists admin access across `db reset` for the dev Clerk user
+-- timsina.anish@gmail.com. Local-only seed; the id is a Clerk DEV user id (not
+-- a secret). For any OTHER account, use: scripts/sync-clerk-profile.sh <email> --admin
+insert into public.profiles (id, email, full_name, profile_completed, onboarding_shown)
+values ('user_37ne5C13HVWcFtoBNM68rNnbrzb', 'timsina.anish@gmail.com', 'Anish Timsina', true, true)
+on conflict (id) do nothing;
+
+insert into public.user_roles (user_id, role)
+select 'user_37ne5C13HVWcFtoBNM68rNnbrzb', 'admin'
+where not exists (
+  select 1 from public.user_roles where user_id = 'user_37ne5C13HVWcFtoBNM68rNnbrzb'
+);
+
+insert into public.carts (user_id)
+select 'user_37ne5C13HVWcFtoBNM68rNnbrzb'
+where not exists (
+  select 1 from public.carts where user_id = 'user_37ne5C13HVWcFtoBNM68rNnbrzb'
+);
