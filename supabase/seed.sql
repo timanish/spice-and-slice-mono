@@ -37,7 +37,9 @@ insert into public.menu_items (id, name, price, description, category_id, is_ava
   ('c0000000-0000-0000-0000-000000000003', 'Veg Thali',           13.49, 'Dal, sabji, rice, roti',        '11111111-1111-1111-1111-111111111111', true, true,  false, 1),
   ('c0000000-0000-0000-0000-000000000004', 'Sekuwa Platter',      16.99, 'Grilled marinated meat platter','11111111-1111-1111-1111-111111111111', true, false, true, 2);
 
--- --- Published TV menu board (data_source=both so it shows both tables) ------
+-- --- Published TV menu board — demos the full assembled look: Restaurant layout
+-- + black/gold background template + logo header + custom numbered section labels.
+-- (Background/logo are served locally from /public/tv-menu/*.png.)
 insert into public.tv_menu_boards (id, name, slug, is_published, config) values
   ('d0000000-0000-0000-0000-000000000001', 'Main Board', 'main', true,
    jsonb_build_object(
@@ -47,25 +49,36 @@ insert into public.tv_menu_boards (id, name, slug, is_published, config) values
        '22222222-2222-2222-2222-222222222222'
      ),
      'excluded_item_ids', jsonb_build_array(),
-     'layout', 'classic',
+     'layout', 'restaurant',
      'show_images', false,
      'show_descriptions', false,
      'show_prices', true,
      'columns', 2,
-     'group_by_subcategory', true,
-     'display_mode', 'pages',
-     'auto_scroll', true,
+     'group_by_subcategory', false,
+     'display_mode', 'static',
+     'auto_scroll', false,
      'scroll_speed', 'medium',
      'page_duration', 10,
      'total_screens', 1,
-     'header_text', 'Our Menu',
+     'header_text', 'Spice & Slice',
      'footer_text', 'Prices subject to change',
+     'background_image_url', '/tv-menu/restaurant-template.png',
+     'background_size', 'cover',
+     'overlay_color', '#000000',
+     'overlay_opacity', 0.2,
+     'logo_image_url', '/tv-menu/logo.png',
+     'logo_height', 110,
+     'show_section_numbers', true,
+     'section_labels', jsonb_build_object(
+       '11111111-1111-1111-1111-111111111111', 'Kitchen Favorites',
+       '22222222-2222-2222-2222-222222222222', 'Meat Counter'
+     ),
      'theme', jsonb_build_object(
-       'background_color', '#1a1a2e',
-       'text_color', '#e0e0e0',
-       'accent_color', '#FFD700',
+       'background_color', '#1a0f0a',
+       'text_color', '#FFF5E1',
+       'accent_color', '#FF8C00',
        'category_header_color', '#FFD700',
-       'price_color', '#4ade80',
+       'price_color', '#FFC83D',
        'font_size_scale', 1
      )
    ));

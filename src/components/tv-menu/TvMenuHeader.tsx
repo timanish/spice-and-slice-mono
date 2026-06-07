@@ -7,6 +7,8 @@ interface Props {
   backgroundColor: string;
   variant?: "default" | "restaurant";
   categoryHeaderColor?: string;
+  logoUrl?: string;
+  logoHeight?: number;
 }
 
 // Split "Spice and Slice" / "Spice & Slice" into two halves so the restaurant
@@ -24,6 +26,8 @@ export function TvMenuHeader({
   backgroundColor,
   variant = "default",
   categoryHeaderColor,
+  logoUrl,
+  logoHeight,
 }: Props) {
   const [time, setTime] = useState(new Date());
 
@@ -44,6 +48,8 @@ export function TvMenuHeader({
         textColor={textColor}
         categoryHeaderColor={categoryHeaderColor ?? accentColor}
         clockLabel={`${hours}:${minutes} ${ampm}`}
+        logoUrl={logoUrl}
+        logoHeight={logoHeight}
       />
     );
   }
@@ -89,18 +95,33 @@ export function TvMenuHeader({
       >
         {/* Restaurant / menu title — the hero of the header */}
         <div style={{ flex: 1, textAlign: "center" }}>
-          <h1
-            className="font-serif font-bold"
-            style={{
-              color: accentColor,
-              fontSize: "clamp(2rem, 4.5vw, 3.5rem)",
-              letterSpacing: "0.1em",
-              lineHeight: 1,
-              textShadow: `0 0 80px ${accentColor}40, 0 0 160px ${accentColor}15`,
-            }}
-          >
-            {text || "Our Menu"}
-          </h1>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={text || "Menu logo"}
+              style={{
+                height: logoHeight ?? 70,
+                width: "auto",
+                maxWidth: "70%",
+                objectFit: "contain",
+                display: "inline-block",
+                filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.5))",
+              }}
+            />
+          ) : (
+            <h1
+              className="font-serif font-bold"
+              style={{
+                color: accentColor,
+                fontSize: "clamp(2rem, 4.5vw, 3.5rem)",
+                letterSpacing: "0.1em",
+                lineHeight: 1,
+                textShadow: `0 0 80px ${accentColor}40, 0 0 160px ${accentColor}15`,
+              }}
+            >
+              {text || "Our Menu"}
+            </h1>
+          )}
         </div>
 
         {/* Live clock — right side, pinned */}
@@ -161,6 +182,8 @@ interface RestaurantHeaderProps {
   textColor: string;
   categoryHeaderColor: string;
   clockLabel: string;
+  logoUrl?: string;
+  logoHeight?: number;
 }
 
 function RestaurantHeader({
@@ -169,6 +192,8 @@ function RestaurantHeader({
   textColor,
   categoryHeaderColor,
   clockLabel,
+  logoUrl,
+  logoHeight,
 }: RestaurantHeaderProps) {
   const { left, conj, right } = splitWordmark(text || "Our Menu");
   const red = "#B8001F";
@@ -184,37 +209,52 @@ function RestaurantHeader({
           padding: "0.5rem 2.5rem 0.4rem",
         }}
       >
-        <h1
-          style={{
-            fontFamily: "'Allura', cursive",
-            fontSize: "clamp(2.8rem, 6vw, 4.8rem)",
-            lineHeight: 1,
-            letterSpacing: "0.01em",
-            margin: 0,
-            textShadow: "0 4px 20px rgba(0,0,0,0.5)",
-          }}
-        >
-          <span style={{ color: red }}>{left}</span>
-          {right && (
-            <>
-              {" "}
-              <span
-                className="font-serif"
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontStyle: "italic",
-                  fontSize: "0.45em",
-                  color: `${textColor}AA`,
-                  verticalAlign: "middle",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {conj}
-              </span>{" "}
-              <span style={{ color: categoryHeaderColor }}>{right}</span>
-            </>
-          )}
-        </h1>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={text || "Menu logo"}
+            style={{
+              height: logoHeight ?? 110,
+              width: "auto",
+              maxWidth: "75%",
+              objectFit: "contain",
+              display: "inline-block",
+              filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.55))",
+            }}
+          />
+        ) : (
+          <h1
+            style={{
+              fontFamily: "'Allura', cursive",
+              fontSize: "clamp(2.8rem, 6vw, 4.8rem)",
+              lineHeight: 1,
+              letterSpacing: "0.01em",
+              margin: 0,
+              textShadow: "0 4px 20px rgba(0,0,0,0.5)",
+            }}
+          >
+            <span style={{ color: red }}>{left}</span>
+            {right && (
+              <>
+                {" "}
+                <span
+                  className="font-serif"
+                  style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontStyle: "italic",
+                    fontSize: "0.45em",
+                    color: `${textColor}AA`,
+                    verticalAlign: "middle",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  {conj}
+                </span>{" "}
+                <span style={{ color: categoryHeaderColor }}>{right}</span>
+              </>
+            )}
+          </h1>
+        )}
 
         {/* Clock pinned right */}
         <div

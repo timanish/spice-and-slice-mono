@@ -40,6 +40,25 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
   const [slug, setSlug] = useState((board as any).slug ?? "");
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const filePath = `tv-menu/logo-${board.id}-${Date.now()}.${ext}`;
+      const url = await uploadImage(file, filePath, { requireAdmin: true });
+      update("logo_image_url", url);
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err?.message ?? "Could not upload logo",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const handleBackgroundUpload = async (file: File) => {
     setUploadingBg(true);
@@ -703,6 +722,78 @@ export function TvMenuBoardEditor({ board, open, onClose, onSave, isSaving }: Pr
                     onChange={(e) => update("header_text", e.target.value)}
                     placeholder="Our Menu"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used as the header title (and as the logo's alt text / fallback).
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-semibold">Header Logo</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Upload a logo (PNG with transparency works best) to replace the text
+                    title in the header.
+                  </p>
+                  {config.logo_image_url ? (
+                    <div className="flex items-center gap-2 p-2 border rounded-lg bg-white">
+                      <img
+                        src={config.logo_image_url}
+                        alt=""
+                        className="h-10 w-auto max-w-[140px] object-contain rounded bg-gray-800 px-1"
+                      />
+                      <span className="flex-1 text-xs text-gray-600 truncate">
+                        {config.logo_image_url.split("/").pop()}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => update("logo_image_url", undefined)}
+                        className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center w-full h-16 border-2 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-100 transition-colors">
+                      {uploadingLogo ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Upload className="h-4 w-4" /> Upload logo (PNG/SVG)
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleLogoUpload(f);
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingLogo}
+                      />
+                    </label>
+                  )}
+                  {config.logo_image_url && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-xs">Logo Height</Label>
+                        <span className="text-xs text-gray-500 font-mono">
+                          {config.logo_height ?? 110}px
+                        </span>
+                      </div>
+                      <Slider
+                        value={[config.logo_height ?? 110]}
+                        onValueChange={([v]) => update("logo_height", v)}
+                        min={40}
+                        max={220}
+                        step={5}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>

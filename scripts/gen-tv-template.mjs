@@ -42,5 +42,32 @@ const page = await browser.newPage({
 await page.setContent(html, { waitUntil: "networkidle" });
 await page.waitForTimeout(200);
 await page.screenshot({ path: out });
-await browser.close();
 console.log("wrote", out);
+
+// --- Demo wordmark logo (transparent PNG) ----------------------------------
+const LOGO_HTML = `<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;width:1000px;height:240px;}
+  .wrap{width:1000px;height:240px;display:flex;align-items:center;justify-content:center;
+    font-family:'Playfair Display',serif;}
+  .word{font-weight:700;font-size:118px;line-height:1;color:#C0001A;
+    -webkit-text-stroke:2px #FFD700;text-shadow:0 3px 12px rgba(0,0,0,.45);}
+  .amp{font-style:italic;font-weight:600;font-size:62px;color:#FFD700;margin:0 20px;
+    vertical-align:middle;text-shadow:0 2px 8px rgba(0,0,0,.4);}
+</style></head>
+<body><div class="wrap">
+  <span class="word">Spice</span><span class="amp">&amp;</span><span class="word">Slice</span>
+</div></body></html>`;
+const logoOut = path.join(outDir, "logo.png");
+const logoPage = await browser.newPage({
+  viewport: { width: 1000, height: 240 },
+  deviceScaleFactor: 2,
+});
+await logoPage.setContent(LOGO_HTML, { waitUntil: "networkidle" });
+await logoPage.waitForTimeout(500); // let the web font load
+await logoPage.screenshot({ path: logoOut, omitBackground: true });
+console.log("wrote", logoOut);
+
+await browser.close();

@@ -29,6 +29,10 @@ export interface TvMenuBoardConfig {
   total_screens: number; // 1 = single screen, 2 = split across 2 TVs
   header_text: string;
   footer_text: string;
+  // Header logo image — replaces the text wordmark in the header when set
+  // (header_text remains the fallback / accessibility label).
+  logo_image_url?: string;
+  logo_height?: number; // px; defaults per layout (~70 default, ~110 restaurant)
   // Background template: a full-bleed image rendered BEHIND the menu (classic /
   // modern / grid / restaurant layouts). Lets a designer build a beautiful EMPTY
   // template (textures, frames, logo, hero photo) while live prices/items render

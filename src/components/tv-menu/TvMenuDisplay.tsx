@@ -223,6 +223,8 @@ export function TvMenuDisplay() {
           backgroundColor={theme.background_color}
           variant={isRestaurant ? "restaurant" : "default"}
           categoryHeaderColor={theme.category_header_color}
+          logoUrl={config.logo_image_url}
+          logoHeight={config.logo_height}
         />
 
         {isMultiScreenStatic || displayMode === "static" ? (
