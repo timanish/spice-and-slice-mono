@@ -27,3 +27,17 @@ dist-ssr
 # Bun lockfiles (use npm/package-lock.json for Cloudflare Pages)
 bun.lock
 bun.lockb
+AGENTS.md
+deno.lock
+.env.test
+entities.json
+memplace.yaml
+playwright-report/*
+scripts/merge-orphan-profile.sql
+spice-slice-architecture.*
+supabase/.branches/
+supobase/function/.en.test
+test-results/
+.codex/
+memplace.yaml
+
