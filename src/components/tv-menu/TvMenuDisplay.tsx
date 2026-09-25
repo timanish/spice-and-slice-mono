@@ -15,14 +15,24 @@ import { StaticImagesLayout } from "./layouts/StaticImagesLayout";
 import { Loader2 } from "lucide-react";
 import { MenuItem } from "@/hooks/products/types";
 
+// Boards served straight from public/tv-menu-static without touching Supabase.
+// Settings mirror the board's DB config (page_duration, theme.background_color).
+const BUNDLED_BOARDS: Record<
+  string,
+  { images: string[]; durationSeconds: number; backgroundColor: string }
+> = {
+  restaurant: {
+    images: ["/tv-menu-static/restaurant-1.png", "/tv-menu-static/restaurant-2.png"],
+    durationSeconds: 17,
+    backgroundColor: "#1a0f0a",
+  },
+};
+
 export function TvMenuDisplay() {
   const [searchParams] = useSearchParams();
   const { slug } = useParams<{ slug?: string }>();
-  const boardId = searchParams.get("board_id") ?? undefined;
   const screenNumber = parseInt(searchParams.get("screen") ?? "0") || 0;
   const totalScreens = parseInt(searchParams.get("of") ?? "0") || 0;
-
-  const { data, isLoading, error } = usePublishedTvMenu(boardId, slug);
 
   useScreenWakeLock();
 
@@ -44,6 +54,31 @@ export function TvMenuDisplay() {
       document.body.style.cursor = "";
     };
   }, [hideCursor]);
+
+  const bundled = slug ? BUNDLED_BOARDS[slug] : undefined;
+  if (bundled) {
+    return (
+      <StaticImagesLayout
+        images={bundled.images}
+        screenNumber={screenNumber}
+        totalScreens={totalScreens}
+        durationSeconds={bundled.durationSeconds}
+        backgroundColor={bundled.backgroundColor}
+      />
+    );
+  }
+
+  return <LiveTvMenuDisplay />;
+}
+
+function LiveTvMenuDisplay() {
+  const [searchParams] = useSearchParams();
+  const { slug } = useParams<{ slug?: string }>();
+  const boardId = searchParams.get("board_id") ?? undefined;
+  const screenNumber = parseInt(searchParams.get("screen") ?? "0") || 0;
+  const totalScreens = parseInt(searchParams.get("of") ?? "0") || 0;
+
+  const { data, isLoading, error } = usePublishedTvMenu(boardId, slug);
 
   // Split items for multi-screen mode
   const displayData = useMemo(() => {
@@ -123,12 +158,12 @@ export function TvMenuDisplay() {
         fontSize: `${scale}rem`,
       }}
     >
-      {/* Ambient background effects — printed-menu look in restaurant mode skips
+      {/* Ambient background effects: printed-menu look in restaurant mode skips
           the orbs/grain in favor of a clean warm bg with just a vignette. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {!isRestaurant && (
           <>
-            {/* Primary accent orb — top-right */}
+            {/* Primary accent orb: top-right */}
             <div
               className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full"
               style={{
@@ -136,7 +171,7 @@ export function TvMenuDisplay() {
                 animation: "tvAmbient1 22s ease-in-out infinite",
               }}
             />
-            {/* Price-color orb — bottom-left */}
+            {/* Price-color orb: bottom-left */}
             <div
               className="absolute -bottom-48 -left-48 w-[700px] h-[700px] rounded-full"
               style={{
@@ -144,7 +179,7 @@ export function TvMenuDisplay() {
                 animation: "tvAmbient2 28s ease-in-out infinite",
               }}
             />
-            {/* Center atmosphere — very subtle */}
+            {/* Center atmosphere: very subtle */}
             <div
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full"
               style={{
@@ -163,7 +198,7 @@ export function TvMenuDisplay() {
             />
           </>
         )}
-        {/* Vignette — darkens edges, focuses center */}
+        {/* Vignette: darkens edges, focuses center */}
         <div
           className="absolute inset-0"
           style={{
