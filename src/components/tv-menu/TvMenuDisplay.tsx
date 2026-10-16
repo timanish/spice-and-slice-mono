@@ -26,6 +26,11 @@ const BUNDLED_BOARDS: Record<
     durationSeconds: 17,
     backgroundColor: "#1a0f0a",
   },
+  "dashain-offer": {
+    images: ["/tv-menu-static/dashain-offer.jpeg"],
+    durationSeconds: 17,
+    backgroundColor: "#1a0f0a",
+  },
 };
 
 export function TvMenuDisplay() {
